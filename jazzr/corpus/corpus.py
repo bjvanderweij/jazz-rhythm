@@ -1,4 +1,6 @@
-import os, MidiFile, re, tools
+from jazzr.midi import representation
+from jazzr.tools import commandline
+import os, re 
 
 path = '/home/bastiaan/Courses/Thesis/JazzParser/midi/corpus/'
 
@@ -25,7 +27,7 @@ def loadname(name):
 
 def loadfile(f):
   try:
-    return MidiFile.MidiFile(f)
+    return representation.MidiFile(f)
   except:
     print 'Error loading file'
     raise
@@ -33,7 +35,7 @@ def loadfile(f):
 
 def selectfile():
   n = sorted(names())
-  choice = tools.menu('Choose a file', n)
+  choice = commandline.menu('Choose a file', n)
   if choice == -1:
     return None
   return loadname(n[choice])

@@ -1,9 +1,8 @@
 from jazzr.rawmidi.MidiOutFile import MidiOutFile
-from jazzr.midi.player import *
-import copy, os, pygame, threading, miditools
+from jazzr.rawmidi import *
+import copy, os, pygame, threading
 
 class Note:
-
 
   def __init__(self, on, off, pitch, onvelocity, offvelocity=0, annotation=None, channel=0, program=None):
     self.base_a4 = 440
@@ -19,13 +18,13 @@ class Note:
     self.program = program
 
   def instrument(self):
-    (instr, perc, fam) = miditools.prog2instr(self.program)
+    (instr, perc, fam) = tools.prog2instr(self.program)
     if not self.isPercussion():
       return instr
     return perc
 
   def family(self):
-    (instr, perc, fam) = miditools.prog2instr(self.program)
+    (instr, perc, fam) = tools.prog2instr(self.program)
     if not self.isPercussion():
       return fam
     return None
@@ -123,6 +122,7 @@ class Track:
 class MidiFile(dict):
 
   def __init__(self, midifile=None):
+    from jazzr.midi import parser
     # Dirty MIDI administration
     self.key_signature = None
     self.time_signature = (4, 4, 24, 8)
@@ -135,7 +135,7 @@ class MidiFile(dict):
 
     # If a file is specified, parse it
     if midifile:
-      parser = MidiParser(self)
+      parser = parser.MidiParser(self)
       stream =  MidiInFile.MidiInFile(parser, open(midifile))
       stream.read()
       self.name = midifile.split('/')[-1]

@@ -1,6 +1,8 @@
 from pygame import midi
 from collections import deque
-import tools, time, corpus, math, curses, curses.wrapper, threading, cgui
+from jazzr.tools import commandline, cgui
+from jazzr.corpus import corpus
+import time, math, curses, curses.wrapper, threading
 
 class Sequencer(threading.Thread):
 
@@ -182,7 +184,7 @@ class Sequencer(threading.Thread):
 
     self.stopped = True
 
-class MidiPlayer:
+class Player:
 
 
   def __init__(self):
@@ -257,19 +259,19 @@ class MidiPlayer:
         print seq.status
       elif inp == 'track' or inp == 't':
         if seq.midifile:
-          choice = tools.menu('Choose a track',\
+          choice = commandline.menu('Choose a track',\
              ['Track #{0}.\tName: {1}\tNumber of notes: {2}'.format(\
               seq.midifile[t].n, seq.midifile[t].name, len(seq.midifile[t]))\
               for t in seq.tracklist()])
           if choice < 0: continue
           seq.control(seq.LOADTRACK, seq.tracklist()[choice])
       elif inp == 'load' or inp == 'f':
-        choice = tools.menu('Choose a file', sorted(corpus.names()))
+        choice = commandline.menu('Choose a file', sorted(corpus.names()))
         if choice < 0: continue
         print 'Loading file'
         seq.control(seq.LOADFILE, corpus.loadname(sorted(corpus.names())[choice]))
       elif inp == 'output' or inp == 'device' or inp == 'd' or inp == 'o':
-        choice = tools.menu('Choose a midi device', seq.devicelist())
+        choice = commandline.menu('Choose a midi device', seq.devicelist())
         if choice < 0: continue
         seq.control(seq.SETOUTPUT, choice)
 
