@@ -1,0 +1,129 @@
+Program #, Instrument, Percussion, Family
+1,Acoustic Grand Piano,None,Piano
+2,Bright Acoustic Piano,None,Piano
+3,Electric Grand Piano,None,Piano
+4,Honky-tonk Piano,None,Piano
+5,Electric Piano 1,None,Piano
+6,Electric Piano 2,None,Piano
+7,Harpsichord,None,Piano
+8,Clavi,None,Piano
+9,Celesta,None,Chromatic Percussion
+10,Glockenspiel,None,Chromatic Percussion
+11,Music Box,None,Chromatic Percussion
+12,Vibraphone,None,Chromatic Percussion
+13,Marimba,None,Chromatic Percussion
+14,Xylophone,None,Chromatic Percussion
+15,Tubular Bells,None,Chromatic Percussion
+16,Dulcimer,None,Chromatic Percussion
+17,Drawbar Organ,None,Organ
+18,Percussive Organ,None,Organ
+19,Rock Organ,None,Organ
+20,Church Organ,None,Organ
+21,Reed Organ,None,Organ
+22,Accordion,None,Organ
+23,Harmonica,None,Organ
+24,Tango Accordion,None,Organ
+25,Acoustic Guitar (nylon),None,Guitar
+26,Acoustic Guitar (steel),None,Guitar
+27,Electric Guitar (jazz),None,Guitar
+28,Electric Guitar (clean),None,Guitar
+29,Electric Guitar (muted),None,Guitar
+30,Overdriven Guitar,None,Guitar
+31,Distortion Guitar,None,Guitar
+32,Guitar harmonics,None,Guitar
+33,Acoustic Bass,None,Bass
+34,Electric Bass (finger),None,Bass
+35,Electric Bass (pick),Acoustic Bass Drum,Bass
+36,Fretless Bass,Bass Drum 1,Bass
+37,Slap Bass 1,Side Stick,Bass
+38,Slap Bass 2,Acoustic Snare,Bass
+39,Synth Bass 1,Hand Clap,Bass
+40,Synth Bass 2,Electric Snare,Bass
+41,Violin,Low Floor Tom,Strings
+42,Viola,Closed Hi Hat,Strings
+43,Cello,High Floor Tom,Strings
+44,Contrabass,Pedal Hi-Hat,Strings
+45,Tremolo Strings,Low Tom,Strings
+46,Pizzicato Strings,Open Hi-Hat,Strings
+47,Orchestral Harp,Low-Mid Tom,Strings
+48,Timpani,Hi-Mid Tom,Strings
+49,String Ensemble 1,Crash Cymbal 1,Ensemble
+50,String Ensemble 2,High Tom,Ensemble
+51,SynthStrings 1,Ride Cymbal 1,Ensemble
+52,SynthStrings 2,Chinese Cymbal,Ensemble
+53,Choir Aahs,Ride Bell,Ensemble
+54,Voice Oohs,Tambourine,Ensemble
+55,Synth Voice,Splash Cymbal,Ensemble
+56,Orchestra Hit,Cowbell,Ensemble
+57,Trumpet,Crash Cymbal 2,Brass
+58,Trombone,Vibraslap,Brass
+59,Tuba,Ride Cymbal 2,Brass
+60,Muted Trumpet,Hi Bongo,Brass
+61,French Horn,Low Bongo,Brass
+62,Brass Section,Mute Hi Conga,Brass
+63,SynthBrass 1,Open Hi Conga,Brass
+64,SynthBrass 2,Low Conga,Brass
+65,Soprano Sax,High Timbale,Reed
+66,Alto Sax,Low Timbale,Reed
+67,Tenor Sax,High Agogo,Reed
+68,Baritone Sax,Low Agogo,Reed
+69,Oboe,Cabasa,Reed
+70,English Horn,Maracas,Reed
+71,Bassoon,Short Whistle,Reed
+72,Clarinet,Long Whistle,Reed
+73,Piccolo,Short Guiro,Pipe
+74,Flute,Long Guiro,Pipe
+75,Recorder,Claves,Pipe
+76,Pan Flute,Hi Wood Block,Pipe
+77,Blown Bottle,Low Wood Block,Pipe
+78,Shakuhachi,Mute Cuica,Pipe
+79,Whistle,Open Cuica,Pipe
+80,Ocarina,Mute Triangle,Pipe
+81,Lead 1,Open Triangle,Synth Lead
+82,Lead 2,None,Synth Lead
+83,Lead 3,None,Synth Lead
+84,Lead 4,None,Synth Lead
+85,Lead 5,None,Synth Lead
+86,Lead 6,None,Synth Lead
+87,Lead 7,None,Synth Lead
+88,Lead 8,None,Synth Lead
+89,Pad 1,None,Synth Pad
+90,Pad 2,None,Synth Pad
+91,Pad 3,None,Synth Pad
+92,Pad 4,None,Synth Pad
+93,Pad 5,None,Synth Pad
+94,Pad 6,None,Synth Pad
+95,Pad 7,None,Synth Pad
+96,Pad 8,None,Synth Pad
+97,FX 1,None,Synth Effects
+98,FX 2,None,Synth Effects
+99,FX 3,None,Synth Effects
+100,FX 4,None,Synth Effects
+101,FX 5,None,Synth Effects
+102,FX 6,None,Synth Effects
+103,FX 7,None,Synth Effects
+104,FX 8,None,Synth Effects
+105,Sitar,None,Ethnic
+106,Banjo,None,Ethnic
+107,Shamisen,None,Ethnic
+108,Koto,None,Ethnic
+109,Kalimba,None,Ethnic
+110,Bag pipe,None,Ethnic
+111,Fiddle,None,Ethnic
+112,Shanai,None,Ethnic
+113,Tinkle Bell,None,Percussive
+114,Agogo,None,Percussive
+115,Steel Drums,None,Percussive
+116,Woodblock,None,Percussive
+117,Taiko Drum,None,Percussive
+118,Melodic Tom,None,Percussive
+119,Synth Drum,None,Percussive
+120,Reverse Cymbal,None,Percussive
+121,Guitar Fret Noise,None,Sound Effects
+122,Breath Noise,None,Sound Effects
+123,Seashore,None,Sound Effects
+124,Bird Tweet,None,Sound Effects
+125,Telephone Ring,None,Sound Effects
+126,Helicopter,None,Sound Effects
+127,Applause,None,Sound Effects
+128,Gunshot,None,Sound Effects
