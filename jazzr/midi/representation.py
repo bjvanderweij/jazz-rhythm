@@ -1,4 +1,3 @@
-from jazzr.rawmidi.MidiOutFile import MidiOutFile
 from jazzr.rawmidi import *
 import copy, os, pygame, threading
 
@@ -101,17 +100,19 @@ class Track:
     programs = {}
     channels = {}
     tracks = {}
-    midifile = self.midifile.copy()
+    midifile = self.midifile.newFile()
+    midifile.format = 1
     counter = 1
     for n in self:
       if str(n.program) in tracks:
-        tracks[str(n.program)].append(n)
+        tracks[str(n.program)].notes.append(n)
       else:
-        tracks[str(n.program)] = Track(midifile, 1)
-        
-
-      pass
-      
+        tracks[str(n.program)] = Track(midifile, counter)
+        tracks[str(n.program)].channels[1] = n.program
+        counter += 1
+    for t in tracks.values():
+      midifile[str(t.n)] = t
+    return midifile
 
   def play(self):
     self.midifile.play(str(self.n))
@@ -131,7 +132,7 @@ class MidiFile(dict):
     self.division = 480
     self.sequence_names = []
     self.ctrack = -1
-    self.format = -1
+    self.format = 1
 
     # If a file is specified, parse it
     if midifile:
@@ -160,8 +161,9 @@ class MidiFile(dict):
     return sorted([(t.n, t.name) for t in self.values()], key=lambda x: x[0])
 
   def exportMidi(self, midifile, tracks=None):
+    from jazzr.rawmidi.MidiOutFile import MidiOutFile
     if not tracks:
-      tracks = self.values()
+      tracks = self.keys()
 
     # Do some preprocessing on the notes, converting them to 
     # ordered note on and note off events:
@@ -192,7 +194,7 @@ class MidiFile(dict):
       out.sequence_name(self[track].name)
       # This is not a neat solution. Channels may change during the track
       for channel in self[track].channels.keys():
-        out.patch_change(channel, self[track].channels[str(channel)])
+        out.patch_change(int(channel), self[track].channels[channel])
       #out.patch_change(3, 1)
       lastTime = 0
       for e in events:

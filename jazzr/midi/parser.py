@@ -25,7 +25,7 @@ class MidiParser(MidiOutStream.MidiOutStream):
     if not str(channel) in self.midifile[str(self.ctrack)].channels:
       self.midifile[str(self.ctrack)].channels[str(channel)] = 1
     program = self.midifile[str(self.ctrack)].channels[str(channel)]
-    note = representation.Note(self.abs_time(), self.abs_time(), pitch, onvel, channel, program)
+    note = representation.Note(self.abs_time(), self.abs_time(), pitch, onvel, channel=channel, program=program)
     if self.ctrack == -1:
       print 'Midiparser: no track currently active.'
       return
