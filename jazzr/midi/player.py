@@ -1,7 +1,7 @@
 from pygame import midi
 from collections import deque
 from jazzr.tools import commandline, cgui
-from jazzr.corpus import corpus
+from jazzr.corpus import files
 import time, math, curses, curses.wrapper, threading
 
 class Sequencer(threading.Thread):
@@ -266,10 +266,10 @@ class Player:
           if choice < 0: continue
           seq.control(seq.LOADTRACK, seq.tracklist()[choice])
       elif inp == 'load' or inp == 'f':
-        choice = commandline.menu('Choose a file', sorted(corpus.names()))
+        choice = commandline.menu('Choose a file', sorted(files.names()))
         if choice < 0: continue
         print 'Loading file'
-        seq.control(seq.LOADFILE, corpus.loadname(sorted(corpus.names())[choice]))
+        seq.control(seq.LOADFILE, files.loadname(sorted(files.names())[choice]))
       elif inp == 'output' or inp == 'device' or inp == 'd' or inp == 'o':
         choice = commandline.menu('Choose a midi device', seq.devicelist())
         if choice < 0: continue
@@ -381,10 +381,10 @@ class Player:
         speed += 0.01
         seq.control(seq.SETSPEED, speed)
       elif c == ord('f'):
-        choice = cgui.cmenu(stdscr, 'Choose a file', sorted(corpus.names()))
+        choice = cgui.cmenu(stdscr, 'Choose a file', sorted(files.names()))
         if choice < 0: continue
         cgui.calert(stdscr, 'Loading file')
-        seq.control(seq.LOADFILE, corpus.loadname(sorted(corpus.names())[choice]))
+        seq.control(seq.LOADFILE, files.loadname(sorted(files.names())[choice]))
         time = 0
       elif c == ord('o'):
         choice = cgui.cmenu(stdscr, 'Choose a midi device', seq.devicelist())

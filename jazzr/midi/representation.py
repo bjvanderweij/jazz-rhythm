@@ -1,4 +1,5 @@
 from jazzr.rawmidi import *
+from jazzr.midi import tools
 import copy, os, pygame, threading
 
 class Note:
@@ -29,7 +30,7 @@ class Note:
     return None
 
   def isPercussion(self):
-    return channel is 10
+    return self.channel is 10
 
   def abs_pitch(self):
     return self.base_a4*pow(2,(self.pitch-57)/12)
@@ -88,15 +89,16 @@ class Track:
   def toEvents(self):
     events = []
     for n in self:
-      events.append((n.on, n.pitch, n.onvelocity, 'on'))
-      events.append((n.off, n.pitch, n.offvelocity, 'off'))
+      events.append((n.on, n.pitch, n.onvelocity, 'on', n.channel, n.program))
+      events.append((n.off, n.pitch, n.offvelocity, 'off', n.channel, n.program))
     return sorted(events, key=lambda x: x[0])
 
   def save(self, fname):
+    """Save this track in a separate midi file."""
     self.midifile.exportMidi(fname, tracks=[str(self.n)])
 
-  # WiP
   def channels2tracks(self):
+    """Expand channels into separate tracks and put it in a new midi file."""
     programs = {}
     channels = {}
     tracks = {}
@@ -109,15 +111,18 @@ class Track:
       else:
         tracks[str(n.program)] = Track(midifile, counter)
         tracks[str(n.program)].channels[1] = n.program
+        tracks[str(n.program)].name = n.instrument()
         counter += 1
     for t in tracks.values():
       midifile[str(t.n)] = t
     return midifile
 
   def play(self):
+    """Try to play this track."""
     self.midifile.play(str(self.n))
 
   def remove(self, item):
+    """Remove a note from this track."""
     self.notes.remove(item)
 
 class MidiFile(dict):
@@ -158,19 +163,26 @@ class MidiFile(dict):
         self.division, '\n'.join('Notes in track {0}: {1}'.format(x, len(self[x])) for x in self))
 
   def tracknames(self):
+    """Return a list of track names sorted by track number."""
     return sorted([(t.n, t.name) for t in self.values()], key=lambda x: x[0])
 
   def exportMidi(self, midifile, tracks=None):
+    """Create a type 1 midi file.
+
+    The name of track 0 will be the midifile name, so the original
+    name of track 0 will be lost.
+    """
     from jazzr.rawmidi.MidiOutFile import MidiOutFile
     if not tracks:
       tracks = self.keys()
 
     # Do some preprocessing on the notes, converting them to 
     # ordered note on and note off events:
-    print "Creating file"
     out = MidiOutFile(midifile)
     out.header(format=1, nTracks=len(tracks)+1, division=self.division)
+
     out.start_of_track()
+    out.sequence_name(self.name)
     out.tempo(self.tempo)
     if (self.time_signature):
       out.time_signature(self.time_signature[0],\

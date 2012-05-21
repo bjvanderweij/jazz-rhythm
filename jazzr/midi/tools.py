@@ -1,7 +1,7 @@
 from jazzr.rawmidi import *
 import re, csv, sys
 
-data_file = '../data/instruments.csv'
+data_file = '/home/bastiaan/Courses/Thesis/Jazz-Rhythm/jazzr/data/instruments.csv'
 data = []
 
 # Looks up midi instrument name associated with a program number
