@@ -117,9 +117,9 @@ class Track:
       midifile[str(t.n)] = t
     return midifile
 
-  def play(self):
+  def play(self, gui=False, block=True):
     """Try to play this track."""
-    self.midifile.play(str(self.n))
+    self.midifile.play(str(self.n), gui=gui, block=block)
 
   def remove(self, item):
     """Remove a note from this track."""
@@ -232,11 +232,11 @@ class MidiFile(dict):
       string += str(n) + "\n" 
     return string
 
-  def play(self, track=0, block=True):
+  def play(self, track=0, block=True, gui=False):
+    from jazzr.midi import player
     # Make a sequencer instance and run it
-    mp = MidiPlayer()
-    mp.play(self, track)
-    pass
+    mp = player.Player()
+    mp.play(self, track, gui=gui, block=block)
 
 
   def quarternotes_to_ticks(self, quarternotes):

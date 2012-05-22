@@ -1,59 +1,69 @@
-# Tasks:
-# Sort files (or add metadata):
-#   - By part (bass/chords/melody/percussion)
-#   - By style
-#   - By whether it contains swing
-# Annotate files:
-#   - Metadata
-#   - Rhythm
-# Store files:
-#   - Save tracks, song and metadata
-import os, sys, corpus, pickle
+from jazzr.annotation import data as datamod
+from jazzr.corpus import files
+from jazzr.tools import commandline
+from jazzr.midi import representation
+import code
 
-# A song entry contains a list of track entries
-class SongEntry(list):
+def annotate(path):
+  midi = representation.MidiFile(path)
+  (name, version, track, singletrack) = files.parsename(midi.name)
+  key = '{0}-{1}-{2}'.format(name, version, track)
 
-  def __init__(self, filename, path, style=None):
-    self.filename = filename
-    self.path = path
-    self.style = None
-    list.__init__(self)
+  parts = ['percussion', 'bass', 'accompaniment', 'melody', None]
+  part = None
+  choice = -1
+  while choice not in [4, 5]:
+    # Show options: play file,don't add to corpus
+    choice = commandline.menu(key, ['Play file', 'Annotate', 'View info', 'Drop to shell', 'Save and next', 'Skip', 'Abort'])
+    if choice == 0:
+      midi['1'].play(gui=True)
+    elif choice == 1:
 
-class TrackEntry:
-
-  # Rhythm values
-  EVEN=0
-  SWING=1
-
-  # Part values
-  PERCUSSION=0
-  BASS=1
-  COMP=2
-  SOLO=3
-
-  # Instrument values
-
-
-  def __init__(self, song, n, path=None, part=None, instrument=None, rhythm=None):
-    self.filename = filename
-    self.path = path
-    self.style = None
-    list.__init__(self)
-
-def create_metadata(datafile='corpus.txt'):
-  if os.path.exists(datafile):
-    a = raw_input('File {0} exists, overwrite? (y/n) '.format(datafile)
-    if not a is 'y': return
-    print 'Creating backup'
-    os.system('mv {0} {0}.bak'.format(datafile))
-  f = open(datafile, 'w')
-  
-  metadata = {}
-  keys = corpus.names()
-  for key in keys:
-    metadata[key] = SongEntry('{0}.mid'.format(key), '{0}/{1}.mid'.format(corpus.path, key), style=None)
+      part = parts[commandline.menu('Choose value for \'part\' attribute.', parts)]
+    elif choice == 2:
+      print 'Name:\t{0}\nPath:\t{1}\nInstrument:\t{2}\n'.format(\
+        midi.name, path, midi['1'][0].instrument())
+    elif choice == 3:
+      code.interact(local=locals())
+    elif choice == 6:
+      if raw_input('Are you sure? (y/n) ') is 'y':
+        exit(0)
+  if choice == 4:
+    return (key, {'path':path, 'part':part})
+  if choice == 5:
+    return None
+      
+    
 
 
+# This function assumes an inputdir containing single track midifiles
+# The revise option toggles whether this will iterate over every file in 
+# inputdir or just the ones already in the datafile
 
+# Some possibilities should include annotate everything that is [in inputdir], [in datafile AND inputdir]
+# [in datafile], [in datafile but missing attribs], etc.
+def simpleAnnotator(inputdir, datafile, revise=False, annotatefunction=annotate, saveEach=True):
+  data = datamod.Data(datafile)
+  if revise and 'path' in d.keys:
+    paths = [item['path'] for item in data.values()]
+  aset = files.paths(inputdir)
+  data.addAttrib('part')
+  data.addAttrib('path')
+  for f in aset:
+    annotation = annotatefunction(f)
+    if annotation:
+      (key, attribs) = annotation
+      for k in attribs.keys():
+        if not k in data.keys:
+          data.addAttrib(k)
+      data.add(key, attribs)
+    if saveEach:
+      data.save()
+      
+  if raw_input('Save to datafile? (y/n)') is 'y':
+    data.save()
+  else:
+    backup = datafile + '.bak'
+    data.save(backup)
+    print 'A datafile of this session was stored in {0}'.format(backup)
 
-def load_metadata(datafile='corpus.txt'):

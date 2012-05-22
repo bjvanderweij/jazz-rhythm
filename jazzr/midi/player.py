@@ -225,7 +225,7 @@ class Player:
       self.seq.running = False
       while not self.seq.stopped: time.sleep(0.1)
 
-  def play(self, midifile, track):
+  def play(self, midifile, track, gui=False, block=True):
     if not self.seq:
       self.seq = Sequencer(self.lock, self)
       self.seq.start()
@@ -233,7 +233,13 @@ class Player:
     self.seq.control(self.seq.LOADTRACK, track)
     self.seq.control(self.seq.SETOUTPUT, 0)
     self.seq.control(self.seq.PLAY, None)
-    self.startcommandline()
+    if not block:
+      return (self.seq, self.lock)
+    if gui:
+      self.startgui()
+    else:
+      self.startcommandline()
+    return (self.seq, self.lock)
 
   def commandline(self):
     seq = self.seq
