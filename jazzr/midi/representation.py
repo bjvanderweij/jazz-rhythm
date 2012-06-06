@@ -18,19 +18,22 @@ class Note:
     self.program = program
 
   def instrument(self):
-    (instr, perc, fam) = tools.prog2instr(self.program)
+    # Program and channel needs to be +1'ed (something with starting at zero)
+    (instr, perc, fam) = tools.prog2instr(self.program+1)
     if not self.isPercussion():
       return instr
     return perc
 
   def family(self):
-    (instr, perc, fam) = tools.prog2instr(self.program)
+    # Program and channel needs to be +1'ed (something with starting at zero)
+    (instr, perc, fam) = tools.prog2instr(self.program+1)
     if not self.isPercussion():
       return fam
     return None
 
   def isPercussion(self):
-    return self.channel is 10
+    # Program and channel needs to be +1'ed (something with starting at zero)
+    return self.channel+1 is 10
 
   def abs_pitch(self):
     return self.base_a4*pow(2,(self.pitch-57)/12)
@@ -214,12 +217,12 @@ class MidiFile(dict):
           out.update_time(e[0]-lastTime)
           lastTime = e[0]
           #out.update_time(96)
-          out.note_on(0, e[1], e[2])
+          out.note_on(e[4], e[1], e[2])
         else:
           out.update_time(e[0]-lastTime)
           lastTime = e[0]
           #out.update_time(0)
-          out.note_off(0, e[1], e[2])
+          out.note_off(e[4], e[1], e[2])
 
       out.update_time(0)
       out.end_of_track()

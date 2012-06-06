@@ -21,7 +21,6 @@ class MidiParser(MidiOutStream.MidiOutStream):
     pass
 
   def note_on(self, channel=0, pitch=0x40, onvel=0x40):
-    channel+=1
     if not str(channel) in self.midifile[str(self.ctrack)].channels:
       self.midifile[str(self.ctrack)].channels[str(channel)] = 1
     program = self.midifile[str(self.ctrack)].channels[str(channel)]
@@ -34,7 +33,6 @@ class MidiParser(MidiOutStream.MidiOutStream):
       self.notes_on[pitch, channel] = note
 
   def note_off(self, channel=0, pitch=0x40, offvel=0x40):
-    channel+=1
     if (pitch, channel) not in self.notes_on:
 #      print 'Midiparser: Note off before note on?'
       return
@@ -68,8 +66,6 @@ class MidiParser(MidiOutStream.MidiOutStream):
   def aftertouch(self, channel=0, note=0x40, velocity=0x40):pass
   def continuous_controller(self, channel, controller, value):pass
   def patch_change(self, channel, patch):
-    channel+=1
-    patch+=1
     self.midifile[str(self.ctrack)].channels[str(channel)] = patch
   def channel_pressure(self, channel, pressure):pass
   def pitch_bend(self, channel, value):pass

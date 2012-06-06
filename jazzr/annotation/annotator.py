@@ -1,6 +1,6 @@
 from jazzr.annotation import data as datamod
 from jazzr.corpus import files
-from jazzr.tools import commandline
+from jazzr.tools import commandline, rbsearch
 from jazzr.midi import representation
 import code
 
@@ -12,25 +12,53 @@ def annotate(path):
   parts = ['percussion', 'bass', 'accompaniment', 'melody', None]
   part = None
   choice = -1
-  while choice not in [4, 5]:
+
+  index = rbsearch.load_file('data/realbooks/index.csv')
+  hits = rbsearch.find(index, name.replace('_', ' '))
+
+  score = 'No score found'
+  if len(hits) > 0:
+    score = 'Scores found'
+
+  header = '>>> [{0}]\t[#{1}: {2}]\t[{3}]\t({4})'.format(name, track, midi['1'].name.strip(), midi['1'][1].instrument(), score)
+  while choice not in [5, 6]:
     # Show options: play file,don't add to corpus
-    choice = commandline.menu(key, ['Play file', 'Annotate', 'View info', 'Drop to shell', 'Save and next', 'Skip', 'Abort'])
+    choice = commandline.menu(header, ['Play file', 'Annotate', 'View info', 'Drop to shell', 'Search score', 'Save and next', 'Skip', 'Abort'])
+    # Play file
     if choice == 0:
       midi['1'].play(gui=True)
+    # Annotate
     elif choice == 1:
 
       part = parts[commandline.menu('Choose value for \'part\' attribute.', parts)]
+    # View info
     elif choice == 2:
-      print 'Name:\t{0}\nPath:\t{1}\nInstrument:\t{2}\n'.format(\
+      print 'Name:\t\t{0}\nPath:\t\t{1}\nInstrument:\t{2}\n'.format(\
         midi.name, path, midi['1'][0].instrument())
+    # Drop to shell
     elif choice == 3:
       code.interact(local=locals())
-    elif choice == 6:
+    elif choice == 4:
+      if len(hits) == 0:
+        print 'Sorry! No score found'
+        if raw_input('Would you like to search manually? (y/n) ') == 'y':
+          query = raw_input('Search for: ')
+          hits2 = rbsearch.find(index, query)
+          if len(hits2) == 0:
+            print 'No results'
+            continue
+          (song, book) = rbsearch.choose_book(index, hits2)
+          rbsearch.view(song, book, 'data/realbooks/songs/')
+        continue
+      (song, book) = rbsearch.choose_book(index, hits)
+      rbsearch.view(song, book, 'data/realbooks/songs/')
+    # Abort
+    elif choice == 7:
       if raw_input('Are you sure? (y/n) ') is 'y':
         exit(0)
-  if choice == 4:
-    return (key, {'path':path, 'part':part})
   if choice == 5:
+    return {'path':path, 'part':part}
+  if choice == 6:
     return None
       
     
@@ -50,13 +78,14 @@ def simpleAnnotator(inputdir, datafile, revise=False, annotatefunction=annotate,
   data.addAttrib('part')
   data.addAttrib('path')
   for f in aset:
+    (name, version, track, singletrack) = files.parsepath(f)
+    key = '{0}-{1}-{2}'.format(name, version, track)
     annotation = annotatefunction(f)
     if annotation:
-      (key, attribs) = annotation
-      for k in attribs.keys():
+      for k in annotation.keys():
         if not k in data.keys:
           data.addAttrib(k)
-      data.add(key, attribs)
+      data.add(key, annotation)
     if saveEach:
       data.save()
       

@@ -1,10 +1,12 @@
-def menu(question, options, cancel=False):
+def menu(question, options, cancel=False, executableOptions=False):
   while True:
     c = 1
     print question
     if cancel:
       print "\t0: Cancel"
     for option in options:
+      if executableOptions:
+        option = option[0]
       print "\t{0}: {1}".format(c,option)
       c += 1
     try:
@@ -21,4 +23,6 @@ def menu(question, options, cancel=False):
     if choice == 0 and not cancel:
       continue
     break
+  if executableOptions:
+    options[choice-1][1]()
   return choice - 1

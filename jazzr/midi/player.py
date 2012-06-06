@@ -2,7 +2,7 @@ from pygame import midi
 from collections import deque
 from jazzr.tools import commandline, cgui
 from jazzr.corpus import files
-import time, math, curses, curses.wrapper, threading
+import time, math, curses, threading
 
 class Sequencer(threading.Thread):
 
@@ -18,10 +18,12 @@ class Sequencer(threading.Thread):
   PLAYING = 0
   PAUSED = 1
 
-  def __init__(self, lock, midiplayer):
+  def __init__(self, lock, midiplayer, selfdestruct=False):
     self.running = False
     self.stopped = False
     self.midiplayer = midiplayer
+
+    self.selfdestruct=selfdestruct
 
     self.lock = lock
 
@@ -105,7 +107,7 @@ class Sequencer(threading.Thread):
         self.mode = self.PAUSED
       elif action == self.LOADTRACK:
         self.status = 'Loading track'
-        self.events = self.midifile[arg].toEvents()
+        self.events = self.midifile[str(arg)].toEvents()
         nexttime = timeleft = i = 0
         self.currenttrack = arg
         self.status = 'Track loaded'
@@ -163,7 +165,7 @@ class Sequencer(threading.Thread):
           on[str(e[1])] = 1
         elif e[3] is 'off':
           # Sometimes note_offs are lost? 
-          # Unbelievably sending twice reduces this.
+          # Sending twice reduces this.
           out.note_off(e[1], e[2], 0)
           out.note_off(e[1], e[2], 0)
           if str(e[1]) in on:
@@ -174,6 +176,8 @@ class Sequencer(threading.Thread):
 
         if i < len(self.events) - 1:
           i += 1
+        elif self.selfdestruct:
+          break
         else:
           self.control(self.STOP, None)
 
@@ -197,7 +201,19 @@ class Player:
     if not self.seq:
       self.seq = Sequencer(self.lock, self)
       self.seq.start()
+    #try:
+    #  stdscr=curses.initscr()
+    #  curses.noecho() ; curses.cbreak()
+    #  stdscr.keypad(1)
+    #  self.gui(stdscr)      # Enter the main loop
+    #finally:
+    #  stdscr.erase()
+    #  stdscr.refresh()
+    #  stdscr.keypad(0)
+    #  curses.echo() ; curses.nocbreak()
+    #  curses.endwin()     # Terminate curses
     try:
+      print "Starting gui"
       curses.wrapper(self.gui)
     except Exception:
       import sys
@@ -227,7 +243,7 @@ class Player:
 
   def play(self, midifile, track, gui=False, block=True):
     if not self.seq:
-      self.seq = Sequencer(self.lock, self)
+      self.seq = Sequencer(self.lock, self, selfdestruct=gui)
       self.seq.start()
     self.seq.control(self.seq.LOADFILE, midifile)
     self.seq.control(self.seq.LOADTRACK, track)
@@ -237,8 +253,6 @@ class Player:
       return (self.seq, self.lock)
     if gui:
       self.startgui()
-    else:
-      self.startcommandline()
     return (self.seq, self.lock)
 
   def commandline(self):
@@ -311,8 +325,8 @@ class Player:
       stdscr.addstr(1, 0, '[(e)dit alignment] [e(x)port track]')
       if seq.midifile:
         stdscr.addstr(4, 3, 'File: {0}'.format(seq.midifile.name))
-      stdscr.addstr(5, 3, 'Midi Device: {0}'.format(seq.device_info()))
-      stdscr.addstr(6, 3, 'Midi Track: {0}'.format(seq.currenttrack))
+        stdscr.addstr(5, 3, 'Midi Device: {0}'.format(seq.device_info()))
+        stdscr.addstr(6, 3, 'Midi Track: {0}'.format(seq.currenttrack))
       stdscr.addstr(7, 3, 'Player status: {0}'.format(seq.status))
 
       stdscr.refresh()

@@ -1,7 +1,8 @@
 from jazzr.tools import commandline
 import sys, os, math, re, csv
 
-books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3']
+books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3', 'JLTD']
+offsets = {'RB1':13,'RB2':7,'RB3':7,'NRB1':13, 'NRB2':12, 'NRB3':10, 'JLTD':7}
 
 def load_file(data):
   index = {}
@@ -36,7 +37,7 @@ def find(index, query):
   for item in index.keys():
     if re.search(query, item.lower()):
       results.append(item)
-    elif re.search(query, item.lower().replace('\'', '')):
+    elif re.search(query, item.lower().replace('\'', '').replace('"', '')):
       results.append(item)
   return results
 
@@ -66,7 +67,7 @@ def choose_book(index, results):
   book = bookhits[commandline.menu("Select a book", bookhits)]
   return (song, book)
 
-def interactive(datafile, bookspath):
+def interactive(datafile, songspath):
   index = load_file(datafile)
   while True:
     query = raw_input('Say a name! ').lower()
@@ -76,18 +77,50 @@ def interactive(datafile, bookspath):
 
       print "What would you like to do?"
       while True:
-        choice = commandline.menu("Please select", ["Export pdf", "Continue", "Quit"])
+        choice = commandline.menu("Please select", ["View", "Continue", "Quit"])
         if choice is 0:
-          save(index, bookspath, song, book, '{0}-{1}.pdf'.format(song.replace(' ', '_'), book))
+          view(song, book, songspath)
         if choice is 1: break
         if choice is 2: exit(0)
+
+# Run once parsing function
+# (Combines data from inf and datafile in newdatafile)
+def parse_rawindex(inf, datafile, newdatafile):
+  reader = csv.reader(open(inf, 'rb'))
+  dreader = csv.reader(open(datafile, 'rb'))
+
+  data = {}
+  for row in dreader:
+    data[row[0].lower()] = row[:]
+
+  for row in reader:
+    name = row[0].strip()
+    page = int(row[1].strip())
+    book = row[2].strip()
+
+    if not name.lower() in data:
+         
+      pages = []
+      for b in books:
+        if b == book:
+          pages.append(page + offsets[book])
+        else: 
+          pages.append(None)
+      print [name] + pages
+      data[name.lower()] = [name] + pages
+
+  writer = csv.writer(open(newdatafile, 'wb'))
+  writer.writerow(['Song'] + books)
+  for key, value in sorted(data.iteritems(), key=lambda x: x[0]):
+    writer.writerow(value)
+
 
 # This was a run-once function  
 def parse_file(inf, out):
   infile = open(inf)
   ofile = csv.writer(open(out, 'wb'))
-  books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3']
-  offsets = {'RB1':13,'RB2':7,'RB3':7,'NRB1':13, 'NRB2':12, 'NRB3':10}
+  books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3', 'JLTD']
+  offsets = {'RB1':13,'RB2':7,'RB3':7,'NRB1':13, 'NRB2':12, 'NRB3':10, 'JLTD':7}
   infile.next()
   ofile.writerow(['Song'] + books)
   for line in infile:

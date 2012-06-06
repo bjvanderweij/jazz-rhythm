@@ -1,7 +1,7 @@
 from jazzr.rawmidi import *
 import re, csv, sys
 
-data_file = '/home/bastiaan/Courses/Thesis/Jazz-Rhythm/jazzr/data/instruments.csv'
+data_file = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/instruments.csv'
 data = []
 
 # Looks up midi instrument name associated with a program number
@@ -22,7 +22,9 @@ def prog2instr(prog):
 def midi2text(f):
   stream = MidiInFile.MidiInFile(MidiToText.MidiToText(), open(f))
   stream.read()
-  stream.close()
+
+if __name__ == '__main__':
+  midi2text(sys.argv[1])
     
 
 
