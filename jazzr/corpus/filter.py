@@ -1,5 +1,6 @@
 from jazzr.corpus import files
 from jazzr.midi import representation
+from jazzr.tools import commandline
 import os
 
 def expandchannels(mfiles, outputdir):
@@ -78,4 +79,32 @@ def filtertracks(inputdir, outputdir):
     f = '{0}{1}'.format(outputdir, files.generatefilename(name, version, track.n, True))
     print 'saving {0}'.format(f)
     track.save(f)
+
+def decide(song, version, track, source, target):
+  mf = files.load(song, version, track, True, collection=source)
+  print '{0} ({1}) #{2}: {3} {4}'.format(song, version, track, mf['1'].name, mf['1'][0].instrument())
+  if raw_input('Move to output collection? (y/n)') == 'y':
+    files.move(song, version, track, True, source, target)
+
+
+def filtermanually():
+  choice = commandline.menu('Choose an input collection', files.collections())
+  if choice != -1: inp = files.collections()[choice]
+  else: return
+  outp = raw_input('Specify output collection: ')
+  if outp in files.collections():
+    if raw_input('Warning: collection exists, continue? (y/n)') != 'y': return
+  else:
+    os.mkdir('{0}{1}'.format(files.corpuspath, outp))
+  songs = files.songs(collection=inp)
+  midifiles = {}
+  counter = 1
+  for song in songs:
+    print 'Song {0} of {1}'.format(counter, len(songs))
+    counter += 1
+    versions = files.versions(song, collection=inp)
+    for version in versions:
+      tracks = files.tracks(song, version, collection=inp)
+      for track in tracks:
+        decide(song, version, track, inp, outp)
 

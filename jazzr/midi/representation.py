@@ -132,11 +132,13 @@ class MidiFile(dict):
 
   def __init__(self, midifile=None):
     from jazzr.midi import parser
-    # Dirty MIDI administration
+    # MIDI administration
     self.key_signature = None
     self.time_signature = (4, 4, 24, 8)
     self.smtp_offset = None
+    # Microseconds per quarternote/beat
     self.tempo = 500000
+    # Ticks per beat
     self.division = 480
     self.sequence_names = []
     self.ctrack = -1
@@ -235,11 +237,22 @@ class MidiFile(dict):
       string += str(n) + "\n" 
     return string
 
-  def play(self, track=0, block=True, gui=False):
+  def play(self, track=0, seq=None, selfdestruct=True):
     from jazzr.midi import player
-    # Make a sequencer instance and run it
-    mp = player.Player()
-    mp.play(self, track, gui=gui, block=block)
+    if not seq:
+      seq = player.Sequencer(selfdestruct=selfdestruct)
+      seq.start()
+    seq.control(seq.LOADFILE, self)
+    seq.control(seq.LOADTRACK, track)
+    seq.control(seq.SETOUTPUT, 0)
+    seq.control(seq.PLAY, None)
+    return seq
+
+  def bpm(self):
+    return 60000000 / float(self.tempo)
+
+  def setbpm(self, bpm):
+    self.tempo = 60000000 / float(bpm)
 
 
   def quarternotes_to_ticks(self, quarternotes):

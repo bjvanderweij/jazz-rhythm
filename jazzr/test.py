@@ -34,6 +34,8 @@ def testtool():
 
 def annotate(): annotator.simpleAnnotator(corpuspath, datafile)
 
+def filtermanually(): filter.filtermanually()
+
 def parse_index(): 
   # Parse the first raw data file into index2
   rbsearch.parse_file(rbindex_raw, rbindex2)
@@ -92,7 +94,7 @@ def quit(): exit(0)
 
 options = [\
 ('Annotate', annotate),\
-('Run quick \'n dirty tests', quickndirty),\
+('Filter manually', filtermanually),\
 ('Test annotation tool', testtool),\
 ('Start midiplayer', midiplayer),\
 ('Review datafile', review_datafile),\
@@ -101,6 +103,7 @@ options = [\
 ('Drop to shell', shell),\
 ('Quit', quit)]
 
+#('Run quick \'n dirty tests', quickndirty),\
 #('Parse realbook index', parse_index),\
 #('Parse realbook index (NEW)', parse_newindex),\
 #('Search realbooks', search),\
@@ -108,6 +111,5 @@ options = [\
 #('Split realbooks', split),\
 #('Review datafile', review_datafile),\
 
-while True:
-  commandline.menu('What shall we do?', options, executableOptions=True)
+while commandline.menu('What shall we do?', options, executableOptions=True) != -1: pass
 

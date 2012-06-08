@@ -43,19 +43,20 @@ def create_grid(numlevels, n, division=2, spacing=0):
   return lines
   
 
-def onsets2midi(onsets, bpm=120, pitch=50, velocity=60):
+def onsets2midi(onsets, bpm=120, pitch=60, velocity=80, swing=2/3.0):
   mid = representation.MidiFile()
   tactus = 2
   #tactuslength = mid.seconds_to_ticks(60/float(bpm))
   tactuslength = mid.quarternotes_to_ticks(1)
-  print tactuslength
   onsets = sorted(onsets)
   mid['0'] = representation.Track(mid, 1)
   for i in range(len(onsets)):
+    if level(onsets[i]) == 3:
+      onsets[i] = onsets[i] - 1/8.0 + swing*1/4.0
     length = tactuslength
     if i + 1< len(onsets):
-      length = (onsets[i+1] - onsets[i])*tactuslength
-    on = onsets[i]*tactuslength
+      length = (onsets[i+1] - onsets[i])*tactuslength*4
+    on = onsets[i]*tactuslength*4
     off = on+length
     mid['0'].notes.append(representation.Note(on, off, pitch, velocity))
   return mid

@@ -107,3 +107,4 @@ def updatetracks(stdscr, viewpos, time, (data, win, view), width=40, ypos=5, xpo
         symb = 'O'
       stdscr.addstr(ypos+i, int(xpos+8+math.floor(time*scale-viewpos)), symb)
       i += 1
+

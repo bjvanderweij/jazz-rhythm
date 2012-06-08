@@ -2,20 +2,61 @@ from jazzr.midi import representation
 from jazzr.tools import commandline
 import os, re 
 
-corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/original/'
+corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/'
 
-def songs(path=corpuspath):
-  files = paths(path)
-  songs = []
+def collections(path=corpuspath):
+  collections = []
+  for c in os.listdir(corpuspath):
+    if os.path.isdir('{0}{1}'.format(path, c)):
+      collections.append(c)
+  return sorted(collections)
+
+def songs(collection='original', path=corpuspath):
+  files = paths(path, collection=collection)
+  names = []
   for f in files:
-    (name, version, track, singletrack) = parsepath(f)
-    if not name in songs:
-      songs.append(name)
-  return songs
+    (n, v, track, singletrack) = parsepath(f)
+    if not n in names:
+      names.append(n)
+  return sorted(names)
 
-def versions(song, path=corpuspath):
-  files = paths(path)
+def versions(name, collection='original', path=corpuspath):
+  files = paths(path, collection=collection)
+  versions = []
+  for f in files:
+    (n, v, track, singletrack) = parsepath(f)
+    if n == name and v not in versions:
+      versions.append(v)
+  return sorted(versions)
 
+def tracks(name, version, collection='original', path=corpuspath):
+  files = paths(path, collection=collection)
+  tracks = []
+  for f in files:
+    (n, v, track, singletrack) = parsepath(f)
+    if n == name and v == version and singletrack:
+      tracks.append(track)
+  return sorted(tracks)
+
+def load(name, version, track, singletrack, collection='original', path=corpuspath):
+  return representation.MidiFile(path + collection + '/' + generatefilename(name, version, track, singletrack))
+
+def remove(name, version, track, singletrack, collection='original', path=corpuspath):
+  os.remove(path + collection + '/' + generatefilename(name, version, track, singletrack))
+
+def save(name, version, track, singletrack, collection, midifile, path=corpuspath):
+  f = path + collection + '/' + generatefilename(name, version, track, singletrack)
+  midifile.exportmidi(f)
+
+def copy(name, version, track, singletrack, source, target, path=corpuspath):
+  fsource = path + source + '/' + generatefilename(name, version, track, singletrack)
+  ftarget = path + target + '/' + generatefilename(name, version, track, singletrack)
+  os.system('cp {0} {1}'.format(fsource, ftarget))
+
+def move(name, version, track, singletrack, source, target, path=corpuspath):
+  fsource = path + source + '/' + generatefilename(name, version, track, singletrack)
+  ftarget = path + target + '/' + generatefilename(name, version, track, singletrack)
+  os.system('mv {0} {1}'.format(fsource, ftarget))
 
 def parsename(name):
   """Return the name version and track number.
@@ -30,7 +71,7 @@ def parsename(name):
   if m1:
     return (m1.group(1), m1.group(2), 0, False)
   elif m2:
-    return (m2.group(1), m2.group(2), m2.group(3), False)
+    return (m2.group(1), m2.group(2), m2.group(3), True)
   else:
     print '[parsename error] Invalid name: {0}'.format(name)
     return None
@@ -49,26 +90,16 @@ def generatename(name, version, track=0, singletrack=False):
 def generatefilename(name, version, track=0, singletrack=False):
   return '{0}.mid'.format(generatename(name, version, track, singletrack))
 
-def names():
-  files = os.listdir(corpuspath)
-  names = []
-  for f in files:
-    m = re.match('(.*)\.mid', f)
-    if m:
-      names.append(m.group(1))
-  return names
-
-def paths(path=corpuspath):
-  files = os.listdir(path)
+def paths(path=corpuspath, collection='original'):
+  files = os.listdir('{0}{1}/'.format(path, collection))
   midifiles = []
   for f in files:
     if re.match('.*\.mid', f):
-      midifiles.append('{0}{1}'.format(path, f))
-
+      midifiles.append('{0}{1}/{2}'.format(path, collection, f))
   return midifiles
 
-def files(path=corpuspath):
-  files = os.listdir(path)
+def files(path=corpuspath, collection='original'):
+  files = os.listdir('{0}{1}/'.format(path, collection))
   midifiles = []
   for f in files:
     if re.match('.*\.mid', f):
@@ -76,23 +107,46 @@ def files(path=corpuspath):
 
   return midifiles
 
-def loadname(name):
-  return loadfile('{0}{1}.mid'.format(corpuspath, name))
 
-def loadfile(f):
-  try:
-    return representation.MidiFile(f)
-  except:
-    print 'Error loading file'
-    raise
-    return None
 
 def selectfile():
-  n = sorted(names())
-  choice = commandline.menu('Choose a file', n)
-  if choice == -1:
-    return None
-  return loadname(n[choice])
+  level = 1
+  midifile = None
+  while level > 0:
+    if level == 1:   
+      choice = commandline.menu('Choose collection', collections())
+      if choice == -1:
+        level -= 1
+        continue
+      else: level += 1
+      collection = collections()[choice]
+    elif level == 2:   
+      choice = commandline.menu('Choose song', songs(collection=collection))
+      if choice == -1:
+        level -= 1
+        continue
+      else: level += 1
+      song = songs(collection=collection)[choice]
+    elif level == 3:   
+      choice = commandline.menu('Choose version', versions(song, collection=collection))
+      if choice == -1: 
+        level -= 1
+        continue
+      else: level += 1
+      version = versions(song, collection=collection)[choice]
+    elif level == 4:   
+      singletrack = False
+      track = 0
+      if len(tracks(song, version, collection=collection)) > 0:
+        singletrack = True
+        choice = commandline.menu('Choose track', tracks(song, version, collection=collection))
+        if choice == -1:
+          level -= 1
+          continue
+        else: level += 1
+        track = tracks(song, version, collection=collection)[choice]
+      midifile = load(song, version, track, singletrack, collection=collection)
+      break
 
 
 

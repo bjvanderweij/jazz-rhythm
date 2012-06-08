@@ -14,25 +14,33 @@ class Sequencer(threading.Thread):
   IDLE = 5
   PAUSE = 6
   SETSPEED = 7
+  NEXTNOTE = 8
+  GOTO = 9
+  SETTIME = 10
 
   PLAYING = 0
   PAUSED = 1
+  ONENOTE = 2
 
-  def __init__(self, lock, midiplayer, selfdestruct=False):
+  def __init__(self, selfdestruct=False):
     self.running = False
-    self.stopped = False
-    self.midiplayer = midiplayer
 
     self.selfdestruct=selfdestruct
 
-    self.lock = lock
+    self.lock = threading.Lock()
 
     self.midifile = None
     self.events = None
     self.currentdevice = 0
     self.currenttrack = 0
-    self.time = 0
     self.mode = self.PAUSED
+    self.out = None
+
+    # Timestep in seconds
+    self.dt = 1/20.0
+    self.speed = 1.0
+    self.on = {}
+    self.time = 0
 
     self.status = 'Not started'
     self.do = deque()
@@ -65,33 +73,37 @@ class Sequencer(threading.Thread):
       midi.init()
       self.runthread()
     except:
-      self.midiplayer.stop = True
       raise
     finally:
+      if self.out:
+        self.notesoff()
+        self.out.close()
       midi.quit()
+      self.running = False
+
+  def notesoff(self):
+    for pitch in self.on.keys():
+      self.out.note_off(int(pitch), 64, 0)
+    self.on = {}
 
   def runthread(self):
-    out = None
     self.running = True
 
-    nexttime = timeleft = i = 0
-    # Timestep in seconds
-    dt = 1/20.0
-    speed = 1.0
-    on = {}
+    nextevent = pos = 0
+    self.time = 0
     self.status = 'Running'
-
 
     while self.running:
      
       if not self.mode == self.PLAYING:
-        for pitch in on.keys():
-          out.note_off(int(pitch), 64, 0)
-        on = {}
+        self.notesoff()
         time.sleep(0.1)
 
       action, arg = (None, None)
       self.lock.acquire()
+      if len(self.do) == 0 and not self.mode == self.PLAYING and self.selfdestruct:
+        self.lock.release()
+        break
       if len(self.do) > 0 :
         # Pop from queue
         #print 'Sequencer: Queue: {0}'.format(self.do)
@@ -103,26 +115,46 @@ class Sequencer(threading.Thread):
         pass
       if action == self.LOADFILE:
         self.midifile = arg
-        nexttime = timeleft = i = 0
+        nextevent = pos = 0
+        self.time = 0
         self.mode = self.PAUSED
+        self.events = None
       elif action == self.LOADTRACK:
         self.status = 'Loading track'
         self.events = self.midifile[str(arg)].toEvents()
-        nexttime = timeleft = i = 0
+        nextevent = pos = 0
+        self.time = 0
         self.currenttrack = arg
         self.status = 'Track loaded'
       elif action == self.STOP:
         self.status = 'Stopped'
         self.mode = self.PAUSED
-        nexttime = timeleft = i = 0
+        nextevent = pos = 0
         self.time = 0
       elif action == self.SETOUTPUT:
-        if out:
-          out.close()
-        out = midi.Output(int(arg))
+        if self.out:
+          self.out.close()
+        self.out = midi.Output(int(arg))
         self.currentdevice = arg
+      elif action == self.SETTIME:
+        if not self.midifile: continue
+        if arg < 0:
+          pos = nextevent = self.time = 0
+          continue
+        if arg > self.midifile.ticks_to_seconds(self.events[-1][0]):
+          self.control(self.STOP, None)
+          continue
+        for i in range(0, len(self.events)):
+          if arg <= self.midifile.ticks_to_seconds(self.events[i][0]):
+            nextevent = self.midifile.ticks_to_seconds(self.events[i][0])
+            pos = i
+            break
+        self.time = arg
+        self.notesoff()
       elif action == self.SETSPEED:
-        speed = arg
+        self.speed = arg
+      elif action == self.GOTO:
+        pos = arg
       elif action == self.PAUSE:
         self.status = 'Paused'
         self.mode = self.PAUSED
@@ -131,87 +163,64 @@ class Sequencer(threading.Thread):
           self.status = 'Load a file first'
         elif not self.events:
           self.status = 'Load a track first'
-        elif not out:
+        elif not self.out:
           self.status = 'Select an output first'
         else:
           self.mode = self.PLAYING
           self.status = 'Playing'
 
-      if self.mode == self.PLAYING:
+      if self.mode == self.PLAYING or self.mode == self.ONENOTE:
 
-        self.time = nexttime - timeleft
-        if timeleft > dt:
-          time.sleep(dt/speed)
-          timeleft -= dt
+        if pos == 0:
+          nextevent = self.midifile.ticks_to_seconds(self.events[pos][0]) 
+        timeleft = nextevent - self.time
+        if timeleft > self.dt:
+          time.sleep(self.dt/self.speed)
+          self.time += self.dt
           continue
         
-        time.sleep(timeleft/speed)
+        time.sleep(timeleft/self.speed)
+        self.time += timeleft
 
-        if i == 0: 
-          i = 1
-          timeleft = self.midifile.ticks_to_seconds(self.events[i][0]) 
-          nexttime = timeleft
-          continue
-
-        e = self.events[i-1]
-        next_e = self.events[i]
-        nexttime = self.midifile.ticks_to_seconds(next_e[0]) 
-        # Calculate the time difference and convert to seconds
-        ticks = next_e[0] - e[0]
-        timeleft = self.midifile.ticks_to_seconds(ticks)
+        timeleft = nextevent = 0
+        if pos+1 < len(self.events):
+          nextevent = self.midifile.ticks_to_seconds(self.events[pos+1][0]) 
         
+        e = self.events[pos]
         if e[3] is 'on':
-          out.note_on(e[1], e[2], 0)
-          on[str(e[1])] = 1
+          self.out.note_on(e[1], e[2], 0)
+          self.on[str(e[1])] = 1
         elif e[3] is 'off':
           # Sometimes note_offs are lost? 
           # Sending twice reduces this.
-          out.note_off(e[1], e[2], 0)
-          out.note_off(e[1], e[2], 0)
-          if str(e[1]) in on:
-            del on[str(e[1])]
+          self.out.note_off(e[1], e[2], 0)
+          self.out.note_off(e[1], e[2], 0)
+          if str(e[1]) in self.on:
+            del self.on[str(e[1])]
         elif e[3] is 'patch_change':
-          out.patch_change(e[1], e[2])
+          self.out.patch_change(e[1], e[2])
 
 
-        if i < len(self.events) - 1:
-          i += 1
+        if pos+1 < len(self.events):
+          pos += 1
         elif self.selfdestruct:
           break
         else:
           self.control(self.STOP, None)
 
-    #if out:
-      # Blocks?
-      #out.eof()
-      #out.close()
-
-    self.stopped = True
+    self.notesoff()
 
 class Player:
 
 
   def __init__(self):
     self.stop = False
-    self.stopped = False
     self.seq = None
-    self.lock = threading.Lock()
 
   def startgui(self):
     if not self.seq:
-      self.seq = Sequencer(self.lock, self)
+      self.seq = Sequencer()
       self.seq.start()
-    #try:
-    #  stdscr=curses.initscr()
-    #  curses.noecho() ; curses.cbreak()
-    #  stdscr.keypad(1)
-    #  self.gui(stdscr)      # Enter the main loop
-    #finally:
-    #  stdscr.erase()
-    #  stdscr.refresh()
-    #  stdscr.keypad(0)
-    #  curses.echo() ; curses.nocbreak()
-    #  curses.endwin()     # Terminate curses
     try:
       print "Starting gui"
       curses.wrapper(self.gui)
@@ -223,11 +232,10 @@ class Player:
     finally:
       print "Stopping sequencer thread"
       self.seq.running = False
-      while not self.seq.stopped: time.sleep(0.1)
 
   def startcommandline(self):
     if not self.seq:
-      self.seq = Sequencer(self.lock, self)
+      self.seq = Sequencer()
       self.seq.start()
     try:
       self.commandline()
@@ -239,21 +247,20 @@ class Player:
     finally:
       print "Stopping sequencer thread"
       self.seq.running = False
-      while not self.seq.stopped: time.sleep(0.1)
 
   def play(self, midifile, track, gui=False, block=True):
     if not self.seq:
-      self.seq = Sequencer(self.lock, self, selfdestruct=gui)
+      self.seq = Sequencer()
       self.seq.start()
     self.seq.control(self.seq.LOADFILE, midifile)
     self.seq.control(self.seq.LOADTRACK, track)
     self.seq.control(self.seq.SETOUTPUT, 0)
     self.seq.control(self.seq.PLAY, None)
     if not block:
-      return (self.seq, self.lock)
+      return self.seq
     if gui:
       self.startgui()
-    return (self.seq, self.lock)
+    return self.seq
 
   def commandline(self):
     seq = self.seq
@@ -277,6 +284,10 @@ class Player:
         seq.control(seq.PAUSE, None)
       elif inp == 'status' or inp == 's':
         print seq.status
+      elif inp == 'h':
+        seq.control(seq.SETTIME, seq.time-1)
+      elif inp == 'l':
+        seq.control(seq.SETTIME, seq.time+1)
       elif inp == 'track' or inp == 't':
         if seq.midifile:
           choice = commandline.menu('Choose a track',\
@@ -316,9 +327,9 @@ class Player:
     following = True
     name = None
     while True:
-      # Emergency stop
-      if self.stop:
-        break
+      if not seq.running:
+        pass
+        #break
       stdscr.clear()
       curses.curs_set(0)
       stdscr.addstr(0, 0, '[(p)lay/pause] [(s)top] [choose (f)ile] [choose (t)rack] [choose (o)utput] [((j/k) slower/faster)] [toggle (F)ollowing]')
@@ -380,6 +391,8 @@ class Player:
           following = True
       elif c == ord('s'):
         seq.control(seq.STOP, None)
+      elif c == ord('N'):
+        seq.control(seq.NEXTNOTE, None)
       elif c == ord('p'):
         if seq.mode == seq.PLAYING:
           seq.control(seq.PAUSE, None)
@@ -400,11 +413,54 @@ class Player:
       elif c == ord('k'):
         speed += 0.01
         seq.control(seq.SETSPEED, speed)
+      elif c == ord('h'):
+        seq.control(seq.SETTIME, seq.time-1)
+      elif c == ord('l'):
+        seq.control(seq.SETTIME, seq.time+1)
       elif c == ord('f'):
-        choice = cgui.cmenu(stdscr, 'Choose a file', sorted(files.names()))
-        if choice < 0: continue
+        level = 1
+        midifile = None
+        while level > 0:
+          if level == 1:   
+            choice = cgui.cmenu(stdscr, 'Choose collection', files.collections())
+            if choice == -1:
+              level -= 1
+              continue
+            else: level += 1
+            collection = files.collections()[choice]
+          elif level == 2:   
+            choice = cgui.cmenu(stdscr, 'Choose song', files.songs(collection=collection))
+            if choice == -1:
+              level -= 1
+              continue
+            else: level += 1
+            song = files.songs(collection=collection)[choice]
+          elif level == 3:   
+            choice = cgui.cmenu(stdscr, 'Choose version', files.versions(song, collection=collection))
+            if choice == -1: 
+              level -= 1
+              continue
+            else: level += 1
+            version = files.versions(song, collection=collection)[choice]
+          elif level == 4:   
+            singletrack = False
+            track = 0
+            if len(files.tracks(song, version, collection=collection)) > 0:
+              singletrack = True
+              choice = cgui.cmenu(stdscr, 'Choose track', files.tracks(song, version, collection=collection))
+              if choice == -1:
+                level -= 1
+                continue
+              else: level += 1
+              track = files.tracks(song, version, collection=collection)[choice]
+            midifile = files.load(song, version, track, singletrack, collection=collection)
+            break
+        if not midifile: continue
+        #choice = cgui.cmenu(stdscr, 'Choose a file', sorted(files.paths()))
+        #if choice < 0: continue
         cgui.calert(stdscr, 'Loading file')
-        seq.control(seq.LOADFILE, files.loadname(sorted(files.names())[choice]))
+        #seq.control(seq.LOADFILE, files.loadname(sorted(files.paths())[choice]))
+        seq.control(seq.LOADFILE, midifile)
         time = 0
       elif c == ord('o'):
         choice = cgui.cmenu(stdscr, 'Choose a midi device', seq.devicelist())
@@ -427,4 +483,3 @@ class Player:
           trackview = \
             cgui.trackview(stdscr, tracks, ypos=9, xpos=3, width=viewwidth, scale=scale)
     curses.endwin()
-    self.stopped = True

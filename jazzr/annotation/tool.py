@@ -1,86 +1,71 @@
 from jazzr.rhythm import grid
+from jazzr.midi import player
 
-import curses, re
+import curses, re, math
 
 class Tool:
 
-  def __init__(self):
-    self.numlevels = 4
-    self.n = 1
-    self.level = 0
+  ANNOTATING = 0
+  PLAYING = 1
+    
+  def __init__(self, midifile, quarterspm=4, annotationfile=None):
     self.pos = 0.0
-    self.gridpos = 0
-    self.onsets = []
+    self.notepos = 0
+    self.padpos = 0
+    self.maxdiv = 32
+    self.midifile = midifile
+    self.n = 1
+    self.annotation = {}
+    self.annotation['quarterspm'] = quarterspm
+    self.track = track
     self.refreshGrid = True
     self.status = ''
-  
+    self.mode = self.ANNOTATING
+
+  def setmaxdiv(self, maxdiv):
+    if not maxdiv in [math.pow(2, i) for i in range(0, 8)]:
+      return False
+    self.maxdiv = maxdiv
+    
+  def units_per_quarternote(self):
+    return 0.25 / (1/float(maxdiv))
+
+  def midiscale(self):
+    # Number of ticks per unit (specified by maxdiv)
+    return midifile.quarternotes_to_ticks(1) / self.units_per_quarternote()
+
   def execute(self, match):
     props = match.groupdict()
-    if props['command1']:
-      command = props['command1']
-    else:
-      command = props['command2']
-    repetitions = 1
-
-    if props['repetitions']: repetitions = int(props['repetitions'])
-
-    if command == 'q':
-      return False
-    elif command == 'a':
-      self.n += repetitions
-      self.refreshGrid = True
-      self.status = 'Measure added'
-    elif command == 'd':
-      for i in range(repetitions):
-        if self.n <= 1: return True
-        self.n -= 1
-        remove = []
-        for onset in self.onsets:
-          if grid.measure(onset) == grid.measure(self.pos):
-            self.onsets.remove(onset)
-          elif grid.measure(onset) > grid.measure(self.pos):
-            self.onsets[self.onsets.index(onset)] -= 1
-      self.refreshGrid = True
-      self.status = 'Measure deleted'
-    elif command == 'p':
-      try:
-        mid = grid.onsets2midi(self.onsets)
-        mid.play()
-      except Exception:
+    if 'action' in props:
+      if props['action'] == 'q':
         return False
-    elif command == ' ':
-      if self.pos in self.onsets:
-        self.onsets.remove(self.pos)
-        self.status = 'Note removed'
-      else:
-        self.onsets.append(self.pos)
-        self.status = 'Note added'
-      self.refreshGrid = True
-    elif command == 'set':
-      if match.group(1) == 'numlevels':
-        self.numlevels = int(m1.group(2))
-        refreshGrid = True
-      elif match.group(1) == '':
-        pass
     return True
 
   def annotator(self):
     curses.wrapper(self.graphics)
-    return self.beats
+    return self.onsets
+
+  def curs_left(self): 
+    pass
+
+  def curs_right(self):
+    pass
 
   def graphics(self, stdscr):
     #curses.halfdelay(10)
     self.my, self.mx = stdscr.getmaxyx()
-    self.height = self.numlevels+2
+    self.height = 9
     self.width = self.mx - 30
     self.posy = int(self.my / 2.0 - self.height / 2.0)
     self.posx = int(self.mx / 2.0 - self.width / 2.0)
 
-    self.metric_grid = curses.newpad(self.height, self.n*grid.beats_per_bar(self.numlevels) + 3)
-    com_buffer = curses.newwin(1, self.width, self.posy, self.posx)
+    self.notepad = curses.newpad(self.height, self.n*self.maxdiv)
+    self.com_buffer = curses.newwin(1, self.width, self.posy, self.posx)
 
     self.buf = ''
-    self.exp = re.compile('(?P<repetitions>[0-1]+)?(?P<command1>[adqp ])|:(?P<command2>set) (numlevels) ([0-9]+)')
+    #self.exp = re.compile('(?P<repetitions>[0-1]+)?(?P<command1>[adqpi ])|:(?P<command2>set) (numlevels) ([0-9]+)')
+    exp = re.compile('(?P<repetitions>[0-9]+)?(?P<action>[adqri ])$|:(?P<command>set|play|stop|pause)(?P<arg1> numlevels)?(?P<arg2> [0-9]+)?$')
+    annotate_exp = re.compile('([#b])?([a-g])([1-8])?') 
 
     while True:
       # Check if the buffer contains a command
@@ -90,85 +75,62 @@ class Tool:
           break
         self.buf = ''
 
-      self.updateScr(stdscr, self.metric_grid, com_buffer)     
+      self.updateScr(stdscr)
       c = stdscr.getch()
       if c == curses.ERR: continue
       self.status = ''
 
-      if c == 27 or c == curses.KEY_BACKSPACE:
+      if c == 27: # or c == curses.KEY_BACKSPACE:
         # Empty buffer
         self.buf = ''
       elif c == curses.KEY_LEFT:
-        if self.pos > 0:
-          if grid.level(self.pos) != self.level:
-            while grid.level(self.pos) != self.level:
-              self.pos -= grid.beatlength(self.numlevels)
-          else:
-            self.pos -= grid.beatlength(self.level)
+        self.curs_left()
       elif c == curses.KEY_RIGHT:
-        if self.pos + grid.beatlength(self.level) < self.n:
-          if grid.level(self.pos) != self.level:
-            while grid.level(self.pos) != self.level:
-              self.pos += grid.beatlength(self.numlevels)
-          else:
-            self.pos += grid.beatlength(self.level)
+        self.curs_right()
       elif c == curses.KEY_UP:
-        if self.level < self.numlevels-1:
-          self.level += 1
+        if self.mode == self.ANNOTATING:
+          self.mode == self.PLAYING
       elif c == curses.KEY_DOWN:
-        if self.level > 0:
-          self.level -= 1
+        if self.mode == self.PLAYING:
+          self.mode == self.ANNOTATING
       else:
         if c in range(32, 128):
           self.buf += chr(c)
 
-  def realpos(self, measurepos, spacing):
-    return int((measurepos+spacing*measurepos)*grid.beats_per_bar(self.numlevels))
-    
-  def measurepos(self, pos, spacing):
-    return int(round(pos / \
-        (grid.beats_per_bar(self.numlevels)+spacing*grid.beats_per_bar(self.numlevels))))
-
-  def updateScr(self, stdscr, metric_grid, com_buffer, spacing=1):
+  def updateScr(self, stdscr):
     # Refresh screen
     stdscr.clear()
-    stdscr.addstr(self.posy+1+self.height, self.posx, 'Position: {0}\tMeasures: {1}\tLevel: {2}\tNotes:{3}'.format(self.pos, self.n, self.level, len(self.onsets)))
+    stdscr.addstr(self.posy+1+self.height, self.posx, 'Position: {0}\tMeasures: {1}\tNotes:{3}'.format(self.pos, self.n, len(self.annotation['notes'])))
     stdscr.addstr(self.posy+3+self.height, self.posx, 'Status: {0}'.format(self.status))
-    stdscr.addstr(self.posy+4+self.height, self.posx, 'Onsets: {0}'.format(' '.join([str(onset) for onset in self.onsets])))
-    stdscr.addstr(self.posy+5+self.height, self.posx, 'Gridposition: {0}'.format(self.gridpos))
+    stdscr.addstr(self.posy+5+self.height, self.posx, 'Gridposition: {0}'.format(self.pos))
     stdscr.refresh()
     # Refresh metrical grid
     if self.refreshGrid:
-      length = self.n * grid.beats_per_bar(self.numlevels)
-      self.metric_grid.resize(self.height, length + spacing*length + 3)
-      metric_grid.clear()
+      notelist = self.generate_notelist()
+      notestring = ' '.join(['{0}:{1}'.format(n[0], n[1]) for n in notelist])
+      length = len(notelist)
+      self.notepad.resize(self.height, length)
+      self.notepad.clear()
 
-      for i in range(self.numlevels):
-        metric_grid.addstr(i, 0, 'L{0}'.format(i))
-      lines = grid.create_grid(self.numlevels, self.n, spacing=spacing)
-      for i in range(len(lines)):
-        metric_grid.addstr(i, 3, lines[i])
-      onsetsline = [' ' for i in range(length + spacing*length)]
-      for i in range(len(self.onsets)):
-        onsetsline[self.realpos(self.onsets[i], spacing)] = 'X'
-      metric_grid.addstr(self.numlevels, 3, ''.join(onsetsline))
+      self.notepad.addstr(1, 0, notestr)
       self.refreshGrid = False
 
-    measurelength = self.measurepos(self.width, spacing)
-    if self.pos - self.gridpos > measurelength:
-      self.gridpos += measurelength / 2 
-    elif self.pos - self.gridpos < 0:
-      self.gridpos -= measurelength / 2 
+    if self.pos - self.padpos > self.width
+      self.padpos += self.width / 2 
+    elif self.pos - self.padpos < 0:
+      self.padpos -= self.width / 2 
 
-    if self.pos >= self.n:
-      self.pos = self.n - grid.beatlength(self.level)
-
-    metric_grid.refresh(0, self.realpos(self.gridpos, spacing), self.posy+1, self.posx, self.posy+1+self.height, self.posx+self.width)
-    stdscr.move(self.posy+1+self.numlevels, self.posx+self.realpos(self.pos-self.gridpos, spacing)+3)
+    metric_grid.refresh(0, self.padpos, self.posy+1, self.posx, self.posy+1+self.height, self.posx+self.width)
+    stdscr.move(self.posy+1, self.posx+self.pos-self.padpos)
 
     # Refresh buffer display
     com_buffer.clear()
     com_buffer.addstr(0, 0, self.buf)
     com_buffer.refresh()
+
+  def generate_notelist(self):
+    notelist = []
+    for note in self.midifile['1']:
+      notelist.add((int(note.on / float(self.scale), note.name))
   
 
