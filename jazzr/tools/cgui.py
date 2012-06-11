@@ -1,11 +1,16 @@
 import curses, math
 
-def calert(stdscr, message, h=5, w=30, ypos=15, xpos=8, cancel=True):
+def calert(stdscr, message, block=False):
+  my, mx = stdscr.getmaxyx()
   curses.curs_set(0)
-  win = curses.newwin(h, w, ypos, xpos)
+  height = 5
+  width = len(message) + 8
+  win = curses.newwin(height, width, my/2-height/2, mx/2-width/2)
   win.border(0)
-  win.addstr(0, 1, message)
+  win.addstr(2, 4, message)
   win.refresh()
+  if block:
+    stdscr.getch()
 
 def cmenu(stdscr, message, items, h=30, w=40, ypos=5, xpos=5, cancel=True):
 
@@ -108,3 +113,16 @@ def updatetracks(stdscr, viewpos, time, (data, win, view), width=40, ypos=5, xpo
       stdscr.addstr(ypos+i, int(xpos+8+math.floor(time*scale-viewpos)), symb)
       i += 1
 
+def prompt(stdscr, message, length=15):
+  my, mx = stdscr.getmaxyx()
+  height = 6
+  width = max(length, len(message))+4
+  win = curses.newwin(height, width, my/2-height/2, mx/2-width/2)
+  win.addstr(1, 2, message)
+  win.border(0)
+  win.refresh()
+  curses.echo()
+  inp = win.getstr(3, 2, length)
+  curses.noecho()
+  win.clear()
+  return inp

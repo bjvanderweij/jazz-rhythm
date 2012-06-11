@@ -29,7 +29,13 @@ def quickndirty():
   print grid.create_grid(4, 5, spacing=1)
 
 def testtool():
-  t = tool.Tool()
+  mf = files.selectfile(collection='melodies')
+  (name, version, track, singletrack) = files.parsename(mf.name)
+  index = rbsearch.load_file('data/realbooks/index.csv')
+  hits = rbsearch.find(index, name.replace('_', ' '))
+  (song, book) = rbsearch.choose_book(index, hits)
+  rbsearch.view(song, book, 'data/realbooks/songs/')
+  t = tool.Tool(mf)
   t.annotator()
 
 def annotate(): annotator.simpleAnnotator(corpuspath, datafile)

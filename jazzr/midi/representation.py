@@ -89,9 +89,10 @@ class Track:
   def simplelist(self):
     return [n.pitch for n in self]
 
-  def toEvents(self):
+  def toEvents(self, begin=0, end=0):
+    if end == 0: end = len(self)
     events = []
-    for n in self:
+    for n in self[begin:end]:
       events.append((n.on, n.pitch, n.onvelocity, 'on', n.channel, n.program))
       events.append((n.off, n.pitch, n.offvelocity, 'off', n.channel, n.program))
     return sorted(events, key=lambda x: x[0])
@@ -167,6 +168,11 @@ class MidiFile(dict):
         len(self), self.key_signature, self.time_signature, self.smtp_offset, self.tempo,\
         self.division, '\n'.join('Notes in track {0}: {1}'.format(x, len(self[x])) for x in self))
 
+  def nonemptytrack(self):
+    for track in self.values():
+      if len(track) > 0:
+        return track
+
   def tracknames(self):
     """Return a list of track names sorted by track number."""
     return sorted([(t.n, t.name) for t in self.values()], key=lambda x: x[0])
@@ -237,10 +243,10 @@ class MidiFile(dict):
       string += str(n) + "\n" 
     return string
 
-  def play(self, track=0, seq=None, selfdestruct=True):
+  def play(self, track=0, seq=None):
     from jazzr.midi import player
     if not seq:
-      seq = player.Sequencer(selfdestruct=selfdestruct)
+      seq = player.Sequencer()
       seq.start()
     seq.control(seq.LOADFILE, self)
     seq.control(seq.LOADTRACK, track)

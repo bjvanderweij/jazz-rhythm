@@ -1,4 +1,9 @@
 def menu(question, options, cancel=False, executableOptions=False):
+  if len(options) == 1:
+    return 0
+  if len(options) == 0:
+    print 'No options to display'
+    return -1
   while True:
     c = 1
     print question

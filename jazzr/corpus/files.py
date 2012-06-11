@@ -39,6 +39,7 @@ def tracks(name, version, collection='original', path=corpuspath):
   return sorted(tracks)
 
 def load(name, version, track, singletrack, collection='original', path=corpuspath):
+  f = path + collection + '/' + generatefilename(name, version, track, singletrack)
   return representation.MidiFile(path + collection + '/' + generatefilename(name, version, track, singletrack))
 
 def remove(name, version, track, singletrack, collection='original', path=corpuspath):
@@ -109,32 +110,32 @@ def files(path=corpuspath, collection='original'):
 
 
 
-def selectfile():
+def selectfile(collection=None, song=None, version=None, track=None):
   level = 1
   midifile = None
-  while level > 0:
-    if level == 1:   
+  while level > 0 and not midifile:
+    if level == 1 and not collection:   
       choice = commandline.menu('Choose collection', collections())
       if choice == -1:
         level -= 1
         continue
       else: level += 1
       collection = collections()[choice]
-    elif level == 2:   
+    elif level == 2 and not song:   
       choice = commandline.menu('Choose song', songs(collection=collection))
       if choice == -1:
         level -= 1
         continue
       else: level += 1
       song = songs(collection=collection)[choice]
-    elif level == 3:   
+    elif level == 3 and not version:   
       choice = commandline.menu('Choose version', versions(song, collection=collection))
       if choice == -1: 
         level -= 1
         continue
       else: level += 1
       version = versions(song, collection=collection)[choice]
-    elif level == 4:   
+    elif level == 4 and not track:   
       singletrack = False
       track = 0
       if len(tracks(song, version, collection=collection)) > 0:
@@ -145,8 +146,11 @@ def selectfile():
           continue
         else: level += 1
         track = tracks(song, version, collection=collection)[choice]
-      midifile = load(song, version, track, singletrack, collection=collection)
-      break
+    elif level < 4:
+      level += 1
+    else: 
+      return load(song, version, track, singletrack, collection=collection)
+
 
 
 

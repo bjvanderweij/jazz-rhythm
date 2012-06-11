@@ -17,17 +17,16 @@ class Sequencer(threading.Thread):
   NEXTNOTE = 8
   GOTO = 9
   SETTIME = 10
+  SETEVENTS = 11
+  QUIT = 12
 
   PLAYING = 0
   PAUSED = 1
   ONENOTE = 2
 
-  def __init__(self, selfdestruct=False):
+  def __init__(self):
     self.running = False
-
-    self.selfdestruct=selfdestruct
-
-    self.lock = threading.Lock()
+    self.condition = threading.Condition()
 
     self.midifile = None
     self.events = None
@@ -63,13 +62,15 @@ class Sequencer(threading.Thread):
 
   # Thread safe way to send messages to the sequencer
   def control(self, action, arg):
-    self.lock.acquire()
+    self.condition.acquire()
     # Append to queue
     self.do.append((action, arg))
-    self.lock.release()
+    self.condition.notify()
+    self.condition.release()
 
   def run(self):
     try:
+      self.running = True
       midi.init()
       self.runthread()
     except:
@@ -87,32 +88,27 @@ class Sequencer(threading.Thread):
     self.on = {}
 
   def runthread(self):
-    self.running = True
 
     nextevent = pos = 0
     self.time = 0
     self.status = 'Running'
+    skiptonote = False
 
-    while self.running:
+    # Stop the sequencer with Sequencer.control(Sequencer.QUIT, None)
+    while True:
      
       if not self.mode == self.PLAYING:
         self.notesoff()
-        time.sleep(0.1)
 
+      # Wait when not playing and no actions are waiting
       action, arg = (None, None)
-      self.lock.acquire()
-      if len(self.do) == 0 and not self.mode == self.PLAYING and self.selfdestruct:
-        self.lock.release()
-        break
-      if len(self.do) > 0 :
-        # Pop from queue
-        #print 'Sequencer: Queue: {0}'.format(self.do)
+      self.condition.acquire()
+      if not self.mode == self.PLAYING and len(self.do) == 0:
+        self.condition.wait()
+      if len(self.do) > 0:
         action, arg = self.do.popleft()
-        #print 'Sequencer: Executing {0}'.format((action, arg))
-      self.lock.release()
+      self.condition.release()
 
-      if not action:
-        pass
       if action == self.LOADFILE:
         self.midifile = arg
         nextevent = pos = 0
@@ -153,8 +149,15 @@ class Sequencer(threading.Thread):
         self.notesoff()
       elif action == self.SETSPEED:
         self.speed = arg
+      elif action == self.SETEVENTS:
+        self.notesoff()
+        nextevent = pos = 0
+        self.time = 0
+        self.events = arg
       elif action == self.GOTO:
         pos = arg
+      elif action == self.QUIT:
+        break
       elif action == self.PAUSE:
         self.status = 'Paused'
         self.mode = self.PAUSED
@@ -168,11 +171,18 @@ class Sequencer(threading.Thread):
         else:
           self.mode = self.PLAYING
           self.status = 'Playing'
+          if arg:
+            skiptonote=True
 
       if self.mode == self.PLAYING or self.mode == self.ONENOTE:
 
-        if pos == 0:
+        if pos == 0 and not skiptonote:
           nextevent = self.midifile.ticks_to_seconds(self.events[pos][0]) 
+        elif skiptonote:
+          skiptonote = False
+          nextevent = self.midifile.ticks_to_seconds(self.events[pos][0]) 
+          self.time = self.midifile.ticks_to_seconds(self.events[pos][0]) 
+
         timeleft = nextevent - self.time
         if timeleft > self.dt:
           time.sleep(self.dt/self.speed)
@@ -203,12 +213,8 @@ class Sequencer(threading.Thread):
 
         if pos+1 < len(self.events):
           pos += 1
-        elif self.selfdestruct:
-          break
         else:
           self.control(self.STOP, None)
-
-    self.notesoff()
 
 class Player:
 
@@ -231,7 +237,7 @@ class Player:
       raise Exception
     finally:
       print "Stopping sequencer thread"
-      self.seq.running = False
+      self.seq.control(self.seq.QUIT, None)
 
   def startcommandline(self):
     if not self.seq:
@@ -246,7 +252,7 @@ class Player:
       raise Exception
     finally:
       print "Stopping sequencer thread"
-      self.seq.running = False
+      self.seq.control(self.seq.QUIT, None)
 
   def play(self, midifile, track, gui=False, block=True):
     if not self.seq:
@@ -382,7 +388,7 @@ class Player:
 #          pass
 #
       if c == ord('q'):
-        seq.running = False
+        self.seq.control(self.seq.QUIT, None)
         break
       elif c == ord('F'):
         if following:
