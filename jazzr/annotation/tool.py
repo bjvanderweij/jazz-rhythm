@@ -65,7 +65,7 @@ class Tool:
     return pos / self.units_per_beat()
 
   def onset_to_pos(self, onset):
-    return int(onset // self.midiscale())
+    return int(onset / float(self.midiscale()))
 
   def midipitch(self, name, octave, sign):
     addition = 0
@@ -155,6 +155,8 @@ class Tool:
         self.status = 'Playing'
       elif props['action'] == 's':
         self.seq.control(self.seq.STOP, None)
+      elif props['action'] == 's' and self.mode == self.PLAYING:
+      elif props['action'] == 's' and self.mode == self.PLAYING:
     else:
       if props['command'] == 'set ':
         if props['arg1'] == 'correction':
@@ -314,22 +316,6 @@ class Tool:
     self.refreshMidi = False
     self.refreshAnnotation = False
 
-    # Set the cursor position and pad position
-    xoffset = 0
-    yoffset = self.height + 1
-    if self.mode == self.ANNOTATING:
-      if len(self.annotations) > 0:
-        xoffset = self.annotations[self.notepos][0]
-    elif self.mode == self.INSERT:
-      xoffset = self.cursor
-    elif self.mode == self.PLAYING:
-      xoffset = self.onset_to_pos(self.notelist[self.midipos][0])
-      yoffset = 1
-    if xoffset - self.padpos > self.width:
-      self.padpos += self.width / 2 
-    elif xoffset - self.padpos < 0:
-      self.padpos -= self.width / 2 
-
     # Highlight the current note in the midifile 
     (on, off, pitch, velocity) = self.notelist[self.midipos]
     currentpos = self.onset_to_pos(on)
@@ -341,6 +327,23 @@ class Tool:
       self.midipad.addstr(line, lastpos, lastname[line])
       self.midipad.addstr(line, currentpos, currentname[line], curses.A_STANDOUT)
     self.lastpos = self.midipos
+
+    # Set the cursor position and pad position
+    xoffset = 0
+    yoffset = self.height + 1
+    if self.mode == self.ANNOTATING:
+      if len(self.annotations) > 0:
+        xoffset = self.annotations[self.notepos][0]
+    elif self.mode == self.INSERT:
+      xoffset = self.cursor
+    elif self.mode == self.PLAYING:
+      xoffset = self.onset_to_pos(self.notelist[self.midipos][0])
+      yoffset = 1
+
+    if xoffset - self.padpos > self.width:
+      self.padpos = xoffset - self.width / 3
+    elif xoffset - self.padpos < 0:
+      self.padpos = max(xoffset - self.width / 3, 0)
 
     # Refresh the pads, move the cursor
     self.midipad.refresh(       0, self.padpos, self.posy+1, self.posx, self.posy+1+self.height, self.posx+self.width)
