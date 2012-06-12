@@ -4,7 +4,7 @@ import copy, os, pygame, threading
 
 class Note:
 
-  def __init__(self, on, off, pitch, onvelocity, offvelocity=0, annotation=None, channel=0, program=None):
+  def __init__(self, on, off, pitch, onvelocity, offvelocity=0, channel=0, program=None):
     self.base_a4 = 440
     self.names = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B']
     self.on = on
@@ -12,8 +12,6 @@ class Note:
     self.pitch = pitch
     self.onvelocity = onvelocity
     self.offvelocity = offvelocity
-    # Notes can be marked with a tuple (part, measure, voice, note) that allows mappings between notelists and scores or alignments 
-    self.annotation = annotation
     self.channel = channel
     self.program = program
 
@@ -44,8 +42,12 @@ class Note:
   def name(self):
     return '{0}{1}'.format(self.names[self.pitch % 12], self.pitch // 12)
 
-  def setLength(self, length):
-    self.length = length
+  def shift(self, offset):
+    if self.on + offset >= 0:
+      self.on += offset
+      self.off += offset
+      return True
+    return False
 
   def __str__(self):
     return self.info()
@@ -55,13 +57,12 @@ class Note:
 
 class Track:
 
-  def __init__(self, midifile, n=0, annotation=None):
+  def __init__(self, midifile, n=0):
     self.n = n
     self.channels = {}
     self.notes = []
     self.name = ''
     self.midifile = midifile
-    self.annotation = annotation
 
   def __iter__(self):
     return self.generateItems()
@@ -82,13 +83,29 @@ class Track:
     for n in self.notes:
       yield n
 
-  def length(self):
-    if len(self) == 0: return 0.0
-    return self.midifile.ticks_to_microseconds(self[len(self)-1].off)
+  def remove_range(self, begin=0, end=0, shift=True):
+    """Remove a range of notes.
+    
+    If the shift argument is False, the notes will be replaced by a silence
+    for the entire duration of the range. Return the duration of the range"""
+    if end == 0:
+      end = len(self)
+    offset = self[end].off - self[begin].on
+    for i in range(begin, end):
+      del self.notes[i]
+    if shift:
+      for n in self[end:]:
+        n.shift(offset)
+    return offset
 
-  def simplelist(self):
-    return [n.pitch for n in self]
-
+  def strip(self):
+    """Strip the initial silence off the track. Return the duration of this silence."""
+    if len(self) == 0: return 0
+    offset = -self[0].on
+    for n in self:
+      n.shift(offset)
+    return offset
+      
   def toEvents(self, begin=0, end=0):
     if end == 0: end = len(self)
     events = []
@@ -97,9 +114,21 @@ class Track:
       events.append((n.off, n.pitch, n.offvelocity, 'off', n.channel, n.program))
     return sorted(events, key=lambda x: x[0])
 
-  def save(self, fname):
+  def save(self, fname, begin=0, end=0, strip=True):
     """Save this track in a separate midi file."""
-    self.midifile.exportMidi(fname, tracks=[str(self.n)])
+    if end == 0:
+      end = len(self)
+    out = self.midifile.create_file(1, name=fname)
+    track = Track(self.midifile, self.n)
+    track.name = self.name
+    track.channels = self.channels
+    track.notes = self[begin:end]
+    print self.midifile.ticks_to_seconds(self[begin].on)
+    if strip:
+      track.strip()
+    self.midifile.write_track(out, track)
+    out.eof()
+    out.write()
 
   def channels2tracks(self):
     """Expand channels into separate tracks and put it in a new midi file."""
@@ -142,7 +171,6 @@ class MidiFile(dict):
     # Ticks per beat
     self.division = 480
     self.sequence_names = []
-    self.ctrack = -1
     self.format = 1
 
     # If a file is specified, parse it
@@ -150,7 +178,7 @@ class MidiFile(dict):
       parser = parser.MidiParser(self)
       stream =  MidiInFile.MidiInFile(parser, open(midifile))
       stream.read()
-      self.name = midifile.split('/')[-1]
+      self.name = os.path.basename(midifile)
 
   def newFile(self):
     new = MidiFile()
@@ -177,20 +205,15 @@ class MidiFile(dict):
     """Return a list of track names sorted by track number."""
     return sorted([(t.n, t.name) for t in self.values()], key=lambda x: x[0])
 
-  def exportMidi(self, midifile, tracks=None):
-    """Create a type 1 midi file.
-
-    The name of track 0 will be the midifile name, so the original
-    name of track 0 will be lost.
-    """
+  def create_file(self, nTracks, name=None):
+    """Create a type 1 midi file and write the first track.
+    
+    The first track contains only information like time signature and tempo."""
     from jazzr.rawmidi.MidiOutFile import MidiOutFile
-    if not tracks:
-      tracks = self.keys()
-
-    # Do some preprocessing on the notes, converting them to 
-    # ordered note on and note off events:
-    out = MidiOutFile(midifile)
-    out.header(format=1, nTracks=len(tracks)+1, division=self.division)
+    if not name:
+      name = self.name
+    out = MidiOutFile(name)
+    out.header(format=1, nTracks=nTracks+1, division=self.division)
 
     out.start_of_track()
     out.sequence_name(self.name)
@@ -210,30 +233,52 @@ class MidiFile(dict):
         self.smtp_offset[3],\
         self.smtp_offset[4])
     out.end_of_track()
+    return out
 
+  def write_track(self, out, track):
+    events = track.toEvents()
+    out.start_of_track()
+    out.sequence_name(track.name)
+    # This is not a neat solution. Channels may change during the track
+    for channel in track.channels.keys():
+      out.patch_change(int(channel), track.channels[channel])
+    #out.patch_change(3, 1)
+    lastTime = 0
+    for e in events:
+      if e[3] is 'on':
+        out.update_time(e[0]-lastTime)
+        lastTime = e[0]
+        #out.update_time(96)
+        out.note_on(e[4], e[1], e[2])
+      else:
+        out.update_time(e[0]-lastTime)
+        lastTime = e[0]
+        #out.update_time(0)
+        out.note_off(e[4], e[1], e[2])
+
+    out.update_time(0)
+    out.end_of_track()
+
+  def exportMidi(self, name=None, tracks=None, include_empty=False):
+    """Create a type 1 midi file.
+
+    The name of track 0 will be the midifile name, so the original
+    name of track 0 will be lost.
+    """
+    if not tracks:
+      tracks = []
+      for track in self.values():
+        if len(track) > 0:
+          tracks.append(track)
+        elif include_empty:
+          tracks.append(track)
+    if not name:
+      name = self.name
+
+    out = self.create_file(len(tracks), name=name)
     for track in tracks:
-      events = self[track].toEvents()
-      out.start_of_track()
-      out.sequence_name(self[track].name)
-      # This is not a neat solution. Channels may change during the track
-      for channel in self[track].channels.keys():
-        out.patch_change(int(channel), self[track].channels[channel])
-      #out.patch_change(3, 1)
-      lastTime = 0
-      for e in events:
-        if e[3] is 'on':
-          out.update_time(e[0]-lastTime)
-          lastTime = e[0]
-          #out.update_time(96)
-          out.note_on(e[4], e[1], e[2])
-        else:
-          out.update_time(e[0]-lastTime)
-          lastTime = e[0]
-          #out.update_time(0)
-          out.note_off(e[4], e[1], e[2])
+      self.write_track(out, track)
 
-      out.update_time(0)
-      out.end_of_track()
     out.eof()
     out.write()
 

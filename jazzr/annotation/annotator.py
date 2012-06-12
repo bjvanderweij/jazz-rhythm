@@ -1,12 +1,12 @@
 from jazzr.annotation import data as datamod
-from jazzr.corpus import files
+from jazzr.corpus import midi
 from jazzr.tools import commandline, rbsearch
 from jazzr.midi import representation
 import code
 
 def annotate(path):
   midi = representation.MidiFile(path)
-  (name, version, track, singletrack) = files.parsename(midi.name)
+  (name, version, track, singletrack) = midi.parsename(midi.name)
   key = '{0}-{1}-{2}'.format(name, version, track)
 
   parts = ['percussion', 'bass', 'accompaniment', 'melody', None]
@@ -74,11 +74,11 @@ def simpleAnnotator(inputdir, datafile, revise=False, annotatefunction=annotate,
   data = datamod.Data(datafile)
   if revise and 'path' in d.keys:
     paths = [item['path'] for item in data.values()]
-  aset = files.paths(inputdir)
+  aset = midi.paths(inputdir)
   data.addAttrib('part')
   data.addAttrib('path')
   for f in aset:
-    (name, version, track, singletrack) = files.parsepath(f)
+    (name, version, track, singletrack) = midi.parsepath(f)
     key = '{0}-{1}-{2}'.format(name, version, track)
     annotation = annotatefunction(f)
     if annotation:

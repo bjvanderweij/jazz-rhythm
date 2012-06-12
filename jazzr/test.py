@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from jazzr.corpus import files, filter
+from jazzr.corpus import *
 from jazzr.annotation import data
 from jazzr.annotation import annotator
 from jazzr.annotation import tool
@@ -26,11 +26,13 @@ choice = -1
 d = None
 
 def quickndirty():
-  print grid.create_grid(4, 5, spacing=1)
+  mf = midi.selectfile()
+  track = mf.nonemptytrack()
+  track.save('test.mid', begin=5, end=20)
 
 def testtool():
-  mf = files.selectfile(collection='melodies')
-  (name, version, track, singletrack) = files.parsename(mf.name)
+  mf = midi.selectfile(collection='melodies')
+  (name, version, track, singletrack) = midi.parsename(mf.name)
   index = rbsearch.load_file('data/realbooks/index.csv')
   hits = rbsearch.find(index, name.replace('_', ' '))
   (song, book) = rbsearch.choose_book(index, hits)
@@ -82,7 +84,7 @@ def split():
 def preprocess():
   print "Preprocessing corpus"
   print "(1/2) Expanding multichannel files"
-  filter.expandchannels(files.paths(), 'data/corpus/expanded_channels/')
+  filter.expandchannels(midi.paths(), 'data/corpus/expanded_channels/')
   filter.filtertracks('data/corpus/expanded_channels/', 'data/corpus/filtered/')
 
   
@@ -99,6 +101,7 @@ def shell(): code.interact(local=locals())
 def quit(): exit(0)
 
 options = [\
+('Run quick \'n dirty tests', quickndirty),\
 ('Annotate', annotate),\
 ('Filter manually', filtermanually),\
 ('Test annotation tool', testtool),\

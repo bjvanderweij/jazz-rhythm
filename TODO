@@ -1,5 +1,6 @@
 Mission critical:
 
+* Add bar synchronisation to annotation tool
 * Create interface for reading and writing annotations
 * Create interface for storing and loading annotations in a corpus
 * Add support for rests and/or notelengths (notelengths can be implicitely 

@@ -1,7 +1,7 @@
 from pygame import midi
 from collections import deque
 from jazzr.tools import commandline, cgui
-from jazzr.corpus import files
+from jazzr.corpus import midi as midicorpus
 import time, math, curses, threading
 
 class Sequencer(threading.Thread):
@@ -303,10 +303,10 @@ class Player:
           if choice < 0: continue
           seq.control(seq.LOADTRACK, seq.tracklist()[choice])
       elif inp == 'load' or inp == 'f':
-        choice = commandline.menu('Choose a file', sorted(files.names()))
+        choice = commandline.menu('Choose a file', sorted(midi.names()))
         if choice < 0: continue
         print 'Loading file'
-        seq.control(seq.LOADFILE, files.loadname(sorted(files.names())[choice]))
+        seq.control(seq.LOADFILE, midi.loadname(sorted(midi.names())[choice]))
       elif inp == 'output' or inp == 'device' or inp == 'd' or inp == 'o':
         choice = commandline.menu('Choose a midi device', seq.devicelist())
         if choice < 0: continue
@@ -428,44 +428,41 @@ class Player:
         midifile = None
         while level > 0:
           if level == 1:   
-            choice = cgui.cmenu(stdscr, 'Choose collection', files.collections())
+            choice = cgui.cmenu(stdscr, 'Choose collection', midicorpus.collections())
             if choice == -1:
               level -= 1
               continue
             else: level += 1
-            collection = files.collections()[choice]
+            collection = midicorpus.collections()[choice]
           elif level == 2:   
-            choice = cgui.cmenu(stdscr, 'Choose song', files.songs(collection=collection))
+            choice = cgui.cmenu(stdscr, 'Choose song', midicorpus.songs(collection=collection))
             if choice == -1:
               level -= 1
               continue
             else: level += 1
-            song = files.songs(collection=collection)[choice]
+            song = midicorpus.songs(collection=collection)[choice]
           elif level == 3:   
-            choice = cgui.cmenu(stdscr, 'Choose version', files.versions(song, collection=collection))
+            choice = cgui.cmenu(stdscr, 'Choose version', midicorpus.versions(song, collection=collection))
             if choice == -1: 
               level -= 1
               continue
             else: level += 1
-            version = files.versions(song, collection=collection)[choice]
+            version = midicorpus.versions(song, collection=collection)[choice]
           elif level == 4:   
             singletrack = False
             track = 0
-            if len(files.tracks(song, version, collection=collection)) > 0:
+            if len(midicorpus.tracks(song, version, collection=collection)) > 0:
               singletrack = True
-              choice = cgui.cmenu(stdscr, 'Choose track', files.tracks(song, version, collection=collection))
+              choice = cgui.cmenu(stdscr, 'Choose track', midicorpus.tracks(song, version, collection=collection))
               if choice == -1:
                 level -= 1
                 continue
-              else: level += 1
-              track = files.tracks(song, version, collection=collection)[choice]
-            midifile = files.load(song, version, track, singletrack, collection=collection)
+              track = midicorpus.tracks(song, version, collection=collection)[choice]
+            else: level += 1
+            midifile = midicorpus.load(song, version, track, singletrack, collection=collection)
             break
         if not midifile: continue
-        #choice = cgui.cmenu(stdscr, 'Choose a file', sorted(files.paths()))
-        #if choice < 0: continue
         cgui.calert(stdscr, 'Loading file')
-        #seq.control(seq.LOADFILE, files.loadname(sorted(files.paths())[choice]))
         seq.control(seq.LOADFILE, midifile)
         time = 0
       elif c == ord('o'):
