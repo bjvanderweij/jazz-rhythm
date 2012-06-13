@@ -1,4 +1,4 @@
-from jazzr.tools import commandline
+from jazzr.tools import commandline, cgui
 import sys, os, math, re, csv
 
 books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3', 'JLTD']
@@ -56,15 +56,21 @@ def view(song, book, songpath):
   filename = '{0}-{1}.pdf'.format(song.replace(' ', '_').replace('\'', '\\\''), book)
   os.system('evince {0}{1} &'.format(songpath, filename))
 
-def choose_book(index, results):
-  song = results[commandline.menu("Select a song", results)]
+def choose_book(index, results, stdscr=None):
+  if stdscr:
+    song = results[cgui.menu(stdscr, "Select a song", results)]
+  else:
+    song = results[commandline.menu("Select a song", results)]
   locations = zip(books, index[song])
 
   bookhits = []
   for book in books:
     if index[song][book]:
       bookhits.append(book)
-  book = bookhits[commandline.menu("Select a book", bookhits)]
+  if stdscr:
+    book = bookhits[cgui.menu(stdscr, "Select a book", bookhits)]
+  else:
+    book = bookhits[commandline.menu("Select a book", bookhits)]
   return (song, book)
 
 def interactive(datafile, songspath):

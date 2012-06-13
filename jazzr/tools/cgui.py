@@ -1,13 +1,15 @@
 import curses, math
 
-def calert(stdscr, message, block=False):
+def calert(stdscr, message, block=True):
   my, mx = stdscr.getmaxyx()
   curses.curs_set(0)
-  height = 5
-  width = len(message) + 8
+  lines = message.split('\n')
+  height = 4 + len(lines)
+  width = max([len(line) for line in lines]) + 8
   win = curses.newwin(height, width, my/2-height/2, mx/2-width/2)
   win.border(0)
-  win.addstr(2, 4, message)
+  for i in range(len(lines)):
+    win.addstr(2 + i, 4, lines[i])
   win.refresh()
   if block:
     stdscr.getch()

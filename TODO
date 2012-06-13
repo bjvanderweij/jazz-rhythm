@@ -1,11 +1,13 @@
 Mission critical:
 
-* Add bar synchronisation to annotation tool
-* Create interface for reading and writing annotations
-* Create interface for storing and loading annotations in a corpus
+* Add bar synchronisation to annotation tool (Or maybe not)
+* Create interface for reading and writing annotations (WiP)
+* Create interface for storing and loading annotations in a corpus (WiP)
 * Add support for rests and/or notelengths (notelengths can be implicitely 
-  deduced from rest onsets, except for the last note)
-* Add support for triplets
+  deduced from rest onsets, except for the last note) (WiP)
+* Add support for triplets (WiP)
+* Annotate
+* Handle meter operations in rhythm.meter
 * Start writing report
 
 Other
@@ -15,3 +17,14 @@ Other
   * Implement support for cutting out parts of midi files
 * Implement function that generates a midifile from an annotation
 * Add docstrings to all modules, classes and functions
+* Loading saving annotations properly. Midifiles should be represented as an abstraction in the annotator
+
+Questions
+
+* How to represent bound notes
+* How to represent notelengths (rests/explicit notelengths)
+* Is a representation of numbers + beatspb + beatdivision good enough?
+* Base annotation on what performance or on score? 
+  (Notes that are played in error? 
+  Notes that are clearly played on a different metrical position?
+  Grace notes?)
