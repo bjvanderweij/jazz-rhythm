@@ -178,7 +178,7 @@ class MidiFile(dict):
       parser = parser.MidiParser(self)
       stream =  MidiInFile.MidiInFile(parser, open(midifile))
       stream.read()
-      self.name = os.path.basename(midifile)
+      self.name = os.path.basename('.'.join(midifile.split('.')[:-1]))
 
   def newFile(self):
     new = MidiFile()

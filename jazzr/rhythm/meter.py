@@ -4,18 +4,9 @@ class Meter:
     self.beatspb = beatspb
     self.beatdiv = beatdiv
 
-  def beats_to_quarters(self, beats):
-    pass
-  def quarters_to_beats(self, quarters):
-    pass
-
-  def beats_quarter(self):
-    pass
   def quarters_per_beat(self):
-    pass
+    return (1/float(self.beatdiv)) /\
+        (1/4.0)
 
   def quarters_per_bar(self):
-    pass
-
-  
-
+    return self.quarters_per_beat() * self.beatspb

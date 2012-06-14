@@ -406,7 +406,7 @@ class Player:
           seq.control(seq.PLAY, None)
       elif c == ord('t'):
         if seq.midifile:
-          choice = cgui.cmenu(stdscr, 'Choose a track',\
+          choice = cgui.menu(stdscr, 'Choose a track',\
               ['Track #{0}\tName: {1}\tNumber of notes: {2}'.format(\
               seq.midifile[t].n, seq.midifile[t].name, len(seq.midifile[t]))\
               for t in seq.tracklist()])
@@ -428,21 +428,21 @@ class Player:
         midifile = None
         while level > 0:
           if level == 1:   
-            choice = cgui.cmenu(stdscr, 'Choose collection', midicorpus.collections())
+            choice = cgui.menu(stdscr, 'Choose collection', midicorpus.collections())
             if choice == -1:
               level -= 1
               continue
             else: level += 1
             collection = midicorpus.collections()[choice]
           elif level == 2:   
-            choice = cgui.cmenu(stdscr, 'Choose song', midicorpus.songs(collection=collection))
+            choice = cgui.menu(stdscr, 'Choose song', midicorpus.songs(collection=collection))
             if choice == -1:
               level -= 1
               continue
             else: level += 1
             song = midicorpus.songs(collection=collection)[choice]
           elif level == 3:   
-            choice = cgui.cmenu(stdscr, 'Choose version', midicorpus.versions(song, collection=collection))
+            choice = cgui.menu(stdscr, 'Choose version', midicorpus.versions(song, collection=collection))
             if choice == -1: 
               level -= 1
               continue
@@ -453,7 +453,7 @@ class Player:
             track = 0
             if len(midicorpus.tracks(song, version, collection=collection)) > 0:
               singletrack = True
-              choice = cgui.cmenu(stdscr, 'Choose track', midicorpus.tracks(song, version, collection=collection))
+              choice = cgui.menu(stdscr, 'Choose track', midicorpus.tracks(song, version, collection=collection))
               if choice == -1:
                 level -= 1
                 continue
@@ -462,11 +462,11 @@ class Player:
             midifile = midicorpus.load(song, version, track, singletrack, collection=collection)
             break
         if not midifile: continue
-        cgui.calert(stdscr, 'Loading file')
+        cgui.alert(stdscr, 'Loading file', block=False)
         seq.control(seq.LOADFILE, midifile)
         time = 0
       elif c == ord('o'):
-        choice = cgui.cmenu(stdscr, 'Choose a midi device', seq.devicelist())
+        choice = cgui.menu(stdscr, 'Choose a midi device', seq.devicelist())
         if choice < 0: continue
         seq.control(seq.SETOUTPUT, choice)
       elif c == curses.KEY_LEFT:

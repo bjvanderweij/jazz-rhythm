@@ -1,8 +1,7 @@
 import curses, math
 
-def calert(stdscr, message, block=True):
+def alert(stdscr, message, block=True):
   my, mx = stdscr.getmaxyx()
-  curses.curs_set(0)
   lines = message.split('\n')
   height = 4 + len(lines)
   width = max([len(line) for line in lines]) + 8
@@ -14,57 +13,60 @@ def calert(stdscr, message, block=True):
   if block:
     stdscr.getch()
 
-def cmenu(stdscr, message, items, h=30, w=40, ypos=5, xpos=5, cancel=True):
+def menu(stdscr, message, items, height=0, width=0, cancel=True):
 
   curses.curs_set(1)
   my, mx = stdscr.getmaxyx()
 
-  win = curses.newwin(h, w, ypos, xpos)
+  padheight = len(items)+1
+  padwidth = max([len(i.expandtabs()) for i in items] + [len(message), 21])
+
+
+  lines = message.split('\n')
+  if not height: 
+    height = padheight+len(lines)+3
+  if not width:
+    width = padwidth + 2
+
+  ypos = my/2 - height/2
+  xpos = mx/2 - width/2
+  win = curses.newwin(height, width, ypos, xpos)
   win.border(0)
-  win.addstr(0, 1, message)
-  win.addstr(h-1, 1, '[(s)elect] [(c)ancel]')
+  for i in range(len(lines)):
+    win.addstr(1+i, 1, lines[i])
+  win.addstr(height-1, 1, '[(s)elect] [(c)ancel]')
 
-  ph = len(items)+1
-  pw = max([len(i.expandtabs()) for i in items])
-  pad = curses.newpad(ph, pw)
+  pad = curses.newpad(padheight, padwidth)
   for i in range(0, len(items)):
-    pad.addstr(i, 0, repr(items[i]))
+    pad.addstr(i, 0, items[i])
 
-  r = -1
+  response = -1
   c = 0
   # Pad position
   x = y = 0
   # Cursor position
-  cx = cy = 0
+  cursor = 0
   while c != ord('c') and c != ord('q'):
-    stdscr.addstr(my-1, 0, 'y={0} x={1} cy={2}, cx={3}'.format(y, x, cy, cx))
+    if cursor > padheight:
+      padheight = -padheight+1-cursor
+    stdscr.addstr(my-1, 0, 'y={0} x={1} cursor={2}'.format(y, x, cursor))
     win.refresh()
-    pad.refresh(y, x, ypos+1, xpos+1, ypos+h-2, xpos+w-2)
-    stdscr.move(ypos+1+cy, xpos+1+cx)
+    pad.refresh(y, x, ypos+2+len(lines), xpos+1, ypos+2+len(lines)+padheight, xpos+1+padwidth)
+    stdscr.move(ypos+2+len(lines)+cursor-y, xpos+1)
     c = stdscr.getch()
     if c == curses.KEY_DOWN:
-      if cy < h-3 and cy < len(items):
-        cy += 1
-      elif y < len(items) - (h-2) and cy < len(items) - 1:
-        y += 1
+      if cursor+1 < len(items):
+        cursor += 1
     elif c == curses.KEY_UP:
-      if cy > 0:
-        cy -= 1
-      elif y > 0:
-        y -= 1
-    elif c == curses.KEY_LEFT:
-      if x > 0:
-        x -= 1
-    elif c == curses.KEY_RIGHT:
-      if x < pw - (w-2):
-        x += 1
+      if cursor > 0:
+        cursor -= 1
     elif c == ord('s') or c == curses.KEY_ENTER or c == 10:
-      r = cy + y
+      response = cursor
       break
   
   win.clear()
   pad.clear()
-  return r
+  return response
 
 def trackview(stdscr, tracks, width=40, ypos=5, xpos=5, scale=10):
   height = len(tracks) + 1

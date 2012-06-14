@@ -18,6 +18,7 @@ Other
 * Implement function that generates a midifile from an annotation
 * Add docstrings to all modules, classes and functions
 * Loading saving annotations properly. Midifiles should be represented as an abstraction in the annotator
+* Calculate local bpm (per measure/per beat)
 
 Questions
 
