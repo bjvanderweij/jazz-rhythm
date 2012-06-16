@@ -3,12 +3,21 @@ from jazzr.tools import commandline
 from jazzr.corpus import midi
 import os, re, csv
 
-corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/midi/'
-annotationspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/annotated/'
+corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/midi/'
+annotationspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/annotated/'
 
 def exists(collection, name):
   path = '{0}{1}/{2}/'.format(annotationspath, collection, name)
   return os.path.exists(path)
+
+def remove(collection, name):
+  path = '{0}{1}/{2}/'.format(annotationspath, collection, name)
+  os.system('rm -r {0}'.format(path))
+
+def copy(collection, name, targetcollection, targetname):
+  path = '{0}{1}/{2}/'.format(annotationspath, collection, name)
+  targetpath = '{0}{1}/{2}/'.format(annotationspath, targetcollection, targetname)
+  os.system('cp -r {0} {1}'.format(path, targetpath))
 
 def save(collection, name, metadata, annotations, notes, midifile):
   path = '{0}{1}/{2}/'.format(annotationspath, collection, name)
@@ -18,7 +27,7 @@ def save(collection, name, metadata, annotations, notes, midifile):
   annotationwriter = csv.writer(open('{0}annotations.csv'.format(path), 'wb'))
   noteswriter = csv.writer(open('{0}notes.csv'.format(path), 'wb'))
 
-  midifile.exportMidi('{0}{1}.mid'.format(path, name))
+  midifile.exportMidi('{0}midi.mid'.format(path))
 
   propswriter.writerow(['Property', 'Value'])
   for key, value in metadata.iteritems():
@@ -76,6 +85,6 @@ def load(collection, name):
   for [on, off, pitch, velocity] in notesreader:
     notes.append((float(on), float(off), int(pitch), int(velocity)))
   
-  midifile = representation.MidiFile('{0}{1}.mid'.format(path, name))
+  midifile = representation.MidiFile('{0}midi.mid'.format(path))
   return (metadata, annotations, notes, midifile)
 

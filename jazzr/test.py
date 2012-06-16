@@ -11,14 +11,14 @@ from jazzr.rhythm import grid
 import code, time, os, datetime
 
 
-datafile = 'data/corpus.csv'
-corpuspath = 'data/corpus/filtered/'
+datafile = '../Data/corpus.csv'
+corpuspath = '../Data/corpus/filtered/'
 
-rbindex_raw = 'data/realbooks/RB_INDEX.TXT' 
-rbindex2_raw = 'data/realbooks/rawindex.csv' 
-rbindex = 'data/realbooks/index.csv' 
-rbindex2 = 'data/realbooks/index2.csv' 
-rbpath = 'data/realbooks/'
+rbindex_raw = '../Data/realbooks/RB_INDEX.TXT' 
+rbindex2_raw = '../Data/realbooks/rawindex.csv' 
+rbindex = '../Data/realbooks/index.csv' 
+rbindex2 = '../Data/realbooks/index2.csv' 
+rbpath = '../Data/realbooks/'
 
 dontreplace = True
 
@@ -32,11 +32,6 @@ def quickndirty():
 
 def testtool():
   mf = midi.selectfile(collection='melodies')
-  #(name, version, track, singletrack) = midi.parsename(mf.name)
-  #index = rbsearch.load_file('data/realbooks/index.csv')
-  #hits = rbsearch.find(index, name.replace('_', ' '))
-  #(song, book) = rbsearch.choose_book(index, hits)
-  #rbsearch.view(song, book, 'data/realbooks/songs/')
   t = tool.Tool(mf)
   t.annotator()
 
@@ -51,7 +46,7 @@ def parse_index():
   rbsearch.parse_rawindex(rbindex2_raw, rbindex2, rbindex)
 
 
-def search(): rbsearch.interactive(rbindex, 'data/realbooks/songs/')
+def search(): rbsearch.interactive(rbindex)
 
 def midiplayer():
   p = player.Player()

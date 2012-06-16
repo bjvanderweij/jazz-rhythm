@@ -1,6 +1,6 @@
 from jazzr.rhythm import grid, meter
 from jazzr.midi import player, representation, generator
-from jazzr.tools import cgui, rbsearch
+from jazzr.tools import cgui, rbsearch, Fraction
 from jazzr.corpus import annotations as annotationcorpus
 from jazzr.corpus import midi
 
@@ -16,8 +16,24 @@ class Tool:
   NOTE = 0
   REST = 1
   GRACE = 2
-  END = 3
-    
+  ERROR = 3
+  END = 4
+
+  insertmode = 'Available commands:\n' +\
+      '\t<Spacebar>\tInsert note\n'+\
+      '\tr\tInsert rest\n' + \
+      '\te\tInsert end marker\n' + \
+      '\tg\tInsert grace note\n' + \
+      '\ts\tSkip current note and mark as playing error\n' +\
+      '\tt<division>\tInsert a triplet with total duration 1/<division>'
+  annotationmode = 'Available commands:\n' +\
+      '\t:<COMMAND> <ARG1> <ARG2>\n'+\
+      '\tset\t<correction|beatspb|beatdiv>\n' + \
+      '\tplay\tInsert end marker\n' + \
+      '\tq quit\tInsert grace note\n' + \
+      '\tscore\tSkip current note and mark as playing error' + \
+      '\tload\t\n'
+
   def __init__(self, midifile, annotation=None):
     self.cursor = 0
     self.notepos = 0
@@ -29,6 +45,9 @@ class Tool:
     self.meter = meter.Meter(self.midifile.time_signature[0], self.midifile.time_signature[1])
     self.bpm = midifile.bpm()
     self.offset = 0
+
+    self.name = self.midifile.name
+
     self.annotations = []
     self.notelist = []
     self.refreshMidi = True
@@ -89,28 +108,42 @@ class Tool:
     self.midifile.nonemptytrack().strip()
     self.refreshMidi = True
 
-  def save(self):
-    """Save the annotation to the corpus"""
-    annotations = []
-    choice = cgui.menu(self.stdscr, 'Collection', annotationcorpus.collections() + ['Add new collection'])
-    if choice == -1: return
-    elif choice == len(annotationcorpus.collections()):
-      collection = cgui.prompt(self.stdscr, 'Collection?')
-    else: collection = annotationcorpus.collections()[choice]
+  def load(self, collection=None, name=None):
+    result = annotationcorpus.load(collection, name)
+    if result:
+      (metadata, self.annotations, self.notelist, self.midifile) = result
+      self.bpm = metadata['bpm']
+      self.offset = metadata['offset']
+      self.name = metadata['name']
+      self.meter = meter.Meter(metadata['beatspb'], metadata['beatdiv'])
+      self.refreshAnnotation = True
+      self.refreshMidi = True
+      return True
+    return False
 
-    name = self.midifile.name
-    metadata = {'beatdiv':self.meter.beatdiv, 'beatspb':self.meter.beatspb, 'offset':self.offset, 'bpm':self.bpm}
-    if annotationcorpus.exists(collection, name):
+  def save(self, collection=None, name=None, force=False):
+    """Save the annotation to the corpus"""
+    if not collection:
+      choice = cgui.menu(self.stdscr, 'Collection', annotationcorpus.collections() + ['Add new collection'])
+      if choice == -1: return
+      elif choice == len(annotationcorpus.collections()):
+        collection = cgui.prompt(self.stdscr, 'Collection?')
+      else: collection = annotationcorpus.collections()[choice]
+    
+    if not name:
+      name = self.name
+    metadata = {'beatdiv':self.meter.beatdiv, 'beatspb':self.meter.beatspb, 'offset':self.offset, 'bpm':self.bpm, 'name':self.name}
+    if annotationcorpus.exists(collection, name) and not force:
       if cgui.menu(self.stdscr, 'Item exists, overwrite?', ['No', 'Yes']) != 1: return
-    annotationcorpus.save(collection, name, metadata, self.annotations, self.notelist, self.midifile)
-    cgui.alert(self.stdscr, 'Saved')
+    annotationcorpus.save(collection, name, metadata, sorted(self.annotations, key=lambda x: x[0]), self.notelist, self.midifile)
 
   def addNote(self, pitch=0, type=0, position=-1):
-    if not pitch and (type == self.NOTE or type == self.GRACE):
+    if not pitch and type in [self.NOTE, self.GRACE, self.ERROR]:
       pitch = self.notelist[self.midipos][2]
     if position == -1:
       position = self.units2quarters(self.cursor)
     self.annotations.append((position, self.midipos, pitch, type))
+    self.save(collection='autosave', name='autosave', force=True)
 
   def execute(self, match):
     props = match.groupdict()
@@ -118,7 +151,7 @@ class Tool:
       self.refreshAnnotation = True
       if props['command'] == ' ' or props['command'] == 'r':
         for (quarters, midipos, pitch, type) in self.annotations:
-          if self.cursor == self.quarters2units(quarters) and type != self.GRACE:
+          if self.cursor == self.quarters2units(quarters) and not type in [self.GRACE, self.ERROR]:
             index = self.annotations.index((quarters, midipos, pitch, type))
             del self.annotations[index]
             self.midipos = midipos
@@ -142,7 +175,8 @@ class Tool:
         # Add end marker
         self.addNote(type=self.END)
       elif props['command'] == 's':
-        # Skip
+        # Skip and mark as error
+        self.addNote(type=self.ERROR)
         self.midipos += 1
       elif re.match('t[0-9]+$', props['command']):
         # Add a triplet
@@ -186,13 +220,16 @@ class Tool:
       elif props['action'] == 'p':
         if self.mode == self.PLAYING:
           self.seq.control(self.seq.STOP, None)
+          self.seq.control(self.seq.LOADFILE, self.midifile)
           self.seq.control(self.seq.SETEVENTS, self.midifile.nonemptytrack().toEvents(self.midipos))
           self.seq.control(self.seq.PLAY, True)
         elif self.mode == self.ANNOTATING:
-          mf = generator.annotations2midi([(quarters, pitch, type) for (quarters, midipos, pitch, type) in self.annotations], meter=self.meter, bpm=self.bpm)
-          self.seq.control(self.seq.STOP, None)
-          self.seq.control(self.seq.SETEVENTS, mf.nonemptytrack().toEvents(self.notepos))
-          self.seq.control(self.seq.PLAY, True)
+          mid = generator.annotations2midi([(quarters, pitch, type) for (quarters, midipos, pitch, type) in self.annotations], meter=self.meter, bpm=self.bpm)
+          if mid.nonemptytrack():
+            self.seq.control(self.seq.STOP, None)
+            self.seq.control(self.seq.LOADFILE, mid)
+            self.seq.control(self.seq.SETEVENTS, mid.nonemptytrack().toEvents(self.notepos))
+            self.seq.control(self.seq.PLAY, True)
         self.status = 'Playing'
       elif props['action'] == 's':
         self.seq.control(self.seq.STOP, None)
@@ -221,6 +258,10 @@ class Tool:
             cgui.alert(self.stdscr, 'Invalid resolution.')
           self.refreshMidi = True
           self.refreshAnnotation = True
+      elif props['command'] == 'restore':
+        if cgui.menu(self.stdscr, 'Restore last session?', ['No', 'Yes']) == 1:
+          if not self.load('autosave', 'lastsession'):
+            cgui.alert(self.stdscr, 'No session found')
       elif props['command'] == 'save':
         self.save()
       elif props['command'] == 'strip':
@@ -228,23 +269,16 @@ class Tool:
       elif props['command'] == 'subtract':
         self.subtract()
       elif props['command'] == 'score':
-        (name, version, track, singletrack) = midi.parsename(self.midifile.name)
-        index = rbsearch.load_file('data/realbooks/index.csv')
+        (name, version, track, singletrack) = midi.parsename(self.name)
+        index = rbsearch.load_file()
         hits = rbsearch.find(index, name.replace('_', ' '))
         if len(hits) > 0:
           (song, book) = rbsearch.choose_book(index, hits, stdscr=self.stdscr)
-          rbsearch.view(song, book, 'data/realbooks/songs/')
+          rbsearch.view(song, book)
       elif props['command'] == 'load':
-        #cgui.alert(self.stdscr, 'Not functional yet', block=True)
-        #return True
-        result = annotationcorpus.load('annotations', self.midifile.name)
-        if result:
-          (metadata, self.annotations, self.notelist, self.midifile) = result
-          self.bpm = metadata['bpm']
-          self.offset = metadata['offset']
-          self.meter = meter.Meter(metadata['beatspb'], metadata['beatdiv'])
-          self.refreshAnnotation = True
-          self.refreshMidi = True
+        if not self.load('annotations', self.name):
+
+          cgui.alert(self.stdscr, 'No annotations found!')
       elif props['command'] == 'q':
         return False
     return True
@@ -258,6 +292,9 @@ class Tool:
     # Start gui
     try:
       curses.wrapper(self.graphics)
+      if annotationcorpus.exists('autosave', 'autosave'):
+        annotationcorpus.remove('autosave', 'autosave')
+        self.save('autosave', 'lastsession', force=True)
     finally:
       # Make sure to stop the sequencer 
       self.seq.control(self.seq.QUIT, None)
@@ -301,11 +338,15 @@ class Tool:
     self.com_buffer = curses.newwin(1, self.width, self.posy, self.posx)
 
     self.buf = ''
+    self.stdscr.refresh()
+
+    if annotationcorpus.exists('autosave', 'autosave'):
+      if cgui.menu(self.stdscr, 'Annotator quit unexpectedly. Restore last session?', ['Yes', 'No']) == 0:
+        self.load('autosave', 'autosave')
 
     while True:
-      exp = re.compile(r'(?P<repetitions>[0-9]+)?(?P<action>[iqpsx ])$|:(?P<command>set |play|stop|pause|save|strip|subtract|q|load|score)(?P<arg1>resolution|correction|beatsperbar|beatdiv)?(?P<arg2> (-)?[0-9]+)?\n$')
+      exp = re.compile(r'(?P<repetitions>[0-9]+)?(?P<action>[iqpsx ])$|:(?P<command>set |play|stop|pause|save|strip|subtract|q|load|score|restore)(?P<arg1>resolution|correction|beatsperbar|beatdiv)?(?P<arg2> (-)?[0-9]+)?\n$')
       if self.mode == self.INSERT:
-        #exp = re.compile(r'(?P<note>[a-gA-G])(?P<sign>[#b])?(?P<octave>[1-8]) $| $') 
         exp = re.compile(r'(?P<command>[ srge]|t(?P<arg>[0-9]+))$') 
       # Check if the buffer contains a command
       m = exp.match(self.buf)
@@ -343,22 +384,6 @@ class Tool:
           self.buf += chr(c)
 
   def updateScr(self, stdscr):
-    # Refresh screen
-    self.stdscr.clear()
-    modes = ['ANNOTATING', 'PLAYING', 'INSERT']
-    beatpos = self.units2quarters(self.cursor) / self.meter.quarters_per_beat()
-    self.stdscr.addstr(self.posy+2+2*self.height, self.posx, 'Cursor: {0}\tNote position: {1}\tMidifile position:{2}'.format(self.cursor, self.notepos, self.midipos))
-    self.stdscr.addstr(self.posy+3+2*self.height, self.posx, 'Beats: {0}\tBar: {1}'.format(beatpos, beatpos // self.meter.beatspb))
-    self.stdscr.addstr(self.posy+4+2*self.height, self.posx, 'Mode: {0}'.format(modes[self.mode]))
-    self.stdscr.addstr(self.posy+5+2*self.height, self.posx, 'Status: {0}'.format(self.status))
-    self.stdscr.addstr(self.posy+6+2*self.height, self.posx, 'Time signature: {0}/{1}'.format(self.meter.beatspb, self.meter.beatdiv))
-    self.stdscr.addstr(self.posy+7+2*self.height, self.posx, 'Midifile bpm: {0}'.format(self.midifile.bpm()))
-    if self.mode == self.ANNOTATING:
-      if len(self.annotations) > 0:
-        self.stdscr.addstr(self.posy+8+2*self.height, self.posx, 'Current note position: {0}'.format(self.annotations[self.notepos][0]))
-    self.stdscr.addstr(self.posy+9+2*self.height, self.posx, 'Name: {0}'.format(self.midifile.name))
-    self.stdscr.refresh()
-
     # Resize the pads, generate the notelist
     if self.refreshMidi:
       self.notelist = self.generate_notelist()
@@ -437,14 +462,37 @@ class Tool:
     self.padpos = int(self.padpos)
     xoffset = int(xoffset)
 
+
+    # Refresh buffer display
+    self.com_buffer.clear()
+    self.com_buffer.addstr(0, 0, 'Command >{0}'.format(self.buf.replace('\n', '')))
+
+    # Refresh screen
+    self.stdscr.clear()
+    modes = ['ANNOTATING', 'PLAYING', 'INSERT']
+    types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END']
+    beatpos = self.units2quarters(self.cursor) / self.meter.quarters_per_beat()
+    self.stdscr.addstr(self.posy+2+2*self.height, self.posx, 'Cursor: {0}\tNote position: {1}\tMidifile position:{2}'.format(self.cursor, self.notepos, self.midipos))
+    self.stdscr.addstr(self.posy+3+2*self.height, self.posx, 'Beats: {0}\tBar: {1}'.format(beatpos, beatpos // self.meter.beatspb))
+    self.stdscr.addstr(self.posy+4+2*self.height, self.posx, 'Mode: {0}'.format(modes[self.mode]))
+    self.stdscr.addstr(self.posy+5+2*self.height, self.posx, 'Status: {0}'.format(self.status))
+    self.stdscr.addstr(self.posy+6+2*self.height, self.posx, 'Time signature: {0}/{1}'.format(self.meter.beatspb, self.meter.beatdiv))
+    self.stdscr.addstr(self.posy+7+2*self.height, self.posx, 'Midifile bpm: {0}'.format(self.midifile.bpm()))
+    if self.mode == self.ANNOTATING:
+      if len(self.annotations) > 0:
+        self.stdscr.addstr(self.posy+8+2*self.height, self.posx,\
+            'Annotation: [Position (quarter notes): {0}, Pointer: {1}, Pitch: {2}, Type: {3}]'.format(\
+            self.annotations[self.notepos][0], self.annotations[self.notepos][1],\
+            self.pitchname(self.annotations[self.notepos][2]),\
+            types[self.annotations[self.notepos][3]]))
+    self.stdscr.addstr(self.posy+9+2*self.height, self.posx, 'Name: {0}'.format(self.name))
+
+    # Refresh everything in the right order
+    self.stdscr.refresh()
     # Refresh the pads, move the cursor
     self.midipad.refresh(       0, self.padpos, self.posy+1, self.posx, self.posy+1+self.height, self.posx+self.width)
     self.annotationpad.refresh( 0, self.padpos, self.posy+self.height+1, self.posx, self.posy+1+2*self.height, self.posx+self.width)
     self.stdscr.move(self.posy+yoffset, self.posx+xoffset-self.padpos)
-
-    # Refresh buffer display
-    self.com_buffer.clear()
-    self.com_buffer.addstr(0, 0, self.buf.replace('\n', ''))
     self.com_buffer.refresh()
 
   def generate_notelist(self):

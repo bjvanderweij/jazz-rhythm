@@ -2,8 +2,8 @@ from jazzr.midi import representation
 from jazzr.tools import commandline
 import os, re 
 
-corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/midi/'
-annotationspath = '/home/bastiaan/Courses/Jazz-Rhythm/jazzr/data/corpus/annotated/'
+corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/midi/'
+annotationspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/annotated/'
 
 def collections(path=corpuspath):
   collections = []
@@ -125,15 +125,19 @@ def selectfile(collection=None, song=None, version=None, track=None):
       choice = commandline.menu('Choose song', songs(collection=collection))
       if choice == -1:
         level -= 1
+        collection = None
         continue
-      else: level += 1
+      else: 
+        level += 1
       song = songs(collection=collection)[choice]
     elif level == 3 and not version:   
       choice = commandline.menu('Choose version', versions(song, collection=collection))
       if choice == -1: 
         level -= 1
+        song = None
         continue
-      else: level += 1
+      else: 
+        level += 1
       version = versions(song, collection=collection)[choice]
     elif level == 4 and not track:   
       singletrack = False
@@ -143,9 +147,11 @@ def selectfile(collection=None, song=None, version=None, track=None):
         choice = commandline.menu('Choose track', tracks(song, version, collection=collection))
         if choice == -1:
           level -= 1
+          version = None
           continue
         track = tracks(song, version, collection=collection)[choice]
-      else: level += 1
+      else: 
+        level += 1
     elif level < 4:
       level += 1
     else: 

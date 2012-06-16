@@ -4,9 +4,13 @@ import sys, os, math, re, csv
 books = ['RB1','RB2','RB3','NRB1', 'NRB2', 'NRB3', 'JLTD']
 offsets = {'RB1':13,'RB2':7,'RB3':7,'NRB1':13, 'NRB2':12, 'NRB3':10, 'JLTD':7}
 
-def load_file(data):
+path = '/home/bastiaan/Courses/Jazz-Rhythm/Data/realbooks/index.csv'
+songspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/realbooks/songs/'
+bookspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/realbooks/index.csv'
+
+def load_file(path=path):
   index = {}
-  reader = csv.reader(open(data, 'rb'))
+  reader = csv.reader(open(path, 'rb'))
   # Skip header
   reader.next()
 
@@ -52,9 +56,9 @@ def save(index, bookspath, song, book, path, uninterrupted=False):
         exit(0)
 
 # This works if songs are stored as separate files in songpath
-def view(song, book, songpath): 
+def view(song, book, songspath=songspath): 
   filename = '{0}-{1}.pdf'.format(song.replace(' ', '_').replace('\'', '\\\''), book)
-  os.system('evince {0}{1} &'.format(songpath, filename))
+  os.system('evince {0}{1} &'.format(songspath, filename))
 
 def choose_book(index, results, stdscr=None):
   if stdscr:
@@ -73,8 +77,8 @@ def choose_book(index, results, stdscr=None):
     book = bookhits[commandline.menu("Select a book", bookhits)]
   return (song, book)
 
-def interactive(datafile, songspath):
-  index = load_file(datafile)
+def interactive(path=path, songspath=songspath):
+  index = load_file(path)
   while True:
     query = raw_input('Say a name! ').lower()
     results = find(index, query)

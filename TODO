@@ -1,11 +1,8 @@
 Mission critical:
 
 * Add bar synchronisation to annotation tool (Or maybe not)
-* Create interface for reading and writing annotations (WiP)
-* Create interface for storing and loading annotations in a corpus (WiP)
-* Add support for rests and/or notelengths (notelengths can be implicitely 
-  deduced from rest onsets, except for the last note) (WiP)
-* Add support for triplets (WiP)
+* Add support for saving triplets lossless
+* Ability to add bars in annotations (all the things you are 27-1 needs this)
 * Annotate
 * Handle meter operations in rhythm.meter
 * Start writing report
