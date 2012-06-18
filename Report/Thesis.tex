@@ -1,6 +1,111 @@
 \documentclass[a4paper,10pt]{article}
 \title{Rhythmic structure in performed Jazz music}
 \author{Bastiaan van der Weij}
+
+\usepackage[round]{natbib}
+\usepackage{graphicx}
+%\usepackage{fullpage}
+
+%\date{Augustus 17, 2012}
+
+
 \begin{document}
 \maketitle
+\begin{abstract}
+abstract
+\end{abstract}
+\section{Introduction}
+\label{sec:introduction}
+
+\section{Related Work}
+\label{sec:relatedwork}
+
+\section{Motivation}
+\label{sec:motivation}
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Data and annotation}
+
+Jazz and Latin standards. Scraped from the internet. Performances of varying quality. Exclusively monophonic melody tracks. Melody tracks were performed on midi instruments. They were assigned to be played with different instruments including piano, saxophone and trumpet. All the melodies are played assumed to be played by humans with the help of a metronome. The constraints to determine human performances where that the performance should have have a minimum variation in time differences between note onsets and a minimum variation in velocities with which the notes were played.
+
+Every note in the performance is annotated with its position, measured in quarter notes. Special elements are inserted for rests and grace notes. Grace notes are annotated assigned the same position as the notes they belongs to. Annotation was done using scores from various real books. Expression and deviation from these scores was made explicit in the annotations as much as possible; if three quarter notes are played as a triplet, they are annotated as a triplet. When the metrical positions of notes in the performance are unclear the annotations follow the score. Rests are inserted as notated in the score. The end of the annotations is marked by an end marker
+
+The metrical length of a note can be derived by subtracting its metrical position from the metrical position of the next element in the annotations. The onset time of a rest is can be derived by multiplying the local 
+
+\[A = \{a_0, a_1, \cdots, a_N\}\]
+\[N = \{n_0, n_1, \cdots, n_N\}\]
+\[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
+\[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]
+
+\subsection{Models}
+
+Possible models include:
+\begin{itemize}
+\item Temperley's unified probabilistic model for polyphonic music analysis
+\item Temperley's common-practice rhythm models
+\item Potential other models in the literature
+\item A CKY-like parsing algorithm 
+\item Any other approach that includes performance information
+\end{itemize}
+
+Corpora:
+\begin{itemize}
+\item Essen folk (Used in common-practice rhythm)
+\item Kostka-Payne (Used in UPMPMA
+\item Jazz corpus (my own)
+\end{itemize}
+
+\subsubsection*{Any approach that includes performance information}
+
+% This is actually an argument/motivation and should be moved to the appropriate section 
+
+It is likely that the timing with which humans realise/perform a rhythm presents valuable information about rhythmic structure. It is for example well known that downbeats/the first beat of a measure tend to be stressed by playing them louder and slightly longer. This occurs even when the rhythm is highly syncopated [references?]. Rhythm in jazz music is often played with swing: a slight lengthening of strong beats. Despite these findings, many models of rhythm treat expressive deviation as noise (are there any models that do not?). 
+
+How can we include this information in a model of rhythm? Our corpus is fairly small so we should be cautious of over fitting.
+
+\subsubsection*{Chart parsing rhythm - a compositional theory of rhythm}
+
+...
+
+\subsection{Experiments and evaluation}
+
+
+\subsubsection*{Common practice rhythm}
+Temperley proposes a method to compare different models of Rhythm generation \citep{temperley2010modeling}. A good model is, in his definition, one that assigns the highest probability to the data. To evaluate a model, n-fold cross-validation can be used. Use (n-1)/n of the corpus to train the model and test the model on 1/n of the corpus. 
+
+We can do this for Jazz but this would be very uninformative. We would end up with just a single score for the probability that the model assigns to Jazz scores. Possible evaluations are:
+\begin{itemize}
+\item Train the model on Jazz, evaluate on Jazz, Classical, Uniform random
+\item Train the model on folk (Temperley) or Jazz, evaluate on folk or jazz (and uniform random?)
+\end{itemize}
+
+This approach makes no use of any information in the performance. 
+
+\subsubsection*{Unified probabilistic model}
+Temperley proposes a probabilistic model that does meter finding and rhythm detection. As far as I know now, the model simply finds the most likely way the notes could be generated from a grid. Expressiveness is seen as noise.
+
+A model like this allows a quantitative evaluation. It can be directly compared to a model of my own. Possible evaluations include:
+\begin{itemize}
+\item The proportion of correctly classified notes
+\item Mean square error (measured in quarter notes for example)
+\end{itemize}
+
+\section{Results}
+\label{sec:results}
+
+\section{Discussion}
+\label{sec:discussion}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+\section{Future Work}
+\label{sec:futurework}
+
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
 \end{document}

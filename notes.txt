@@ -1,0 +1,29 @@
+Forms of expression and deviation from score:
+
+1. Playing notes on the offbeat before the strong beat (usually a one). Explicitly annotated.
+2. Playing a group of four quarter notes in 4/4 in the following fashion: first on the beat, second delayed about one 8th a note, third delayed about one 16th note
+   fourth one played clearly on the fourth beat. The first beat of the next bar may be played as in 1. Not sure how to annotate.
+   OCCURS IN:
+    All the things you are (Annotated as triplet starting on beat 1.5)
+3. Transforming 3 8th notes into a triplet. Explicitly annotated.
+4. Transforming one 2 quarter notes into a note on the offbeat before the beat and another one about 16th beat after. Explicitly annotated
+5. Grace notes, explicitly annotated as an extra note on the same beat. 
+6. Quarter notes in ballads are interpreted very freely. Explicitly annotated.
+7. Group of 2 eight notes starting at beat 4 and one note starting at beat 1 of the next measure. The eight notes are played delayed and faster. 
+  Not sure how to annotate
+  OCCURS IN:
+    Black orpheus 5-3
+8. Expression is context sensitive
+9. Half note at beat 3 is played slightly delayed. Not sure how to annotate
+  OCCURS IN:
+    Brazil 10-8, 10-9, 12-8, 
+10. Eight notes played in triplets. Annotation follows score.
+  OCCURS IN:
+    Don't get around much anymore 20-10
+11. Expression has a remarkable similarity over different versions:
+  E.G.
+    Don't get around much anymore 20-10 bar 5 (score)
+    and
+    Don't get around much anymore 26-6 bar 5 (score)
+    played rubato first time, as notated second time
+    

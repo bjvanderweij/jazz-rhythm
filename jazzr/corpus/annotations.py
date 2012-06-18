@@ -44,14 +44,32 @@ def save(collection, name, metadata, annotations, notes, midifile):
 def collections(path=annotationspath):
   return midi.collections(path=path)
 
-def songs(collection='annotated', path=annotationspath):
-  return midi.songs(collection=collection, path=path)
+def songs(collection='annotations', path=annotationspath):
+  files = os.listdir('{0}{1}/'.format(path, collection))
+  names = []
+  for f in files:
+    (n, v, track, singletrack) = parsepath(f)
+    if not n in names:
+      names.append(n)
+  return sorted(names)
 
-def versions(name, collection='annotated', path=annotationspath):
-  return midi.versions(name, collection=collection, path=path)
+def versions(name, collection='annotations', path=annotationspath):
+  files = os.listdir('{0}{1}/'.format(path, collection))
+  versions = []
+  for f in files:
+    (n, v, track, singletrack) = parsepath(f)
+    if n == name and v not in versions:
+      versions.append(v)
+  return sorted(versions)
 
-def tracks(name, version, collection='annotated', path=annotationspath):
-  return midi.tracks(name, version, collection=collection, path=path)
+def tracks(name, version, collection='annotations', path=annotationspath):
+  files = os.listdir('{0}{1}/'.format(path, collection))
+  tracks = []
+  for f in files:
+    (n, v, track, singletrack) = parsepath(f)
+    if n == name and v == version and singletrack:
+      tracks.append(track)
+  return sorted(tracks)
 
 def is_number(s):
   try:
@@ -59,6 +77,27 @@ def is_number(s):
     return True
   except ValueError:
     return False
+
+def parsename(name):
+  """Return the name version and track number.
+
+  Return a tuple (name, version, track, singletrack) where version and track
+  are integers, multitrack is a boolean indicating whether this is a singel 
+  track file. If it is not, track is zero, otherwise track indicates the track
+  number.
+  """
+  m1 = re.match('([a-z_]+)-([0-9]+)(\.mid)?$', name)
+  m2 = re.match('([a-z_]+)-([0-9]+)-([0-9]+)(\.mid)?$', name)
+  if m1:
+    return (m1.group(1), m1.group(2), 0, False)
+  elif m2:
+    return (m2.group(1), m2.group(2), m2.group(3), True)
+  else:
+    print '[parsename error] Invalid name: {0}'.format(name)
+    return None
+
+def parsepath(path):
+  return parsename(os.path.basename(path))
 
 def load(collection, name):
   path = '{0}{1}/{2}/'.format(annotationspath, collection, name)

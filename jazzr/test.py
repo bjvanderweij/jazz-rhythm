@@ -7,8 +7,8 @@ from jazzr.annotation import tool
 from jazzr.tools import commandline
 from jazzr.tools import rbsearch
 from jazzr.midi import player
-from jazzr.rhythm import grid
-import code, time, os, datetime
+from jazzr.rhythm import grid, temperley
+import code, time, os, datetime, random
 
 
 datafile = '../Data/corpus.csv'
@@ -26,9 +26,51 @@ choice = -1
 d = None
 
 def quickndirty():
-  mf = midi.selectfile()
-  track = mf.nonemptytrack()
-  track.save('test.mid', begin=5, end=20)
+  songs = 0
+  count = 0
+  notecount = 0
+  corpus = []
+  print 'Loading corpus.'
+  for song in annotations.songs(): 
+    songs += 1
+    for version in annotations.versions(song):
+      for track in annotations.tracks(song, version):
+        count += 1
+        metadata, annotation, notes, midifile = annotations.load('annotations', '{0}-{1}-{2}'.format(song, version, track))
+        corpus += [(annotation, notes, metadata)]
+  print '{0} songs annotated. Total annotatioons: {1}. Total number annotated items: {2}'.format(songs, count, notecount)
+  folds = 10
+  n = len(corpus)
+  results = []
+  for i in range(folds):
+    print 'Preparing fold {0} out of {1}'.format(i, folds)
+    train = []
+    test = []
+    n_test = int(n/float(folds))
+    for j in range(n_test):
+      index = int(random.random() * (n-j))
+      test += [corpus[index]]
+      del corpus[index]
+    train = corpus
+    
+    print 'Training model'
+    model = temperley.metrical_position(train)
+    print 'Done. Model: {0}'.format(model)
+    print 'Evaluating model.'
+    cross_ent = 0
+    for (annotation, notes, metadata) in test:
+      cross_ent += temperley.loglikelihood(annotation, metadata, model)
+    cross_ent /= float(n_test)
+    print 'Done. Average cross-entropy: {0}'.format(cross_ent)
+    results.append(cross_ent)
+    corpus = train + test
+  result = sum(results)/float(len(results))
+  print 'All done. Resulting cross-entropy: {0}'.format(result)
+
+
+    
+
+
 
 def testtool():
   mf = midi.selectfile(collection='melodies')

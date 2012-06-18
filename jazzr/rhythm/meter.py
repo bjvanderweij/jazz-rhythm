@@ -10,3 +10,6 @@ class Meter:
 
   def quarters_per_bar(self):
     return self.quarters_per_beat() * self.beatspb
+
+def getMeter(metadata):
+  return Meter(metadata['beatspb'], metadata['beatdiv'])

@@ -13,7 +13,8 @@ def collections(path=corpuspath):
   return sorted(collections)
 
 def songs(collection='original', path=corpuspath):
-  files = paths(path, collection=collection)
+  print path
+  files = paths(path=path, collection=collection)
   names = []
   for f in files:
     (n, v, track, singletrack) = parsepath(f)
@@ -22,7 +23,7 @@ def songs(collection='original', path=corpuspath):
   return sorted(names)
 
 def versions(name, collection='original', path=corpuspath):
-  files = paths(path, collection=collection)
+  files = paths(path=path, collection=collection)
   versions = []
   for f in files:
     (n, v, track, singletrack) = parsepath(f)
@@ -31,7 +32,7 @@ def versions(name, collection='original', path=corpuspath):
   return sorted(versions)
 
 def tracks(name, version, collection='original', path=corpuspath):
-  files = paths(path, collection=collection)
+  files = paths(path=path, collection=collection)
   tracks = []
   for f in files:
     (n, v, track, singletrack) = parsepath(f)
@@ -106,7 +107,6 @@ def files(path=corpuspath, collection='original'):
   for f in files:
     if re.match('.*\.mid', f):
       midifiles.append(f)
-
   return midifiles
 
 

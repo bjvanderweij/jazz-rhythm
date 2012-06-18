@@ -472,7 +472,7 @@ class Tool:
     modes = ['ANNOTATING', 'PLAYING', 'INSERT']
     types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END']
     beatpos = self.units2quarters(self.cursor) / self.meter.quarters_per_beat()
-    self.stdscr.addstr(self.posy+2+2*self.height, self.posx, 'Cursor: {0}\tNote position: {1}\tMidifile position:{2}'.format(self.cursor, self.notepos, self.midipos))
+    self.stdscr.addstr(self.posy+2+2*self.height, self.posx, 'Cursor: {0}\tAnnotation: {1}\tNotes:{2}'.format(self.cursor, self.notepos, self.midipos))
     self.stdscr.addstr(self.posy+3+2*self.height, self.posx, 'Beats: {0}\tBar: {1}'.format(beatpos, beatpos // self.meter.beatspb))
     self.stdscr.addstr(self.posy+4+2*self.height, self.posx, 'Mode: {0}'.format(modes[self.mode]))
     self.stdscr.addstr(self.posy+5+2*self.height, self.posx, 'Status: {0}'.format(self.status))
@@ -485,6 +485,13 @@ class Tool:
             self.annotations[self.notepos][0], self.annotations[self.notepos][1],\
             self.pitchname(self.annotations[self.notepos][2]),\
             types[self.annotations[self.notepos][3]]))
+    elif self.mode == self.PLAYING or self.mode == self.INSERT:
+      if len(self.notelist) > 0:
+        self.stdscr.addstr(self.posy+8+2*self.height, self.posx,\
+            'Note: [On: {0}, Off: {1}, Pitch: {2}, Velocity: {3}]'.format(\
+            self.notelist[self.midipos][0], self.notelist[self.midipos][1],\
+            self.pitchname(self.notelist[self.midipos][2]),\
+            self.notelist[self.midipos][3]))
     self.stdscr.addstr(self.posy+9+2*self.height, self.posx, 'Name: {0}'.format(self.name))
 
     # Refresh everything in the right order

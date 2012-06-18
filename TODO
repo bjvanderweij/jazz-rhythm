@@ -1,14 +1,22 @@
 Mission critical:
 
-* Add bar synchronisation to annotation tool (Or maybe not)
+  Annotation
 * Add support for saving triplets lossless
-* Ability to add bars in annotations (all the things you are 27-1 needs this)
+* Ability to add bars in annotations (all the things you are 27-1 needs this) (length bug)
 * Annotate
-* Handle meter operations in rhythm.meter
+
+  Models
+* Implement Temperley's hierarchical model
+
+  Dissertation
+* Read Temperley 2009 completely
 * Start writing report
 
 Other
 
+* Switch modes with up while in INSERT mode
+* Split annotation in themes, get rid of long silences
+* Implement <line>G to go to a cursor position, note or annotation
 * Implement jazzr.annotation.tool.strip()
 * Implement jazzr.annotation.tool.subtract()
   * Implement support for cutting out parts of midi files
