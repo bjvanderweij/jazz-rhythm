@@ -7,6 +7,7 @@ Mission critical:
 
   Models
 * Implement Temperley's hierarchical model
+* Convert absolute onsets to deviations in terms of beatlengths
 
   Dissertation
 * Read Temperley 2009 completely

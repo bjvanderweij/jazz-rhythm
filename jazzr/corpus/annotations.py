@@ -127,3 +127,11 @@ def load(collection, name):
   midifile = representation.MidiFile('{0}midi.mid'.format(path))
   return (metadata, annotations, notes, midifile)
 
+def loadAll():
+  corpus = []
+  for song in songs(): 
+    for version in versions(song):
+      for track in tracks(song, version):
+        metadata, annotation, notes, midifile = load('annotations', '{0}-{1}-{2}'.format(song, version, track))
+        corpus += [(annotation, notes, metadata)]
+  return corpus

@@ -1,11 +1,9 @@
 #!/usr/bin/python
 
 from jazzr.corpus import *
-from jazzr.annotation import data
-from jazzr.annotation import annotator
-from jazzr.annotation import tool
-from jazzr.tools import commandline
-from jazzr.tools import rbsearch
+from jazzr.annotation import data, annotator, tool, convert
+import jazzr.annotation as types
+from jazzr.tools import commandline, rbsearch, transcriber
 from jazzr.midi import player
 from jazzr.rhythm import grid, temperley
 import code, time, os, datetime, random
@@ -26,6 +24,49 @@ choice = -1
 d = None
 
 def quickndirty():
+  corpus = annotations.loadAll()
+  choice = commandline.menu('Choose item', [x[2]['name'] for x in corpus])
+  annotation = corpus[choice][0]
+  notes = corpus[choice][1]
+  metadata = corpus[choice][2]
+  transcriber.transcribe(annotation, metadata, transpose=1)
+  print metadata['name']
+  types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END']
+
+  i = 0
+  for (position, index, pitch, type) in annotation:
+    bar = convert.bar(position, metadata)
+    barpos = convert.barposition(position, metadata)
+    length = convert.quarterLength(annotation, i, metadata)
+    i += 1
+    print 'Bar {0}. Note {1}. Pitch {2}. Length {3}. Type {4}'.format(bar, barpos, convert.midi2name(pitch), length, types[type])
+
+  print 'SPLIT BARS ================'
+
+  barsplit = []
+  for i in range(len(annotation)):
+    barsplit += convert.split(annotation, i, metadata)
+
+  i = 0
+  for (position, index, pitch, type) in barsplit:
+    bar = convert.bar(position, metadata)
+    barpos = convert.barposition(position, metadata)
+    length = convert.quarterLength(barsplit, i, metadata)
+    i += 1
+    print 'Bar {0}. Note {1}. Pitch {2}. Length {3}. Type {4}'.format(bar, barpos, convert.midi2name(pitch), length, types[type])
+
+def check_corpus():
+  threshold = 0.5
+  corpus = annotations.loadAll()
+  for (annotation, notes, metadata) in corpus:
+    print metadata['name']
+    for (position, index, pitch, type) in annotation:
+      if type == types.NOTE:
+       deviation = convert.deviation(position, notes[index][0], metadata)
+       if deviation > threshold:
+         print "Deviation for {0}, {1}, {2}, {3} is suspiciously large ({4}).".format(position, index, pitch, type, deviation)
+
+def cross_validate():
   songs = 0
   count = 0
   notecount = 0
@@ -38,12 +79,12 @@ def quickndirty():
         count += 1
         metadata, annotation, notes, midifile = annotations.load('annotations', '{0}-{1}-{2}'.format(song, version, track))
         corpus += [(annotation, notes, metadata)]
-  print '{0} songs annotated. Total annotatioons: {1}. Total number annotated items: {2}'.format(songs, count, notecount)
-  folds = 10
+  print '{0} songs annotated. Total annotations: {1}. Total number annotated items: {2}'.format(songs, count, notecount)
+  folds = 5
   n = len(corpus)
   results = []
   for i in range(folds):
-    print 'Preparing fold {0} out of {1}'.format(i, folds)
+    print 'Preparing fold {0} out of {1}'.format(i+1, folds)
     train = []
     test = []
     n_test = int(n/float(folds))
@@ -139,13 +180,9 @@ def quit(): exit(0)
 
 options = [\
 ('Run quick \'n dirty tests', quickndirty),\
-('Annotate', annotate),\
-('Filter manually', filtermanually),\
 ('Test annotation tool', testtool),\
-('Start midiplayer', midiplayer),\
-('Review datafile', review_datafile),\
+('Check corpus', check_corpus),\
 ('Search realbooks', search),\
-('Preprocess and filter corpus', preprocess),\
 ('Drop to shell', shell),\
 ('Quit', quit)]
 
