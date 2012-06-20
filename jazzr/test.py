@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 from jazzr.corpus import *
-from jazzr.annotation import data, annotator, tool, convert
+from jazzr.annotation import data, annotator, tool, Annotation
 import jazzr.annotation as types
 from jazzr.tools import commandline, rbsearch, transcriber
 from jazzr.midi import player
-from jazzr.rhythm import grid, temperley
+from jazzr.rhythm import grid, temperley, subdivision
 import code, time, os, datetime, random
 
 
@@ -25,35 +25,18 @@ d = None
 
 def quickndirty():
   corpus = annotations.loadAll()
+  #choice = commandline.menu('Choose item', [x[2]['name'] for x in corpus])
+  #parse = subdivision.parse(corpus[choice])
+  subdivision.train(corpus)
+
+
+def transcribe():
+  corpus = annotations.loadAll()
   choice = commandline.menu('Choose item', [x[2]['name'] for x in corpus])
   annotation = corpus[choice][0]
   notes = corpus[choice][1]
   metadata = corpus[choice][2]
   transcriber.transcribe(annotation, metadata, transpose=1)
-  print metadata['name']
-  types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END']
-
-  i = 0
-  for (position, index, pitch, type) in annotation:
-    bar = convert.bar(position, metadata)
-    barpos = convert.barposition(position, metadata)
-    length = convert.quarterLength(annotation, i, metadata)
-    i += 1
-    print 'Bar {0}. Note {1}. Pitch {2}. Length {3}. Type {4}'.format(bar, barpos, convert.midi2name(pitch), length, types[type])
-
-  print 'SPLIT BARS ================'
-
-  barsplit = []
-  for i in range(len(annotation)):
-    barsplit += convert.split(annotation, i, metadata)
-
-  i = 0
-  for (position, index, pitch, type) in barsplit:
-    bar = convert.bar(position, metadata)
-    barpos = convert.barposition(position, metadata)
-    length = convert.quarterLength(barsplit, i, metadata)
-    i += 1
-    print 'Bar {0}. Note {1}. Pitch {2}. Length {3}. Type {4}'.format(bar, barpos, convert.midi2name(pitch), length, types[type])
 
 def check_corpus():
   threshold = 0.5

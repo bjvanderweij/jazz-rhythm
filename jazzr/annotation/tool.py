@@ -45,6 +45,7 @@ class Tool:
     self.meter = meter.Meter(self.midifile.time_signature[0], self.midifile.time_signature[1])
     self.bpm = midifile.bpm()
     self.offset = 0
+    self.extra = 0
 
     self.name = self.midifile.name
 
@@ -313,8 +314,11 @@ class Tool:
       self.cursor = self.quarters2units(self.annotations[self.notepos][0])
 
   def curs_right(self):
-    if self.mode == self.INSERT and self.cursor+1 < self.onset2units(self.notelist[-1][0]):
+    if self.mode == self.INSERT:
       self.cursor += 1
+      if self.cursor >= self.length + self.extra:
+        self.extra += self.quarters2units(self.meter.quarters_per_bar())
+        self.refreshAnnotation = True
       for (quarters, midipos, pitch, type) in self.annotations:
         if self.quarters2units(quarters) == self.cursor:
           self.midipos = midipos
@@ -384,17 +388,23 @@ class Tool:
           self.buf += chr(c)
 
   def updateScr(self, stdscr):
+    # Fix some stuff that may have gone out of bounds
+    if self.notepos >= len(self.annotations):
+      self.notepos = len(self.annotations) - 1
+    if self.midipos >= len(self.notelist):
+      self.midipos = len(self.notelist) - 1
+
     # Resize the pads, generate the notelist
     if self.refreshMidi:
       self.notelist = self.generate_notelist()
-      length = self.onset2units(self.notelist[-1][0]) + 1
-      self.midipad.resize(self.height, length)
+      self.length = self.onset2units(self.notelist[-1][0]) + 1
+      self.midipad.resize(self.height, self.length)
       self.midipad.clear()
     if self.refreshAnnotation:
       if not self.notelist:
         self.notelist = self.generate_notelist()
-      length = self.onset2units(self.notelist[-1][0]) + 1
-      self.annotationpad.resize(self.height, length)
+      self.length = self.onset2units(self.notelist[-1][0]) + 1
+      self.annotationpad.resize(self.height, self.length + self.extra + 1)
       self.annotationpad.clear()
      
     # Draw the notes in the midifile and annotation
@@ -416,7 +426,7 @@ class Tool:
     if self.refreshAnnotation:
       bars = 0
       beats = 0
-      for i in range(length):
+      for i in range(self.length + self.extra):
         beat = (self.units2quarters(i) / self.meter.quarters_per_beat())
         bar = beat // self.meter.beatspb
         if int(bar) > int(bars):
@@ -444,17 +454,13 @@ class Tool:
     # Set the cursor position and pad position
     xoffset = 0
     yoffset = self.height + 1
-    if self.mode == self.ANNOTATING:
-      if self.notepos >= len(self.annotations) and len(self.annotations) > 0:
-        self.notepos = len(self.annotations) - 1
-      if len(self.annotations) > 0:
-        xoffset = self.quarters2units(self.annotations[self.notepos][0])
+    if self.mode == self.ANNOTATING and len(self.annotations) > 0:
+      xoffset = self.quarters2units(self.annotations[self.notepos][0])
     elif self.mode == self.INSERT:
       xoffset = self.cursor
     elif self.mode == self.PLAYING:
       xoffset = self.onset2units(self.notelist[self.midipos][0])
       yoffset = 1
-
     if xoffset - self.padpos > self.width:
       self.padpos = xoffset - self.width / 3
     elif xoffset - self.padpos < 0:

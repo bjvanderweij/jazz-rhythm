@@ -32,14 +32,14 @@ def bar(position, metadata):
 
 def barposition(position, metadata):
   """Calculate the position in quarter notes relative to the 
-  beginning of the bar"""
+  beginning of the bar."""
   m = meter.getMeter(metadata)
   beats = position / float(m.quarters_per_beat())
   return beats - m.beatspb * (beats // m.beatspb)
 
 def quarterLength(annotation, index, metadata):
-  """Return the quarter length of the item at index in annotations"""
-  (position, index, pitch, type) = annotation[index]
+  """Return the quarter length of the item at index in annotations."""
+  (position, x, pitch, type) = annotation[index]
   next = position
   quarterLength = 0
   if type in [types.NOTE, types.REST, types.GRACE]:
@@ -51,11 +51,14 @@ def quarterLength(annotation, index, metadata):
   return quarterLength
 
 def realLength(annotation, index, metadata):
+  """Return the length in microseconds that is expected given the bpm..."""
   on = annotation[index][0]
   off = on + quarterLength(annotation, index, metadata)  
   return onset(off) - onset(on)
 
 def split(annotation, index, metadata):
+  """Split notes and rests that span across multiple bars in separate
+  (bound) notes and rests."""
   (position, x, pitch, type) = annotation[index]
   m = meter.getMeter(metadata)
   if not type in [types.REST, types.NOTE]:
