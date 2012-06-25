@@ -1,31 +1,32 @@
 def generate(depth):
   grammar = {}
-  symbols = []
   division = 1
-  symbols.append('1/{0}'.format(division))
+  grammar[(1, 1)] = (1,)
   for i in range(depth):
-    nextdivision = '1/{0}'.format(division * 3)
-    symbols.append(nextdivision)
-    grammar[(nextdivision, nextdivision, nextdivision)] = '1/{0}'.format(division)
-
-    nextdivision = '1/{0}'.format(division * 2)
-    symbols.append(nextdivision)
-    grammar[(nextdivision, nextdivision)] = '1/{0}'.format(division)
+    grammar[(division*2, division*2)] = (division,)
+    # Only CNF rules are accepted by the parser
+    grammar[(division*3, (division*3, division*3))] = (division,)
+    grammar[(division*3, division*3)] = ((division*3, division*3), )
     division *= 2
-  return (grammar, symbols)
+  return grammar
 
-def onset_cell(onset, symbols):
+def onset_cell(onset, depth):
+  # Problem: triplets can't have bound notes as it is now
   # A symbol: ((Cell), Semantics/Features)
   Cell = []
-  for symbol in symbols:
-    Cell.append(((symbol, ), [('onset', symbol, onset), ]))
-    Cell.append(((symbol, symbol), [('onset', symbol, onset), ('unit', symbol)]))
-    Cell.append(((symbol, symbol), [('unit', symbol), ('onset', symbol, onset)]))
-    Cell.append(((symbol, symbol, symbol), [('unit', symbol), ('onset', symbol, onset), ('onset', symbol, onset)]))
-    Cell.append(((symbol, symbol, symbol), [('onset', symbol, onset), ('unit', symbol), ('onset', symbol, onset)]))
-    Cell.append(((symbol, symbol, symbol), [('onset', symbol, onset), ('onset', symbol, onset), ('unit', symbol)]))
-    Cell.append(((symbol, symbol, symbol), [('unit', symbol), ('onset', symbol, onset), ('unit', symbol)]))
-    Cell.append(((symbol, symbol, symbol), [('unit', symbol), ('unit', symbol), ('onset', symbol, onset)]))
+  division = 1
+  Cell.append(((1, ), [('onset', 1, onset), ]))
+  for i in range(depth):
+    duple = division * 2
+    metrical = 1/float(duple)
+    Cell.append(((duple, ), [('onset', metrical, onset)]))
+    Cell.append(((division, ), [('onset', metrical, onset), ('unit', metrical)]))
+    Cell.append(((division, ), [('unit', metrical), ('onset', metrical, onset)]))
+
+    triple = division * 3
+    metrical = 1/float(triple)
+    Cell.append(((triple, ), [('onset', metrical, onset)]))
+    division *= 2
   return Cell
 
 

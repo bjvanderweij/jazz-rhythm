@@ -1,4 +1,4 @@
-
+from jazzr.rhythm import grammar
 
 class Span:
 
@@ -30,7 +30,7 @@ class BeatSymbol:
     if len(beats) == 1:
       pass
 
-def reduce(spanlist):
+def combine(spanlist):
   i = 0
   reduced = []
   while True:
@@ -44,36 +44,37 @@ def reduce(spanlist):
         spanlist[i] = ('onset', spanlist[i][1] + spanlist[i+1][1], spanlist[i][2])
         del spanlist[i+1]
       elif spanlist[i+1][0] == 'span':
-        reduced += [('span', spanlist[i][2], spanlist[i][2], spanlist[i+1][2]), spanlist[i+1]] 
+        reduced += [('span', spanlist[i][1], spanlist[i][2], spanlist[i+1][2]), spanlist[i+1]] 
         i += 2
     else:
       reduced += [spanlist[i]]
       i += 1
   return reduced
 
-def musical_close(S, bp1=None, bp2=None):
-  cell = []
-  unseen = []
-  while True:
-    # Get the heads of the trees in S
-    symbols = tuple([x[0] for x in S])
-    if symbols in grammar.grammar:
-      unseen += [(A, S) for A in grammar.grammar[symbols]]
-    if unseen == []:
-      break
-    S = (unseen.pop(), )
-    cell += [S]
-  return cell
-  
+def probability(features, tolerance=0):
+  # Integrity check:
+  spans = []
+  for item in features:
+    if item[0] == 'span':
+      spans.append((item[1], item[3]-item[2]))
+  if spans > 0:
+    wholenote = 1/float(spans[0][0]) * spans[0][1]
+  for (metrical, span) in spans:
+    note = 1/float(metrical) * span
+    if abs(note - wholenote) <= tolerance:
+      wholenote = note
+    else:
+      return 0
+  return 1
 
-def musical_cky(N):
+def musical_cky(N, depth, beam=0.5):
+  g = grammar.generate(depth)
   n = len(N)
   t = {}
   # Iterate over rows
   for j in range(1, n+1):
     # Fill diagonal cells
-    S = grammar.onset_cell()
-    cell = close(S)
+    cell = grammar.onset_cell(N[j-1], depth)
     t[j-1, j] = tuple(cell)
 
     # Iterate over columns
@@ -83,11 +84,12 @@ def musical_cky(N):
       for k in range(i+1, j):
         for B in t[i,k]:
           for C in t[k,j]:
-            cell += close((B+C))
+            if (B[0]+C[0]) in g:
+              combined = combine(B[1]+C[1])
+              if probability(combined) > beam:
+                cell += [(g[(B[0]+C[0])], combine(B[1]+C[1]))]
       t[i,j] = tuple(cell)
   return t
-  
-  
 
 def close(S, bp1=None, bp2=None):
   cell = []
