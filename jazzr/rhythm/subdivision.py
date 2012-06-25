@@ -12,8 +12,7 @@ def rules(position, metadata):
 
 def train(corpus):
   result = {}
-  for (a, n, m) in corpus:
-    annotation = Annotation(a, n, m)
+  for annotation in corpus:
     for i in range(len(annotation)):
       barpos = annotation.barposition(annotation[i][0]) / 4.0
       sd = subdivide(barpos)
@@ -29,19 +28,19 @@ def train(corpus):
 
 
 
-def parse(item):
-  (annotation, notes, metadata) = item
+def parse(annotation):
   subdivisions = {}
-  for (position, index, pitch, type) in annotation:
-    barpos = annotation.barposition(position, metadata) / 4.0
-    print '({2}) Bar {0},{1}. '.format(annotation.bar(position, metadata), annotation.barposition(position, metadata), position),
+  for i in range(len(annotation)):
+    position = annotation.position(i)
+    barpos = annotation.barposition(position) / 4.0
+    print '({2}) Bar {0},{1}. '.format(annotation.bar(position), annotation.barposition(position), position),
     sd = subdivide(barpos)
     if not sd:
       print 'Not found'
       continue
-    print '{2},{0}: {1}'.format(sd, annotation.deviation(position, notes[index][0], metadata), barpos/explicit(sd))
+    print '{2},{0}: {1}'.format(sd, annotation.deviation(i), barpos/explicit(sd))
     subdivisions[sd] = subdivisions.get(sd, []) + \
-        [annotation.deviation(position, notes[index][0], metadata)]
+        [annotation.deviation(i)]
     
 
 def subdivide(beat, division=0, depth=0, position=0):

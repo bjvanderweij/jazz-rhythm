@@ -32,37 +32,26 @@ def quickndirty():
 
 def transcribe():
   corpus = annotations.loadAll()
-  choice = commandline.menu('Choose item', [x[2]['name'] for x in corpus])
-  annotation = corpus[choice][0]
-  notes = corpus[choice][1]
-  metadata = corpus[choice][2]
-  transcriber.transcribe(annotation, metadata, transpose=1)
+  choice = commandline.menu('Choose item', [x.name for x in corpus])
+  annotation = corpus[choice]
+  score = annotation.transcribe()
+  score.show()
 
 def check_corpus():
   threshold = 0.5
   corpus = annotations.loadAll()
-  for (annotation, notes, metadata) in corpus:
-    print metadata['name']
-    for (position, index, pitch, type) in annotation:
-      if type == types.NOTE:
-       deviation = convert.deviation(position, notes[index][0], metadata)
+  for annotation in corpus:
+    print annotation.name
+    for i in range(len(annotation)):
+      if annotation.type(i) == Annotation.NOTE:
+       deviation = annotation.deviation(i)
        if deviation > threshold:
-         print "Deviation for {0}, {1}, {2}, {3} is suspiciously large ({4}).".format(position, index, pitch, type, deviation)
+         print "Deviation for {0}, {1}, {2}, {3} is suspiciously large ({4}).".format(\
+             annotation.position(i), i, annotation.pitch(i), annotation.type(i), annotation.deviation(i))
 
 def cross_validate():
-  songs = 0
-  count = 0
-  notecount = 0
-  corpus = []
   print 'Loading corpus.'
-  for song in annotations.songs(): 
-    songs += 1
-    for version in annotations.versions(song):
-      for track in annotations.tracks(song, version):
-        count += 1
-        metadata, annotation, notes, midifile = annotations.load('annotations', '{0}-{1}-{2}'.format(song, version, track))
-        corpus += [(annotation, notes, metadata)]
-  print '{0} songs annotated. Total annotations: {1}. Total number annotated items: {2}'.format(songs, count, notecount)
+  corpus = annotations.loadAll()
   folds = 5
   n = len(corpus)
   results = []
@@ -82,8 +71,8 @@ def cross_validate():
     print 'Done. Model: {0}'.format(model)
     print 'Evaluating model.'
     cross_ent = 0
-    for (annotation, notes, metadata) in test:
-      cross_ent += temperley.loglikelihood(annotation, metadata, model)
+    for annotation in test:
+      cross_ent += temperley.loglikelihood(annotation, model)
     cross_ent /= float(n_test)
     print 'Done. Average cross-entropy: {0}'.format(cross_ent)
     results.append(cross_ent)
@@ -163,6 +152,9 @@ def quit(): exit(0)
 
 options = [\
 ('Run quick \'n dirty tests', quickndirty),\
+('Transcribe standard', transcribe),\
+('Check corpustool', check_corpus),\
+('Cross validate temperley cross entropy', cross_validate),\
 ('Test annotation tool', testtool),\
 ('Check corpus', check_corpus),\
 ('Search realbooks', search),\

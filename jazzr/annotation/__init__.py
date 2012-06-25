@@ -3,20 +3,20 @@
 A Library of midi tools and algorithms for analysing rhythm in jazz music
 """
 
-# Some annotation types
-NOTE = 0
-REST = 1
-GRACE = 2
-ERROR = 3
-END = 4
 
-from jazzr.rhythm import meter
-from jazzr.midi import representation
-from music21 import *
+
 
 class Annotation:
 
-  def __init__(annotation, notes, metadata):
+  # Some annotation types
+  NOTE = 0
+  REST = 1
+  GRACE = 2
+  ERROR = 3
+  END = 4
+
+  def __init__(self, annotation, notes, metadata):
+    from jazzr.rhythm import meter
     self.annotation = annotation
     self.notes = notes
     self.metadata = metadata
@@ -25,6 +25,10 @@ class Annotation:
     self.meter = meter.getMeter(metadata)
     # Onset units per second (1000000 = onsets in microseconds)
     self.scale = 1000000
+
+  @staticmethod
+  def getAnnotation((annotation, notes, metadata)):
+    return Annotation(annotation, notes, metadata)
 
   def __iter__(self):
     return self.generateItems()
@@ -45,119 +49,150 @@ class Annotation:
     for a in self.annotation:
       yield a
   
-  def position(index):
+  def position(self, index):
     """Return the position in in quarternotes of the annotation at the 
     given index."""
     return self[index][0]
 
-  def pitch(index):
+  def pitch(self, index):
     """Return the pitch of the note corresponding to the annotated at 
     the given index."""
     return self[index][2]
 
-  def type(index):
+  def type(self, index):
     """Return the type of the annotation at the given index."""
     return self[index][3]
 
-  def onset(index):
-    """Return the onset of the note corresponding to the annotation at 
-    the given index."""
-    return self.notes[self[index][1]]
-
-  def offset(index):
-    """Return the offset of the note corresponding to the annotation at 
-    the given index."""
-    return self.notes[self[index][2]]
-
-  def velocity(index):
-    """Return the velocity of the note corresponding to the annotation at 
-    the given index."""
-    return self.notes[self[index][4]]
-
-  def deviation(index):
-    """Calculate the proportion of a beat that the given onset deviates
-    from the ideal onset corresponding to the given position."""
-    beatlength = self.scale/(self.bpm/60.0)
-    beats = self.position(index) / float(self.meter.quarters_per_beat())
-    beat_onset = beats * beatlength
-    deviation = onset - beat_onset
-    return deviation / beatlength
-
-  def onset(index):
+  def onset(self, index):
     """Calculate the ideal onset of this position given the tempo in metadata"""
     beatlength = self.scale/(self.bpm/60.0)
     beats = self.position(index) / float(self.meter.quarters_per_beat())
     return beats * beatlength
 
-  def bar(index):
-    """Return the bar in which this position occurs"""
+  def offset(self, index, ignoreRests=False):
+    """Calculate the ideal onset of this position given the tempo in metadata"""
+    return self.onset(self.nextPosition(index, ignoreRests=ignoreRests))
+
+  def perf_onset(self, index):
+    """Return the onset of the note corresponding to the annotation at 
+    the given index."""
+    return self.notes[self[index][1]]
+
+  def perf_offset(self, index):
+    """Return the offset of the note corresponding to the annotation at 
+    the given index."""
+    return self.notes[self[index][2]]
+
+  def velocity(self, index):
+    """Return the velocity of the note corresponding to the annotation at 
+    the given index."""
+    return self.notes[self[index][4]]
+
+  def deviation(self, index):
+    """Calculate the proportion of a beat that the given onset deviates
+    from the ideal onset corresponding to the given position."""
+    beatlength = self.scale/(self.bpm/60.0)
     beats = self.position(index) / float(self.meter.quarters_per_beat())
-    return int(beats // self.meter.beatspb)
+    beat_onset = beats * beatlength
+    deviation = self.onset(index) - beat_onset
+    return deviation / beatlength
 
-  def barposition(index):
-    """Calculate the position in quarter notes relative to the 
-    beginning of the bar."""
-    beats = self.annotation[index] / float(self.meter.quarters_per_beat())
-    return beats - self.meter.beatspb * (beats // self.meter.beatspb)
-
-  def quarterLength(index):
+  def quarterLength(self, index):
     """Return the quarter length of the item at index in annotations."""
-    (position, x, pitch, type) = self.annotation[index]
-    next = position
-    quarterLength = 0
-    if type in [NOTE, REST, GRACE]:
-      for item in annotation[index+1:]:
-        if item[0] != position:
-          next = item[0]
-          break
-      quarterLength = next - position
-    return quarterLength
+    return self.nextPosition(index) - self.onset(index)
 
-  def realLength(index):
+  def realLength(self, index):
     """Return the length in microseconds that is expected given the bpm..."""
     on = self.annotation[index][0]
     off = on + self.quarterLength(index)  
     return onset(off) - onset(on)
 
-  def split(index):
+  def ioi(self, index, ignoreRests=True):   
+    return self.onset(self.nextPosition(index, ignoreRests=ignoreRests)) - self.onset(index)
+
+  def perf_ioi(self, index, ignoreRests=True):   
+    return self.perf_onset(self.nextPosition(index, ignoreRests=ignoreRests)) - self.perf_onset(index)
+
+  def log_ioi_ratio(self, index, ignoreRests=True):
+    return math.log(self.perf_ioi(index) /\
+        float(self.ioi(index, ignoreRests=ignoreRests)))
+
+  def log_length_ratio(self, index):
+    pass
+
+  def bar(self, position):
+    """Return the bar in which this position occurs"""
+    beats = position / float(self.meter.quarters_per_beat())
+    return int(beats // self.meter.beatspb)
+
+  def barposition(self, position):
+    """Calculate the position in quarter notes relative to the 
+    beginning of the bar."""
+    beats = position / float(self.meter.quarters_per_beat())
+    return beats - self.meter.beatspb * (beats // self.meter.beatspb)
+
+  def nextPosition(self, index, ignoreRests=False):
+    if self.type(index) == self.GRACE: return 0
+    if self.type(index) in (self.END, self.ERROR): 
+      print '[warning] {0} Tried to get next position from invalid note type, returning 0.'.format(self.name)
+      return 0
+    if index+1 == len(self):
+      print '[warning] {0} Last item in annotation is not END marker.'.format(self.name)
+      return 0
+    next = -1
+    for i in range(index+1, len(self)):
+      if self.position(i) != self.position(index) and\
+          (self.type(i) in (self.NOTE, self.END) and ignoreRests) or\
+          (self.type(i) in (self.NOTE, self.REST, self.END and not ignoreRests)):
+        next = i
+        break
+    if next == -1:
+      print '[warning] {0} Could not determine onset of next item after {1}.'.format(self.name, index)
+    return next
+
+  def split(self, index):
     """Split notes and rests that span across multiple bars in separate
     (bound) notes and rests."""
-    (position, x, pitch, type) = self.annotation[index]
-    if not type in [REST, NOTE]:
-      return [(position, index, pitch, type)]
+    if not type in [self.REST, self.NOTE]:
+      return [self[index]]
     ql = self.quarterLength(index)
-    current = position
+    current = self.position(index)
     remainder = ql
     result = []
     barlength = self.meter.quarters_per_bar()
-    while self.bar(current) != self.bar(current + remainder):
+    while self.bar(current) < self.bar(current + remainder):
       diff = (self.bar(current)+1)*barlength - current
-      result.append((current, index, pitch, type))
+      result.append((current, self[index][1], self.pitch(index), self.type(index)))
       remainder -= diff
       current += diff
     if remainder > 0:
-      result.append((current, index, pitch, type))
+      result.append((current, self[index][1], self.pitch(index), self.type(index)))
     return result
 
-  def midi2name(pitch):
+  def midi2name(self, pitch):
+    from jazzr.midi import representation
     return representation.Note(0, 0, pitch, 0).name()
 
-  def transcribe():
+  def transcribe(self, transpose=0):
+    from music21 import stream, clef, tempo, meter, note, duration, metadata
     """Return a music21 score object, generated from the annotations"""
     score = stream.Score()
+    score.metadata = metadata.Metadata()
+    score.metadata.title = self.name
+    score.metadata.composer = ''
     part = stream.Part()
-    measurecount = self.bar(annotation[-1][0])
+    measurecount = self.bar(self.position(-1))
     if measurecount == 0: return
     for i in range(int(measurecount)):
       part.insert(stream.Measure())
     part[0].insert(0, clef.TrebleClef())
-    part[0].insert(0, tempo.MetronomeMark(metadata['bpm']))
-    part[0].insert(0, meter.TimeSignature('{0}/{1}'.format(int(metadata['beatspb']), int(metadata['beatdiv']))))
-    if 'key' in metadata:
-      part[0].insert(0, key.KeySignature(metadata['key']))
+    part[0].insert(0, tempo.MetronomeMark(self.bpm))
+    part[0].insert(0, meter.TimeSignature('{0}/{1}'.format(int(self.meter.beatspb), int(self.meter.beatdiv))))
+    if 'key' in self.metadata:
+      part[0].insert(0, key.KeySignature(self.metadata['key']))
 
     barsplit = []
-    for i in range(len(annotation)):
+    for i in range(len(self)):
       barsplit += self.split(i)
 
     temp = self.annotation
@@ -168,15 +203,15 @@ class Annotation:
       measure = self.bar(position)
       measurepos = self.barposition(position)
 
-      if type in [NOTE, REST, GRACE]:
+      if type in [self.NOTE, self.REST, self.GRACE]:
         quarterLength = self.quarterLength(i)
         if quarterLength < 0: continue
         n = note.Note()
         n.midi = pitch + transpose
         n.duration = duration.Duration(quarterLength)
-        if type == GRACE:
+        if type == self.GRACE:
           n = n.getGrace()
-        if type == REST:
+        if type == self.REST:
           n = note.Rest(quarterLength)
         part[measure].insert(measurepos, n)
 

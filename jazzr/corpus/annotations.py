@@ -1,6 +1,7 @@
 from jazzr.midi import representation
 from jazzr.tools import commandline
 from jazzr.corpus import midi
+from jazzr.annotation import Annotation
 import os, re, csv
 
 corpuspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/midi/'
@@ -133,5 +134,5 @@ def loadAll():
     for version in versions(song):
       for track in tracks(song, version):
         metadata, annotation, notes, midifile = load('annotations', '{0}-{1}-{2}'.format(song, version, track))
-        corpus += [(annotation, notes, metadata)]
+        corpus += [Annotation(annotation, notes, metadata)]
   return corpus

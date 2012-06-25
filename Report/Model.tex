@@ -1,0 +1,190 @@
+\documentclass[a4paper,10pt]{article}
+\title{Rhythmic structure in performed Jazz music}
+\author{Bastiaan van der Weij}
+
+\usepackage[round]{natbib}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{fullpage}
+
+%\date{Augustus 17, 2012}
+
+
+\begin{document}
+
+\begin{large}
+Everything is work in progress, section \ref{sec:chart} is relevant for this email.
+\end{large}
+
+\section{Method}
+\label{sec:method}
+
+
+\subsection{Motivation}
+
+We have a limited amount of labelled performance information available in a corpus. This corpus plus a number of constraints should be a substitute for human musical intuition.
+
+\subsection{Bayesian view}
+
+Our corpus tells us absolute time onsets of metrical positions. The sort of probability distribution that we would like to know is the following: how likely is it that a note we observed at onset corresponds to a certain metrical position $m$. Intuitively, this depends on how likely it is for a note to actually occur on that metrical position and the probability that a note on that metrical position would generate the onset we observed. Formally, we can write this using Bayes rule as
+
+\[P(m_i|\textrm{on}_j) = P(\textrm{on}_j|m_i)P(m_i).\]
+
+Optionally, we can include rests. The prior probability $P(m)$ now changes to the probability of either a note 
+
+\[P(m_i,n_j|\textrm{on}_j) = P(\textrm{on}_j|m_i)P(m_i,n_j),\]
+
+or a rest
+
+\[P(m_i,r_j|\textrm{off}_{j-1}) = P(\textrm{on}_j|m)P(m_i,r_j),\]
+
+occurring at metrical position $m_i$. Grace notes could potentially be considered a different category as well.
+
+There are now several options for estimating the prior and likelihood which will be discussed below.
+
+\subsection{Prior}
+The prior describes how likely it is for a note or rest to occur at a certain metrical position. This probability depends on intuitions about common practice rhythm, as David Temperley argues, as well as the musical style. The prior can be estimated from an unlabelled corpus of music transcriptions. There are several ways of doing this.
+
+Temperley proposes a very simple model: the metrical position model. This model estimates how likely it is for a beat to occur at every metrical position in a bar. If we assume the smallest note length in our corpus is an eighth note, the metrical position model consists simply of eight probabilities for a note occurring at each possible metrical position in a bar.
+
+A slightly more complex model is the hierarchical model.
+
+Longuet-Higgins proposes a subdivision based approach to rhythm detection. The model starts with the largest possible metrical unit, say a whole note, and an associated real duration. A beat can either be at the start or end of this unit or interrupt it. If a beat interrupts this unit, the unit is split in two or three parts. If the beat still interrupts the smaller metrical unit this process is continued until the beat is at the start of a whole metrical unit. This process is repeated until every note is located at the start of an uninterrupted metrical unit.
+
+The resulting code looks something like this: a wh
+The resulting code can be seen as a parse tree. A whole 
+
+
+
+
+% Statistical Longuet-Higgins
+
+\subsection{Hidden Groove Model}
+Any timing deviation that we are able to detect from our small corpus is likely to be a (locally) consistent one. That is, if the strong beats are stretched, this probably occurs over the entire piece. If eighth notes on strong beats are delayed, this likely occurs during the entire piece, or at least during a certain period during which this pattern of delayed off-beat eighth notes does not change, and when it does change, it changes into another pattern that will be consistent for some time. It is probable that \emph{any other deviation} from score notations, like rubatos in a ballad, is to complex or random to learn as their occurrence likely depends on complex local rhythmic or tonic context. 
+
+The concept of locally consistent deviation of timing is known to musicians as \textit{the groove}. Groove is a locally stable and usually does not change throughout a performance and if it does change it is rarely a gradual change. Some parts of the groove, like lengthening of strong beats are pretty universal and may occur in all pieces, others may be less universal and differ between different pieces or even different performances of the same piece.
+
+The best we may be able to do for rubato is to consider it a temporary change of groove
+
+Likelihoods probably become a simple penalty for how much a note deviates from the groove. Unless we only define a limited number of grooves (swing/no swing).
+
+Humans can feel a groove after hearing it for a few measures.
+
+Hidden groove is also motivated by the fact that, within one performance, deviations of certain metrical positions may be relatively consistent. But between performances, they might vary quite a bit.
+\subsection{Chart Parsing/Statistical Longuet-Higgins}
+
+\label{sec:chart}
+
+If we consider Christopher Longuet-Higgin's early model of rhythmic analysis, rhythmic analysis can be described as syntactic parsing. In Longuet-Higgin's rhythmic analysis, every note is the start of an uninterrupted metrical unit. Formulated as a CFG there are a few types of rules:
+
+
+\begin{align}
+\label{eq:grammar}
+B/x &\rightarrow B/2x, B/2x&\textrm{Subdivide in two,}\\
+B/x &\rightarrow B/3x, B/3x & \textrm{Subdivide in three,}\\
+B/x &\rightarrow \textrm{On}_i & \textrm{Generate an onset,}\\
+B/x &\rightarrow * & \textrm{Generate an empty slot (bound note),}\\
+\end{align}
+
+This is a generalised form, when applying it we would probably want to instantiate the abstract $B/x$ symbols into metrical units.
+
+We can optionally consider rests and grace notes by incorporating more rules.
+
+\begin{align*}
+B/x &\rightarrow B/2x, B/2x&\textrm{Subdivide in two,}\\
+B/x &\rightarrow B/3x, B/3x & \textrm{Subdivide in three,}\\
+B/x &\rightarrow n & \textrm{Generate a note,}\\
+B/x &\rightarrow r & \textrm{Generate a rest,}\\
+B/x &\rightarrow * & \textrm{Generate nothing (a bound note),}\\
+B/x &\rightarrow g, n & \textrm{Generate a note preceded by a grace note,}\\
+\end{align*}
+
+This extended form will considerably increase complexity and for now we will deal with the simple grammar where only onsets and bound notes can be generated.
+
+The simple grammar in \ref{eq:grammar} is highly ambiguous. As any beat can be indefinitely subdivided and an indefinite number of bound notes can be inserted, any sequence of three onsets could be parsed into an infinite number of three note patterns. Given that in our jazz corpus the smallest metrical unit was a 16th note triplet, it seems sensible to restrict the number of subdivisions to 4 or 5. We will introduce more restrictions but these will arise from a formalism that combines onsets into spans.
+
+The constrained grammar will still be able to parse a three note pattern into every possible combination of three notes and an infinite number of bound notes. It would make sense to ensure that a beat can only divide into at most one bound note for subdivisions into two and at most two bound notes for subdivisions into three. Instead of explicitly introducing rules for this, we will introduce a formalism for combining onsets and bound notes into spans that implicitly introduces this constraint.
+
+\begin{align*}
+B/x\!:\!\textrm{combine}(S_1 + S_2) &\rightarrow B/2x\!:\!S_1 \; B/2x\!:\!S_2 &\textrm{Subdivide in two,}\\
+B/x\!:\!\textrm{combine}(S_1 + S_2 + S_3) &\rightarrow B/3x:S_1 \; B/3x:S_2 \; B/3x:S_3 & \textrm{Subdivide in three,}\\
+B/x\!:\![\textrm{onset}(1/x, \textrm{On}_i)]&\rightarrow \textrm{On}_i & \textrm{Generate an onset,}\\
+B/x\!:\![\textrm{unit}(1/x)] &\rightarrow * & \textrm{Generate an empty slot (bound note),}\\
+\end{align*}
+
+Every onset now generates a feature list containing the absolute time of the onset and the metrical unit associated with the beat that generated the onset. Every empty slot generates a feature list as well, containing just the metrical unit associated with the beat that generated it. When two or three metrical units are combined into a longer metrical unit (the reverse of subdividing), the lists are concatenated and reduced by the combine function. 
+
+There are three types of features: onsets, spans and units. An onset has two attributes: its metrical length and its absolute onset. A span has three attributes: its metrical length two absolute onsets. Finally a unit has one attribute: its metrical length. Every onset can right-combine with another onset, a unit or a span. No other feature is allowed to combine. The rules are as follows:
+
+\begin{align}
+&\textrm{onset}(l_1), \textrm{on}_1) + \textrm{onset}(l_2, \textrm{on}_2) &= \textrm{span}(l_1, \textrm{on}_1, \textrm{on}_2) \textrm{onset}(l_2, \textrm{on}_2)\\
+&\textrm{onset}(l_1, \textrm{on}) + \textrm{unit}(l_2) &= \textrm{onset}(l_1 + l_2, \textrm{on})\\
+&\textrm{onset}(l_1), \textrm{on}_1) + \textrm{span}(l_2, \textrm{on}_2, \textrm{on}_3) &= \textrm{span}(l_1, \textrm{on}_1, \textrm{on}_2) \textrm{span}(l_2, \textrm{on}_2, \textrm{on}_3)
+\end{align}
+
+%Two length units are not allowed to combine. This rules out 
+
+This function takes a list of features, as input and is defined as follows (Prolog code, should eventually be formal definition).
+
+\pagebreak
+\begin{verbatim}
+% The combine function iterates through  list left to right.
+% Items that cannot be combined are skipped, except for 
+% two length features, this causes the algorithm to fail,
+% which may not be the desired behaviour.
+% The length feature = unit feature in text above
+combine([S], [S]):- !.
+combine([], []):- !.
+
+% Onset , length --> onset
+combine([on(L1, Begin), length(L2) | Rest], Combined):-
+  !,
+  L is L1 + L2,
+  combine([on(L, Begin)| Rest], Combined).
+
+% Onset, onset --> span, onset
+combine([on(L1, Begin1), on(L2, Begin2) | Rest],
+    [span(L1, Begin1, Begin2) | Combined]):-
+  !,
+  validspan(L1, Begin1, Begin2),
+  combine([on(L2, Begin2) | Rest], Combined).
+
+% Onset, span --> span, span
+combine([on(L1, Begin1),  span(L2, Begin2, End) | Rest], 
+    [span(L1, Begin1, Begin2), span(L2, Begin2, End) | Combined]):-
+  !,
+  validspan(L1, Begin1, Begin2),
+  combine(Rest, Combined).
+
+% length, onset --> length, onset (ignore the length)
+combine([length(L1), on(L2, Begin) | Rest], 
+    [length(L1) | Combined]):-
+  combine([on(L2, Begin) | Rest], Combined).
+
+% span, onset --> span, onset (ignore the span)
+combine([span(L1, Begin1, End), on(L2, Begin2) | Rest], 
+    [span(L1, Begin1, End) | Combined]):-
+  combine([on(L2, Begin2) | Rest], Combined).
+
+% span, span --> span, span (ignore both spans)
+combine([span(L1, Begin1, End1), span(L2, Begin2, End2) | Rest], 
+    [span(L1, Begin1, End1), span(L2, Begin2, End2) | Combined]):-
+  combine(Rest, Combined).
+\end{verbatim}
+
+%Longuet-Higgins used a constant tolerance parameter to determine whether a beat should be subdivided or a rest should be generated. Increased computational power and availability of labelled data now allows us to makes these decisions probabilistic.
+
+%\begin{align*}
+%&P(A \rightarrow B, C|O) = P(N|A \rightarrow B, C)P(A \rightarrow B, C)\\
+%&P(A \rightarrow b|O) = P(N_i|A \rightarrow b)P(A \rightarrow b)
+%\end{align*}
+
+%where A, B, C are arbitrary non-terminal symbols, b is a terminal symbol and O is a set of observations. 
+
+%The priors are given by for example a simple PCFG-like model, below we will only discuss likelihoods. Consider a bottom up chart-parsing algorithm. Such an algorithm would for example consider the (possibility that the first note in the following pattern was generated by the rule $B/4 \rightarrow n$, which is, in this case, correct. 
+
+% Annotation issues
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

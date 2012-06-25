@@ -1,4 +1,5 @@
 from jazzr.rhythm import grid, meter
+from jazzr.annotation import Annotation
 from jazzr.midi import player, representation, generator
 from jazzr.tools import cgui, rbsearch, Fraction
 from jazzr.corpus import annotations as annotationcorpus
@@ -12,12 +13,6 @@ class Tool:
   PLAYING = 1
   INSERT = 2
   names = {'c':0, 'd':2, 'e':4, 'f':5, 'g':7, 'a':9, 'b':11}
-
-  NOTE = 0
-  REST = 1
-  GRACE = 2
-  ERROR = 3
-  END = 4
 
   insertmode = 'Available commands:\n' +\
       '\t<Spacebar>\tInsert note\n'+\
@@ -139,7 +134,7 @@ class Tool:
     annotationcorpus.save(collection, name, metadata, sorted(self.annotations, key=lambda x: x[0]), self.notelist, self.midifile)
 
   def addNote(self, pitch=0, type=0, position=-1):
-    if not pitch and type in [self.NOTE, self.GRACE, self.ERROR]:
+    if not pitch and type in [Annotation.NOTE, Annotation.GRACE, Annotation.ERROR]:
       pitch = self.notelist[self.midipos][2]
     if position == -1:
       position = self.units2quarters(self.cursor)
@@ -152,7 +147,7 @@ class Tool:
       self.refreshAnnotation = True
       if props['command'] == ' ' or props['command'] == 'r':
         for (quarters, midipos, pitch, type) in self.annotations:
-          if self.cursor == self.quarters2units(quarters) and not type in [self.GRACE, self.ERROR]:
+          if self.cursor == self.quarters2units(quarters) and not type in [Annotation.GRACE, Annotation.ERROR]:
             index = self.annotations.index((quarters, midipos, pitch, type))
             del self.annotations[index]
             self.midipos = midipos
@@ -167,17 +162,17 @@ class Tool:
         self.seq.control(self.seq.PLAY, True)
       elif props['command'] == 'r':
         # Add rest
-        self.addNote(type=self.REST)
+        self.addNote(type=Annotation.REST)
       elif props['command'] == 'g':
         # Add gracenote
-        self.addNote(type=self.GRACE)
+        self.addNote(type=Annotation.GRACE)
         self.midipos += 1
       elif props['command'] == 'e':
         # Add end marker
-        self.addNote(type=self.END)
+        self.addNote(type=Annotation.END)
       elif props['command'] == 's':
         # Skip and mark as error
-        self.addNote(type=self.ERROR)
+        self.addNote(type=Annotation.ERROR)
         self.midipos += 1
       elif re.match('t[0-9]+$', props['command']):
         # Add a triplet
@@ -203,7 +198,7 @@ class Tool:
               self.addNote(position=position)
               self.midipos += 1
             elif m.group(g+1) == 'r':
-              self.addNote(type=self.REST, position=position)
+              self.addNote(type=Annotation.REST, position=position)
             elif m.group(g+1) == ' ':
               pass
           self.cursor += self.notelength2units(1/float(division))
@@ -415,9 +410,9 @@ class Tool:
       if self.refreshAnnotation:
         for (quarters, midipos, pitch, type) in self.annotations:
           cursor = self.quarters2units(quarters)
-          if type == self.REST:
+          if type == Annotation.REST:
             self.annotationpad.addstr(line+1, cursor, 'RES'[line])
-          elif type == self.END:
+          elif type == Annotation.END:
             self.annotationpad.addstr(line+1, cursor, 'END'[line])
           else:
             self.annotationpad.addstr(line+1, cursor, self.pitchname(pitch)[line])
