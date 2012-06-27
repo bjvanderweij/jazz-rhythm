@@ -67,6 +67,31 @@ def probability(features, tolerance=0):
       return 0
   return 1
 
+def musical_close(grammar, S, beam=0.5):
+  cell = []
+  unseen = []
+  # Cell [Item0, Item1, ..., ItemN]
+  # Item (Symbol, Features, Probability, Backpointer)
+  while True:
+    # Get the heads of the trees in S
+    symbols = []
+    features = []
+    for x in S:
+      symbols += x[0]
+      features += x[1]
+    symbols = tuple(symbols)
+    if (symbols) in grammar:
+      combined = combine(features)
+      p = probability(combined)
+      if p > beam:
+        for production in grammar[symbols]:
+          unseen += [(production, combined, p, S)]
+    if unseen == []:
+      break
+    S = (unseen.pop(), )
+    cell += S
+  return cell
+
 def musical_cky(N, depth, beam=0.5):
   g = grammar.generate(depth)
   n = len(N)
@@ -84,10 +109,14 @@ def musical_cky(N, depth, beam=0.5):
       for k in range(i+1, j):
         for B in t[i,k]:
           for C in t[k,j]:
-            if (B[0]+C[0]) in g:
-              combined = combine(B[1]+C[1])
-              if probability(combined) > beam:
-                cell += [(g[(B[0]+C[0])], combine(B[1]+C[1]))]
+
+            cell += musical_close(g, (B, C), beam=beam)
+            #if (B[0]+C[0]) in g:
+            #  combined = combine(B[1]+C[1])
+            #  p = probability(combined)
+            #  if p > beam:
+            #    for production in g[(B[0]+C[0])]:
+            #      cell += [(production, combine(B[1]+C[1]), p)]
       t[i,j] = tuple(cell)
   return t
 
