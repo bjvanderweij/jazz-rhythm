@@ -1,5 +1,5 @@
 def timesignatures():
-  return [('4/4', ), ('2/4', ), ('3/4', ), ('3/8', ), ('6/8', ), ('12/8', ), ('2/2', )]
+  return ['4/4', '2/4', '3/4', '3/8', '6/8', '12/8', '2/2']
 
 
 def add(grammar, symbols, production):
@@ -9,22 +9,21 @@ def generate(depth):
   grammar = {}
   division = 1
   # Time signatures:
-  #add(grammar, (1, ), ('4/4', ))
-  add(grammar, (2, 2), ('4/4', ))
-  add(grammar, ('4/4', '4/4'), ('4/4', ))
+  add(grammar, (2, 2), '4/4')
+  add(grammar, ('4/4', '4/4'), '4/4')
 
-  add(grammar, (2, 4), ('3/4', ))
-  add(grammar, (4, 2), ('3/4', ))
-  add(grammar, ('3/4', '3/4'), ('3/4', ))
+  add(grammar, (2, 4), '3/4')
+  add(grammar, (4, 2), '3/4')
+  add(grammar, ('3/4', '3/4'), '3/4')
 
-  add(grammar, (4, 4), ('2/4', ))
-  add(grammar, (2), ('2/4', ))
-  add(grammar, ('2/4', '2/4'), ('2/4', ))
+  add(grammar, (4, 4), '2/4')
+  add(grammar, (2), '2/4')
+  add(grammar, ('2/4', '2/4'), '2/4')
   for i in range(depth):
-    add(grammar, (division*2, division*2), (division,))
+    add(grammar, (division*2, division*2), division)
     # Only CNF rules are accepted by the parser
-    add(grammar, (division*3, (division*3, division*3)), (division,))
-    add(grammar, (division*3, division*3), ((division*3, division*3), ))
+    add(grammar, (division*3, (division*3, division*3)), division)
+    add(grammar, (division*3, division*3), (division*3, division*3))
     division *= 2
   return grammar
 
@@ -33,22 +32,21 @@ def onset_cell(onset, depth):
   # A symbol: ((Cell), Semantics/Features)
   Cell = []
   division = 1
-  Cell.append(((1, ), [('onset', 1, onset), ]))
+  Cell.append(Terminal(1, Terminal.NOTE, [('onset', 1, onset)]))
   for i in range(depth):
     duple = division * 2
     metrical = 1/float(duple)
-    Cell.append(((duple, ), [('onset', metrical, onset)]))
-    Cell.append(((division, ), [('onset', metrical, onset), ('unit', metrical)]))
-    Cell.append(((division, ), [('unit', metrical), ('onset', metrical, onset)]))
+    note = Terminal(duple, Terminal.NOTE, [('onset', metrical, onset)])
+    Cell.append(note)
 
     triple = division * 3
     metrical = 1/float(triple)
-    Cell.append(((triple, ), [('onset', metrical, onset)]))
+    Cell.append(Terminal(triple, Terminal.NOTE, [('onset', metrical, onset)]))
     division *= 2
   return Cell
 
 
-class Symbol:
+class Symbol(object):
   
   # Symbols: 1/x, 1/xN, 4 4, 3 4, 2 4, etc.
 
@@ -57,17 +55,56 @@ class Symbol:
     self.features = features
     self.probability = probability
 
+  def getTree(self):
+    return str(self.symbol)
+
+  def metrical(self):
+    if isinstance(self.symbol, int):
+      return 1/float(self.symbol)
+    return -1
+
+
 class Terminal(Symbol):
 
   # Types: Note, Bound note
+  NOTE = 0
+  BOUND = 1
 
   def __init__(self, symbol, type, features):
     self.type = type
-    Symbol(self, symbol, features)
+    super(Terminal, self).__init__(symbol, features)
+
+  def isNote(self):
+    return self.type == self.NOTE
+
+  def isBound(self):
+    return self.type == self.BOUND
+
+  def getTree(self):
+    if self.isBound():
+      return '*'
+    elif self.isNote():
+      return str(self.symbol)
 
 class NonTerminal(Symbol):
 
   def __init__(self, symbol, children, features, probability=1):
     self.children = children
-    Symbol(self, symbol, features, probability=probability)
+    super(NonTerminal, self).__init__(symbol, features, probability=probability)
+
+  def getTree(self):
+    return '[{0}({1}), [{2}]]'.format(self.symbol, self.childrenSignature(), ', '.join([symbol.getTree() for symbol in self.children]))
+
+  def childrenSignature(self):
+    signature = ''
+    for child in self.children:
+      if isinstance(child, Terminal):
+        if child.isNote():
+          signature += 'n'
+        elif child.isBound():
+          signature += 'b'
+      elif isinstance(child, NonTerminal):
+        signature += 's'
+    return signature
+
 

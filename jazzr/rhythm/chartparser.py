@@ -1,4 +1,5 @@
 from jazzr.rhythm import grammar
+from jazzr.rhythm.grammar import NonTerminal, Terminal
 
 class Span:
 
@@ -57,7 +58,7 @@ def probability(features, tolerance=0):
   for item in features:
     if item[0] == 'span':
       spans.append((item[1], item[3]-item[2]))
-  if spans > 0:
+  if len(spans) > 0:
     wholenote = 1/float(spans[0][0]) * spans[0][1]
   for (metrical, span) in spans:
     note = 1/float(metrical) * span
@@ -77,23 +78,35 @@ def musical_close(grammar, S, beam=0.5):
     symbols = []
     features = []
     for x in S:
-      symbols += x[0]
-      features += x[1]
+      symbols += [x.symbol]
+      features += x.features
     symbols = tuple(symbols)
     if (symbols) in grammar:
       combined = combine(features)
       p = probability(combined)
       if p > beam:
         for production in grammar[symbols]:
-          unseen += [(production, combined, p, S)]
+          unseen += [NonTerminal(production, S, combined, probability=p)]
     if unseen == []:
       break
     S = (unseen.pop(), )
     cell += S
   return cell
 
-def musical_cky(N, depth, beam=0.5):
+def generateSequences(Notes, depth):
+  lengths = grammar.noteLengths(depth)
+  for n in notes:
+    for length in lengths:
+
+
+
+def mcky(N, depth, beam=0.5, tiedNotes=False):
+  if tiedNotes:
+    generate_options(N)
+
+def musical_cky(N, depth, beam=0.5, tiedNotes=False):
   g = grammar.generate(depth)
+  
   n = len(N)
   t = {}
   # Iterate over rows
@@ -109,14 +122,9 @@ def musical_cky(N, depth, beam=0.5):
       for k in range(i+1, j):
         for B in t[i,k]:
           for C in t[k,j]:
-
             cell += musical_close(g, (B, C), beam=beam)
-            #if (B[0]+C[0]) in g:
-            #  combined = combine(B[1]+C[1])
-            #  p = probability(combined)
-            #  if p > beam:
-            #    for production in g[(B[0]+C[0])]:
-            #      cell += [(production, combine(B[1]+C[1]), p)]
+            items = {}
+
       t[i,j] = tuple(cell)
   return t
 
