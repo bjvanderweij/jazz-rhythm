@@ -28,7 +28,7 @@ def generate(depth):
   return grammar
 
 def onset_cell(onset, depth):
-  # Problem: triplets can't have bound notes as it is now
+  # Problem: triplets can't have tied notes as it is now
   # A symbol: ((Cell), Semantics/Features)
   Cell = []
   division = 1
@@ -66,9 +66,9 @@ class Symbol(object):
 
 class Terminal(Symbol):
 
-  # Types: Note, Bound note
+  # Types: Note, Tied note
   NOTE = 0
-  BOUND = 1
+  TIED = 1
 
   def __init__(self, symbol, type, features):
     self.type = type
@@ -77,11 +77,11 @@ class Terminal(Symbol):
   def isNote(self):
     return self.type == self.NOTE
 
-  def isBound(self):
-    return self.type == self.BOUND
+  def isTied(self):
+    return self.type == self.TIED
 
   def getTree(self):
-    if self.isBound():
+    if self.isTied():
       return '*'
     elif self.isNote():
       return str(self.symbol)
@@ -101,7 +101,7 @@ class NonTerminal(Symbol):
       if isinstance(child, Terminal):
         if child.isNote():
           signature += 'n'
-        elif child.isBound():
+        elif child.isTied():
           signature += 'b'
       elif isinstance(child, NonTerminal):
         signature += 's'

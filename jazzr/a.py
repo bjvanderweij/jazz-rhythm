@@ -1,7 +1,7 @@
 from jazzr.rhythm import groupingparser as gp
 from jazzr.rhythm import grammar
 from jazzr.tools import commandline
-import transcription
+#import transcription
 import sys
 
 notes = [int(x) for x in sys.argv[1:]]
@@ -32,9 +32,12 @@ for r in results:
 #  score.show()
 
 
-
-analysis = min(results, key=lambda x: x[0])
-print 'Duplicates: {0}.\nResult: {1}.'.format(dupes, gp.tree(analysis))
+for r in results:
+  print gp.tree(r)
+if len(results) > 0:
+  analysis = min(results, key=lambda x: x.depth)
+  notes = analysis.notes
+  print 'Duplicates: {0}.\nResult: {1}.'.format(dupes, gp.tree(analysis))
 
 exit(0)
 def printNice(features):
