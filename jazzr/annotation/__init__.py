@@ -70,6 +70,12 @@ class Annotation:
     """Calculate the ideal onset of this position given the tempo in metadata"""
     return self.onset(self.nextPosition(index, ignoreRests=ignoreRests))
 
+  def onbeat(self, index):
+    pass
+
+  def offbeat(self, index):
+    pass
+
   def perf_onset(self, index):
     """Return the onset of the note corresponding to the annotation at 
     the given index."""

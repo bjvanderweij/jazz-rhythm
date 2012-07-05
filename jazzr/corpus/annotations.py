@@ -25,7 +25,7 @@ def save(collection, name, metadata, annotations, notes, midifile):
   if not os.path.exists(path):
     os.makedirs(path)
   propswriter = csv.writer(open('{0}metadata.csv'.format(path), 'wb'))
-  annotationwriter = csv.writer(open('{0}annotations.csv'.format(path), 'wb'))
+  annotationcount = 0
   noteswriter = csv.writer(open('{0}notes.csv'.format(path), 'wb'))
 
   midifile.exportMidi('{0}midi.mid'.format(path))
@@ -34,9 +34,16 @@ def save(collection, name, metadata, annotations, notes, midifile):
   for key, value in metadata.iteritems():
     propswriter.writerow([key, value])
 
-  annotationwriter.writerow(['Beat', 'Position', 'Pitch', 'Type'])
+  writing = False 
   for annotation in annotations:
+    if not writing:
+      annotationwriter = csv.writer(open('{0}annotations-{1}.csv'.format(path, annotationcount), 'wb'))
+      annotationwriter.writerow(['Beat', 'Position', 'Pitch', 'Type'])
+      writing = True
     annotationwriter.writerow(annotation[:])
+    if annotation[3] == Annotation.END:
+      annotationcount += 1
+      writing = False
 
   noteswriter.writerow(['On', 'Off', 'Pitch', 'Velocity'])
   for note in notes:

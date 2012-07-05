@@ -1,24 +1,28 @@
-from jazzr.rhythm import grammar
-from jazzr.rhythm.grammar import NonTerminal, Terminal
 import math
 
 maxdepth = 4
-IOI = 0
-TIE = 1
-SYMB = 2
 
 def preprocess(onsets):
   N = []
-  for on in onsets:
-    N.append(Onset(on))
+  lastonset = 0
+  for a, b in zip(onsets[0:-1], onsets[1:]):
+    N.append(Onset(lastonset, a, b))
+    lastonset = a
     #N.append([b-a, None, IOI, None, 0])
   return N
 
-def probability(S, verbose=False):
+def probability(S, verbose=False, corpus=True):
   threshold = 0
-  if S.depth > maxdepth:
-    return 0.0
   if not S.hasGrid():
+    if S.depth > maxdepth:
+      return 0.0
+    return 1.0
+  if S.isSong():
+    length = S.children[0].grid.levels[(0, )]
+    for child in S.children:
+      if abs(child.grid.levels[(0, )] - length) > threshold:
+        return 0.0
+      length = child.grid.levels[(0, )]
     return 1.0
   start = 0
   anchored = False
@@ -26,61 +30,39 @@ def probability(S, verbose=False):
   # Over complicated code to get an IOI from a series of notes and ties
   for (note, beat, depth) in S.notes:
     if not anchored and note.isOnset():
-      start = note.on
+      start = note.on - time
+      next = note.next
+      # If the previous notes started after the implicated start time this symbol is impossible
+      if note.previous - start > threshold:
+        return 0.0
       anchored = True
     elif note.isOnset():
+      next = note.next
       if abs(note.on - (start+time)) > threshold:
-        #print S.grid.getLength(0, 0)
-        #print 'prob:', start, note.on, start+time
         return 0.0
     time += S.grid.getLength(beat, depth)  
+  if start+time - next > threshold:
+    return 0.0
   for level in S.grid.levels.keys():
     pass
   return 1.0
-
-def probability2(S, length=None):
-  threshold = 0
-  if S[4] > maxdepth:
-    return 0.0
-  # If a probability was already defined, return it
-  if S[3]:
-    return S[3]
-  # If length is undefined, try to define it
-  if not length:
-    if S[0]:
-      length = S[0]
-    else: 
-      return 1.0
-  # If this unit doesn't have a length yet, assign it
-  if not S[0]:
-    S[0] = length
-  # If it does, see if it matches the length
-  else: 
-    if abs(length - S[0]) > threshold:
-      return 0.0
-    else:
-      return 1.0
-  # The symbol can now be either a TIE or a SYMB
-  if S[2] == TIE:
-    return 1.0
-  # The symbol must be a SYMB by now and have children
-  p = 1.0
-  childlength = length / float(len(S[1]))
-  for child in S[1]:
-    p *= probability(child, length=childlength, depth=depth+1)
-  return p
 
 def group(S):
   result = []
   if len(S) == 1:
     # Either the other note is an onset:
     if S[0].isOnset():
-      #length = S[0][0]
       result += [Symbol.fromSymbols(Tie(), S[0])]
     elif S[0].isSymbol():
       result += [Symbol.fromSymbols(Tie(), S[0]), Symbol.fromSymbols(S[0], Tie())]
+      #if S[0].hasGrid():
+      #  result += [Song(S)]
   elif len(S) == 2:
+    #if not (S[0].isSong() or S[1].isSong()):
     result += [Symbol.fromSymbols(S[0], S[1])]
+    #elif S[0].isSong() and S[1].isSong():
+    #  if len(S[1].children) == 1:
+    #    result += [Song(S)]
   elif len(S) == 3:
     # Not supported yet
     pass
@@ -108,9 +90,6 @@ def parse(N, beam=0.5):
   for j in range(1, n+1):
     # Fill diagonal cells
     t[j-1, j] = [N[j-1]] + close([N[j-1]], beam=beam)
-    #print j-1, j
-    #for item in t[j-1, j]:
-    #  print tree(item)
     # Iterate over columns
     for i in range(j-2, -1, -1):
       print 'Filling ({0}, {1}) '.format(i, j),
@@ -120,15 +99,12 @@ def parse(N, beam=0.5):
           for C in t[k,j]:
             cell += close([B,C], beam=beam)
       t[i,j] = cell
-      #print i, j
-      #for item in cell:
-      #  print tree(item)
       print '{0} hypotheses'.format(len(cell))
   return t
 
 def tree(S):
   types = ['on', 'tie', 'symb']
-  if not S.isSymbol():
+  if S.isTie() or S.isOnset():
     return types[S.type]
   return [tree(child) for child in S.children]
   #return [S[0]/float(one), [tree(child, one) for child in S[1]]]
@@ -139,20 +115,13 @@ class Symbol(object):
   ONSET = 0
   TIE = 1
   SYMB = 2
+  SONG = 3
   
   #Beats
   ON = 0
   OFF = 1
 
-  #Intervals
-  ON_OFF = 0
-  ON_ON = 1
-  OFF_OFF = 2
-  OFF_ON = 3
-
-  def __init__(self, notes=[], length=-1, probability=-1, children=None, depth=0, type=SYMB, grid=None):
-    self.length = length
-    self.probability = probability
+  def __init__(self, notes=[], children=None, depth=0, type=SYMB, grid=None):
     self.depth = depth
     self.type = type
     self.children = children
@@ -195,25 +164,31 @@ class Symbol(object):
   def isSymbol(self):
     return self.type == self.SYMB
 
-  def hasLength(self):
-    return self.length >= 0
+  def isSong(self):
+    return self.type == self.SONG
 
-  def hasProbability(self):
-    return self.probability >= 0
+class Song(Symbol):
 
-  def leftTie(self):
-    self.leftTies += 0.5
-
-  def rightTie(self):
-    self.rightTies += 0.5
-
+  def __init__(self, Symbols):
+    grid = Grid.averageGrid(Symbols)
+    depth = max([S.depth for S in Symbols])
+    children = []
+    notes = []
+    for S in Symbols:
+      if S.isSong():
+        children += S.children
+      else: children += [S]
+      notes += S.notes
+    super(Song, self).__init__(grid=grid, notes=notes, children=children, depth=depth, type=Symbol.SONG)
+    
 
 class Onset(Symbol):
 
-  def __init__(self, on):
+  def __init__(self, previous, on, next):
+    self.previous = previous
     self.on = on
+    self.next = next
     super(Onset, self).__init__(type=Symbol.ONSET)
-
 
 class Tie(Symbol):
 
@@ -227,22 +202,26 @@ class Grid(object):
 
   def __init__(self, levels):
     self.levels = levels
-  
+
   @staticmethod
-  def division(depth):
-    return 1/float(math.pow(2, depth))
+  def averageGrid(Symbols):
+    levels = {}
+    if len(Symbols) == 0:
+      return levels
+    for (key, value) in Symbols[0].grid.levels.iteritems():
+      levels[(key[0], )] = value
+    for symbol in Symbols[1:]:
+      for (key, value) in symbol.grid.levels.iteritems():
+        if (key[0], ) in levels:
+          levels[(key[0], )] = 0.5 * levels[(key[0],)] + 0.5 * value
+        else:
+          levels[(key[0], )] = value
+    return Grid(levels)
 
   @staticmethod
   def getGrid(A, B, notes):
     levels = {}
     # If both symbols don't have a grid
-    p = []
-    for (note, beat, depth) in notes:
-      if note.isOnset():
-        p.append((note.on, depth))
-      else:
-        p.append(('tie', depth))
-
     if not A.hasGrid() and not B.hasGrid():
       length = 0.0
       started = False
@@ -276,12 +255,6 @@ class Grid(object):
     # If both symbols have a grid
     else:
       levels[(0, )] = A.grid.levels[(0, )] + B.grid.levels[(0, )]
-      #for (key, value) in A.grid.levels.iteritems() + B.grid.levels.iteritems():
-      #  if (key[0]+1, ) in levels:
-      #    # Tricky assumption
-      #    levels[(key[0]+1, )] = 0.5 * levels[(key[0]+1,)] + 0.5 * value
-      #  else:
-      #    levels[(key[0]+1, )] = value
     if len(levels) > 0:
       return Grid(levels)
     return None

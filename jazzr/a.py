@@ -1,10 +1,19 @@
 from jazzr.rhythm import groupingparser as gp
 from jazzr.rhythm import grammar
+from jazzr.corpus import annotations
 from jazzr.tools import commandline
 #import transcription
 import sys
 
-notes = [int(x) for x in sys.argv[1:]]
+notes = []
+if len(sys.argv) > 1:
+  notes = [int(x) for x in sys.argv[1:]]
+else:
+  annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
+  #for i in range(len(annotation)):
+  for i in range(15):
+    if annotation.type(i) in [annotation.NOTE, annotation.END]:
+      notes.append(annotation.position(i))
 N = gp.preprocess(notes)
 n = len(N)
 chart = gp.parse(N)
@@ -17,7 +26,16 @@ for r in results:
     dupes += 1
   else:
     trees += [tree]
-  
+
+for r in results:
+  if r.hasGrid():
+    print '{0}:\t{1}'.format(r.grid.levels[(0, )], gp.tree(r))
+if len(results) > 0:
+  analysis = min(results, key=lambda x: x.depth)
+  notes = analysis.notes
+  print 'Duplicates: {0}.\nResult: {1}.'.format(dupes, gp.tree(analysis))
+
+exit(0)
 #results = sorted(results, key=lambda x: x[0])
 #score = None
 #from music21 import stream
@@ -32,14 +50,6 @@ for r in results:
 #  score.show()
 
 
-for r in results:
-  print gp.tree(r)
-if len(results) > 0:
-  analysis = min(results, key=lambda x: x.depth)
-  notes = analysis.notes
-  print 'Duplicates: {0}.\nResult: {1}.'.format(dupes, gp.tree(analysis))
-
-exit(0)
 def printNice(features):
   result = ''
   for feature in features:
