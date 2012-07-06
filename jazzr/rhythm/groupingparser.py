@@ -17,13 +17,9 @@ def probability(S, verbose=False, corpus=True):
     if S.depth > maxdepth:
       return 0.0
     return 1.0
-  if S.isSong():
-    length = S.children[0].grid.levels[(0, )]
-    for child in S.children:
-      if abs(child.grid.levels[(0, )] - length) > threshold:
-        return 0.0
-      length = child.grid.levels[(0, )]
-    return 1.0
+  # A hack to parse the corpus efficiently
+  if S.grid.levels[(0, )] * 4 != int(S.grid.levels[(0, )] * 4) and S.grid.levels[(0, )] * 3 != int(S.grid.levels[(0, )] * 3):
+    return 0.0
   start = 0
   anchored = False
   time = 0
@@ -32,15 +28,17 @@ def probability(S, verbose=False, corpus=True):
     if not anchored and note.isOnset():
       start = note.on - time
       next = note.next
-      # If the previous notes started after the implicated start time this symbol is impossible
+      # If the previous notes started after the implicated start time this symbol is unlikely
       if note.previous - start > threshold:
         return 0.0
       anchored = True
     elif note.isOnset():
       next = note.next
+      # If an onset doesn't occur at the time previous intervals suggest it to occur, this symbol is unlikely
       if abs(note.on - (start+time)) > threshold:
         return 0.0
     time += S.grid.getLength(beat, depth)  
+  # If so many ties are added that the total length passes the next onset this symbol is unlikely
   if start+time - next > threshold:
     return 0.0
   for level in S.grid.levels.keys():
@@ -50,19 +48,15 @@ def probability(S, verbose=False, corpus=True):
 def group(S):
   result = []
   if len(S) == 1:
-    # Either the other note is an onset:
     if S[0].isOnset():
       result += [Symbol.fromSymbols(Tie(), S[0])]
     elif S[0].isSymbol():
       result += [Symbol.fromSymbols(Tie(), S[0]), Symbol.fromSymbols(S[0], Tie())]
-      #if S[0].hasGrid():
-      #  result += [Song(S)]
   elif len(S) == 2:
-    #if not (S[0].isSong() or S[1].isSong()):
     result += [Symbol.fromSymbols(S[0], S[1])]
-    #elif S[0].isSong() and S[1].isSong():
-    #  if len(S[1].children) == 1:
-    #    result += [Song(S)]
+    # Triple division
+    if S[1].isSymbol():
+      result += [Symbol.tripleFromSymbols(S[0], S[1])]
   elif len(S) == 3:
     # Not supported yet
     pass
@@ -86,6 +80,7 @@ def close(S, beam=0.5):
 def parse(N, beam=0.5):
   n = len(N)
   t = {}
+  print "Input length {0}".format(n)
   # Iterate over rows
   for j in range(1, n+1):
     # Fill diagonal cells
@@ -149,6 +144,27 @@ class Symbol(object):
     notes = notesA + notesB
     depth = max(A.depth, B.depth) + 1
     children = [A, B]
+    R = Symbol(grid=Grid.getGrid(A, B, notes), notes=notes, children=children, depth=depth)
+    return R
+
+  @staticmethod
+  def tripleFromSymbols(A, B):
+    notesA = []
+    notesB = []
+    # This labels the notes as on or off beats
+    # (which is not a property of the note itself
+    # but a result of the derivation)
+    if A.isOnset() or A.isTie():
+      notesA = [(A, Symbol.ON, 1)]
+    else:
+      for note in A.notes:
+        notesA += [(note[0], note[1], note[2]+1)]
+
+    for note in B.notes:
+      notesB += [(note[0], note[1], note[2])]
+    notes = notesA + notesB
+    depth = max(A.depth, B.depth) + 1
+    children = [A] + B.children
     R = Symbol(grid=Grid.getGrid(A, B, notes), notes=notes, children=children, depth=depth)
     return R
 
@@ -240,19 +256,11 @@ class Grid(object):
       # Is this correct?
       if started and end:
         levels[(0, )] = 1/float(length) * (end - start)
-        #print '-----------'
-        #print p
-        #print '-----------'
     # If one of them does
     elif A.hasGrid():
       levels[(0, )] = A.grid.levels[(0, )] * 2.0
-      #for (key, value) in A.grid.levels.iteritems():
-      #  levels[(key[0]+1, )] = value
     elif B.hasGrid():
       levels[(0, )] = B.grid.levels[(0, )] * 2.0
-      #for (key, value) in B.grid.levels.iteritems():
-      #  levels[(key[0]+1, )] = value
-    # If both symbols have a grid
     else:
       levels[(0, )] = A.grid.levels[(0, )] + B.grid.levels[(0, )]
     if len(levels) > 0:

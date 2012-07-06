@@ -112,8 +112,6 @@ def load(collection, name):
   if not os.path.exists(path): return None
   propsreader = csv.reader(open('{0}metadata.csv'.format(path), 'rb'))
   propsreader.next()
-  annotationreader = csv.reader(open('{0}annotations.csv'.format(path), 'rb'))
-  annotationreader.next()
   notesreader = csv.reader(open('{0}notes.csv'.format(path), 'rb'))
   notesreader.next()
 
@@ -123,23 +121,34 @@ def load(collection, name):
       metadata[key] = float(value)
     else:
       metadata[key] = value
-  
-  annotations = []
-  for [beat, position, pitch, type] in annotationreader:
-    annotations.append((float(beat), int(position), int(pitch), int(type)))
-
+ 
   notes = []
   for [on, off, pitch, velocity] in notesreader:
     notes.append((float(on), float(off), int(pitch), int(velocity)))
   
   midifile = representation.MidiFile('{0}midi.mid'.format(path))
-  return (metadata, annotations, notes, midifile)
+
+  results = []
+  # Backwards compatibility
+  if os.path.exists('{0}annotations.csv'.format(path)):
+    os.system('mv {0}annotations.csv {0}annotations-0.csv'.format(path))
+  annotationcount = 0
+  while os.path.exists('{0}annotations-{1}.csv'.format(path, annotationcount)):
+    annotationreader = csv.reader(open('{0}annotations-{1}.csv'.format(path, annotationcount), 'rb'))
+    annotationreader.next()
+    annotations = []
+    for [beat, position, pitch, type] in annotationreader:
+      annotations.append((float(beat), int(position), int(pitch), int(type)))
+    annotationcount += 1
+    results.append((metadata, annotations, notes, midifile))
+
+  return results
 
 def loadAll():
   corpus = []
   for song in songs(): 
     for version in versions(song):
       for track in tracks(song, version):
-        metadata, annotation, notes, midifile = load('annotations', '{0}-{1}-{2}'.format(song, version, track))
-        corpus += [Annotation(annotation, notes, metadata)]
+        for (metadata, annotation, notes, midifile) in load('annotations', '{0}-{1}-{2}'.format(song, version, track)):
+          corpus += [Annotation(annotation, notes, metadata)]
   return corpus

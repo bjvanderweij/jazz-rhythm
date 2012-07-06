@@ -3,22 +3,49 @@ from jazzr.rhythm import grammar
 from jazzr.corpus import annotations
 from jazzr.tools import commandline
 #import transcription
-import sys
+import sys, math
 
 notes = []
 if len(sys.argv) > 1:
   notes = [int(x) for x in sys.argv[1:]]
 else:
   annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
-  #for i in range(len(annotation)):
-  for i in range(15):
+  correction = annotation.position(0)
+  for i in range(len(annotation)):
+  #for i in range(10):
     if annotation.type(i) in [annotation.NOTE, annotation.END]:
-      notes.append(annotation.position(i))
+      if annotation.type(i) == annotation.END and annotation.barposition(i) != 0:
+        print 'Warning, end marker note not on beginning of bar'
+      notes.append(annotation.position(i) - correction)
+  powers = [math.pow(2, x) for x in range(10)]
+  bars = annotation.bar(annotation.position(-1) - correction)-1
+  if bars not in powers:
+    print 'Correcting bar count from {0} to '.format(bars+1),
+    for power in powers:
+      if bars < power:
+        notes[-1] = float(power+1) * 4.0
+        print '{0}'.format(power+1)
+        break
 N = gp.preprocess(notes)
 n = len(N)
 chart = gp.parse(N)
 results = chart[0, n]
+test = chart[0, 2]
 trees = []
+dupes = 0
+
+out = open('test.txt', 'w')
+for r in test:
+  tree = gp.tree(r)
+  if r.hasGrid():
+    out.write('{0}:\t{1}\n'.format(r.grid.levels[(0, )], tree))
+  if tree in trees:
+    dupes += 1
+  else:
+    trees += [tree]
+out.write('{0}'.format(dupes))
+out.close()
+
 dupes = 0
 for r in results:
   tree = gp.tree(r)

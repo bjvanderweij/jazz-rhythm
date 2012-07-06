@@ -42,6 +42,9 @@ class Annotation:
   def __getitem__(self, i):
     return self.annotation[i]
 
+  def __setitem__(self, i, item):
+    self.annotation[i] = item
+
   def generateItems(self):
     for a in self.annotation:
       yield a

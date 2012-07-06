@@ -105,9 +105,14 @@ class Tool:
     self.refreshMidi = True
 
   def load(self, collection=None, name=None):
-    result = annotationcorpus.load(collection, name)
-    if result:
-      (metadata, self.annotations, self.notelist, self.midifile) = result
+    results = annotationcorpus.load(collection, name)
+    if results:
+      self.annotations = []
+      for metadata, annotations, notelist, midifile in results:
+        self.annotations += annotations
+
+      self.notelist = notelist
+      self.midifile = midifile
       self.bpm = metadata['bpm']
       self.offset = metadata['offset']
       self.name = metadata['name']
@@ -390,15 +395,21 @@ class Tool:
       self.midipos = len(self.notelist) - 1
 
     # Resize the pads, generate the notelist
+    self.annotations = sorted(self.annotations, key=lambda x: x[0])
+    alength = 0
+    if len(self.annotations) > 0:
+      alength = self.quarters2units(self.annotations[-1][0]) + 1
+      self.extra = 0
+        
     if self.refreshMidi:
       self.notelist = self.generate_notelist()
-      self.length = self.onset2units(self.notelist[-1][0]) + 1
+      self.length = max(self.onset2units(self.notelist[-1][0]) + 1, alength)
       self.midipad.resize(self.height, self.length)
       self.midipad.clear()
     if self.refreshAnnotation:
       if not self.notelist:
         self.notelist = self.generate_notelist()
-      self.length = self.onset2units(self.notelist[-1][0]) + 1
+      self.length = max(self.onset2units(self.notelist[-1][0]) + 1, alength)
       self.annotationpad.resize(self.height, self.length + self.extra + 1)
       self.annotationpad.clear()
      
