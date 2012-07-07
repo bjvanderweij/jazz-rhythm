@@ -7,8 +7,10 @@ import sys, math
 
 notes = []
 if len(sys.argv) > 1:
+  gp.corpus = False
   notes = [int(x) for x in sys.argv[1:]]
 else:
+  gp.corpus = True
   annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
   correction = annotation.position(0)
   for i in range(len(annotation)):
@@ -26,6 +28,7 @@ else:
         notes[-1] = float(power+1) * 4.0
         print '{0}'.format(power+1)
         break
+
 N = gp.preprocess(notes)
 n = len(N)
 chart = gp.parse(N)
@@ -37,8 +40,8 @@ dupes = 0
 out = open('test.txt', 'w')
 for r in test:
   tree = gp.tree(r)
-  if r.hasGrid():
-    out.write('{0}:\t{1}\n'.format(r.grid.levels[(0, )], tree))
+  if r.hasLength():
+    out.write('{0}:\t{1}\n'.format(r.length, tree))
   if tree in trees:
     dupes += 1
   else:
@@ -55,12 +58,14 @@ for r in results:
     trees += [tree]
 
 for r in results:
-  if r.hasGrid():
-    print '{0}:\t{1}'.format(r.grid.levels[(0, )], gp.tree(r))
+  if r.hasLength():
+    print '{0}:\t{1}'.format(r.length, gp.tree(r))
 if len(results) > 0:
   analysis = min(results, key=lambda x: x.depth)
-  notes = analysis.notes
   print 'Duplicates: {0}.\nResult: {1}.'.format(dupes, gp.tree(analysis))
+
+#chosen = results[commandline.menu('', [(r.length, gp.tree(r)) for r in results])]
+#gp.probability(chosen, verbose=True)
 
 exit(0)
 #results = sorted(results, key=lambda x: x[0])

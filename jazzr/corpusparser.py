@@ -25,10 +25,11 @@ def latexify_list(L, depth=0):
     print '] ',
   
 def run():
-  corpus = annotations.loadAll()
+  corpus = annotations.loadAll()[3:]
   import datetime
   time = str(datetime.datetime.now())
   os.mkdir(time)
+  gp.corpus = True
 
   for annotation in corpus:
     print annotation.name
