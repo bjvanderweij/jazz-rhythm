@@ -25,11 +25,13 @@ def latexify_list(L, depth=0):
     print '] ',
   
 def run():
-  corpus = annotations.loadAll()[3:]
+  corpus = annotations.loadAll()
   import datetime
   time = str(datetime.datetime.now())
   os.mkdir(time)
+  # Set some parameters of the parser
   gp.corpus = True
+  gp.tolerance = 0.0001
 
   for annotation in corpus:
     print annotation.name
@@ -40,17 +42,17 @@ def run():
     for i in range(len(annotation)):
     #for i in range(10):
       if annotation.type(i) in [annotation.NOTE, annotation.END]:
-        if annotation.type(i) == annotation.END and annotation.barposition(i) != 0:
+        if annotation.type(i) == annotation.END and annotation.barposition(annotation.position(i)) != 0:
           print 'Warning, end marker note not on beginning of bar'
         notes.append(annotation.position(i) - correction)
     powers = [math.pow(2, x) for x in range(10)]
-    bars = annotation.bar(annotation.position(-1) - correction)-1
+    bars = annotation.bar(annotation.position(-1) - correction)
     if bars not in powers:
-      print 'Correcting bar count from {0} to '.format(bars+1),
+      print 'Correcting bar count from {0} to '.format(bars),
       for power in powers:
         if bars < power:
-          notes[-1] = float(power+1) * 4.0
-          print '{0}'.format(power+1)
+          notes[-1] = float(power) * 4.0
+          print '{0}'.format(power)
           break
 
     N = gp.preprocess(notes)
@@ -59,7 +61,7 @@ def run():
     parses = chart[0, n]
     results = []
     for parse in parses:
-      results.append((parse.depth, gp.tree(parse)))
+      results.append((parse.depth, latexify_list(gp.tree(parse))))
 
     version = 0
     while os.path.exists('{0}/{1}-{2}-parses.txt'.format(time, annotation.name, version)):
