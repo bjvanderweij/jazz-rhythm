@@ -94,10 +94,11 @@ class Symbol(object):
 
 class Onset(Symbol):
 
-  def __init__(self, previous, on, next):
+  def __init__(self, previous, on, next, annotation=None):
     self.previous = previous
     self.on = on
     self.next = next
+    self.annotation = annotation
     super(Onset, self).__init__([], type=Symbol.ONSET)
 
   def __str__(self):

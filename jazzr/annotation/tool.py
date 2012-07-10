@@ -108,11 +108,12 @@ class Tool:
     results = annotationcorpus.load(collection, name)
     if results:
       self.annotations = []
-      for metadata, annotations, notelist, midifile in results:
-        self.annotations += annotations
+      self.midifile = annotationcorpus.load_midifile(collection, name)
+      for result in results:
+        self.annotations += result.annotation
 
-      self.notelist = notelist
-      self.midifile = midifile
+      metadata = results[0].metadata
+      self.notelist = results[0].notes
       self.bpm = metadata['bpm']
       self.offset = metadata['offset']
       self.name = metadata['name']

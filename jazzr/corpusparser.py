@@ -1,76 +1,79 @@
+#!/usr/bin/python
+
 from jazzr.rhythm import groupingparser as gp
 from jazzr.corpus import annotations
-import math, os
+import math, os, pickle
 
 def latexify(S, depth=0):
+  res = ''
   if S.isOnset():
-    print '[ .$\\bullet$ ] ',
+    res += '[ .$\\bullet$ ] '
   elif S.isTie():
-    print '[ .$*$ ] ',
+    res += '[ .$*$ ] '
   if S.isSymbol():
-    print '[ .{0} '.format(1/math.pow(2, depth))
+    res += '[ .$\\frac{{1}}{{{0}}}$ '.format(int(math.pow(2, depth)))
     for child in S.children:
-      latexify(child, depth=depth+1)
-    print '] '
+      res += latexify(child, depth=depth+1)
+    res += '] '
+  return res
 
 def latexify_list(L, depth=0):
+  res = ''
   if L == 'on':
-    print '[ .$\\bullet$ ] ',
+    res += '[ .$\\bullet$ ] '
   elif L == 'tie':
-    print '[ .$*$ ] ',
+    res += '[ .$*$ ] '
   else:
-    print '[ .$\\frac{{1}}{{{0}}}$ '.format(int(math.pow(2, depth))),
+    res += '[ .$\\frac{{1}}{{{0}}}$ '.format(int(math.pow(2, depth)))
     for child in L:
-      latexify_list(child, depth=depth+1)
-    print '] ',
+      res += latexify_list(child, depth=depth+1)
+    res += '] '
+  return res
   
 def run():
   corpus = annotations.loadAll()
   import datetime
   time = str(datetime.datetime.now())
   os.mkdir(time)
-  # Set some parameters of the parser
-  gp.corpus = True
-  gp.tolerance = 0.0001
 
-  for annotation in corpus:
+  for annotation in corpus[20:]:
     print annotation.name
-    notes = []
-    if len(annotation) < 5:
+    if len(annotation) < 10:
       continue
-    correction = annotation.position(0)
-    for i in range(len(annotation)):
-    #for i in range(10):
-      if annotation.type(i) in [annotation.NOTE, annotation.END]:
-        if annotation.type(i) == annotation.END and annotation.barposition(annotation.position(i)) != 0:
-          print 'Warning, end marker note not on beginning of bar'
-        notes.append(annotation.position(i) - correction)
-    powers = [math.pow(2, x) for x in range(10)]
-    bars = annotation.bar(annotation.position(-1) - correction)
-    if bars not in powers:
-      print 'Correcting bar count from {0} to '.format(bars),
-      for power in powers:
-        if bars < power:
-          notes[-1] = float(power) * 4.0
-          print '{0}'.format(power)
-          break
-
-    N = gp.preprocess(notes)
-    n = len(N)
-    chart = gp.parse(N)
-    parses = chart[0, n]
+    parses = gp.parse_annotation(annotation, verbose=False)
+    if len(parses) == 0:
+      print 'No parses :('
+      continue
     results = []
     for parse in parses:
-      results.append((parse.depth, latexify_list(gp.tree(parse))))
+      results.append((parse.depth, parse))
 
-    version = 0
-    while os.path.exists('{0}/{1}-{2}-parses.txt'.format(time, annotation.name, version)):
-      version += 1
-
-    out = open('{0}/{1}-{2}-parses.txt'.format(time, annotation.name, version), 'w')
+    outTxt = open('{0}/{1}-parses.txt'.format(time, annotation.name), 'w')
+    counter = 0
+    minimumdepth = min(results, key=lambda x: x[0])[0]
     for result in sorted(results, key=lambda x: x[0]):
-      out.write('{0}:{1}\n'.format(result[0], result[1]))
-    out.close()
+      if result[0] == minimumdepth:
+        os.mkdir('{0}/temp/'.format(time))
+        os.system('cp ../Report/qtree.sty "{0}/temp/"'.format(time))
+        out = open('{0}/{1}-parse_{2}'.format(time, annotation.name, counter), 'wb')
+        latex = open('{0}/temp/{1}-parse_{2}.tex'.format(time, annotation.name, counter), 'w')
+        latex.write('\\documentclass[a4paper,10pt]{article}\n\\usepackage{qtree}\n\\usepackage{fullpage}\n\\usepackage{lscape}\n\\begin{document}\n')
+        latex.write('\\begin{landscape}\n\\resizebox{\\linewidth}{!}{\n\\Tree\n')
+        latex.write(latexify(result[1]))
+        latex.write('}\n\\end{landscape}\n\\end{document}')
+        latex.close()
+        os.chdir('{0}/temp/'.format(time))
+        os.system('pdflatex "{0}-parse_{1}.tex"'.format(annotation.name, counter))
+        os.system('cp "{0}-parse_{1}.pdf" ../'.format(annotation.name, counter))
+        os.chdir('../../')
+        os.system('rm -r "{0}/temp"'.format(time))
+        pickle.dump(result[1], out)
+        out.close()
+        counter += 1
+      outTxt.write('{0}:{1}\n'.format(result[0], gp.tree(result[1])))
+
+    outTxt.close()
+
 
 if __name__ == '__main__':
   run()

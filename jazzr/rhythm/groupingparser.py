@@ -2,19 +2,47 @@ from jazzr.rhythm.symbol import *
 import math
 
 maxdepth = 4
-tolerance = 0.0
-corpus = False
 
-def preprocess(onsets):
+def parse_onsets(onsets, verbose=False):
+  # Set some parameters of the parser
+  corpus = False
   N = []
   lastonset = 0
   for a, b in zip(onsets[0:-1], onsets[1:]):
     N.append(Onset(lastonset, a, b))
     lastonset = a
-    #N.append([b-a, None, IOI, None, 0])
-  return N
+  return parse(N, verbose=verbose)[0, len(N)]
 
-def probability(S, verbose=False):
+def parse_annotation(a, verbose=False):
+  N = []
+  lastonset = 0
+  # Annotations should start on the first beat of a measure with either a rest or an onset
+  correction = a.position(0)
+  notes = []
+  # Filter out onsets and end markers
+  for i in range(len(a)):
+  #for i in range(10):
+    if a.type(i) in [a.NOTE, a.END]:
+      if a.type(i) == a.END and a.barposition(a.position(i)) != 0:
+        print 'Warning, end marker note not on beginning of bar'
+      notes.append((a.position(i) - correction, i))
+  powers = [math.pow(2, x) for x in range(10)]
+  bars = a.bar(a.position(-1) - correction)
+  if bars not in powers:
+    print 'Correcting bar count from {0} to '.format(bars),
+    for power in powers:
+      if bars < power:
+        notes[-1] = (float(power) * 4.0, 0)
+        print '{0}'.format(power)
+        break
+  N = []
+  lastonset = 0
+  for (a, i), (b, j) in zip(notes[0:-1], notes[1:]):
+    N.append(Onset(lastonset, a, b, annotation=i))
+    lastonset = a
+  return parse(N, verbose=verbose, corpus=True, tolerance=0.0001)[0, len(N)]
+
+def probability(S, verbose=False, corpus=False, tolerance=0.0):
   if not S.hasLength():
     if S.depth > maxdepth:
       if verbose:
@@ -96,13 +124,13 @@ def group(S):
     pass
   return result
 
-def close(S, beam=0.5):
+def close(S, beam=0.5, corpus=False, tolerance=0.0):
   cell = []
   unseen = []
   while True:
     symbols = group(S)
     for s in symbols:
-      p = probability(s)
+      p = probability(s, corpus=corpus, tolerance=tolerance)
       if p > beam:
         unseen += [s]
     if unseen == []:
@@ -111,24 +139,26 @@ def close(S, beam=0.5):
     cell += S
   return cell
 
-def parse(N, beam=0.5):
+def parse(N, beam=0.5, verbose=False, tolerance=0.0, corpus=False):
   n = len(N)
   t = {}
   print "Input length {0}".format(n)
   # Iterate over rows
   for j in range(1, n+1):
     # Fill diagonal cells
-    t[j-1, j] = [N[j-1]] + close([N[j-1]], beam=beam)
+    t[j-1, j] = [N[j-1]] + close([N[j-1]], beam=beam, corpus=corpus, tolerance=tolerance)
     # Iterate over columns
     for i in range(j-2, -1, -1):
-      #print 'Filling ({0}, {1}) '.format(i, j),
+      if verbose:
+        print 'Filling ({0}, {1}) '.format(i, j),
       cell = []
       for k in range(i+1, j):
         for B in t[i,k]:
           for C in t[k,j]:
-            cell += close([B,C], beam=beam)
+            cell += close([B,C], beam=beam, corpus=corpus, tolerance=tolerance)
       t[i,j] = cell
-      #print '{0} hypotheses'.format(len(cell))
+      if verbose:
+        print '{0} hypotheses'.format(len(cell))
   return t
 
 def profile():
@@ -139,11 +169,8 @@ def profile():
   p.sort_stats('time')
   p.print_stats()
 
-
 def tree(S):
   types = ['on', 'tie', 'symb']
   if S.isTie() or S.isOnset():
     return types[S.type]
   return [tree(child) for child in S.children]
-  #return [S[0]/float(one), [tree(child, one) for child in S[1]]]
-

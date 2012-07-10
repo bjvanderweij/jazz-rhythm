@@ -7,49 +7,14 @@ import sys, math
 
 notes = []
 if len(sys.argv) > 1:
-  gp.corpus = False
   notes = [int(x) for x in sys.argv[1:]]
+  results = gp.parse_onsets(notes)
 else:
-  gp.corpus = True
-  gp.tolerance = 0.0001
   annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
-  correction = annotation.position(0)
-  for i in range(len(annotation)):
-  #for i in range(22, 28):
-    if annotation.type(i) in [annotation.NOTE, annotation.END]:
-      if annotation.type(i) == annotation.END and annotation.barposition(annotation.position(i)) != 0:
-        print 'Warning, end marker note not on beginning of bar'
-      notes.append(annotation.position(i) - correction)
-  powers = [math.pow(2, x) for x in range(10)]
-  bars = annotation.bar(notes[-1])
-  if bars not in powers:
-    print 'Correcting bar count from {0} to '.format(bars),
-    for power in powers:
-      if bars < power:
-        notes[-1] = float(power) * annotation.meter.quarters_per_bar()
-        print '{0}'.format(power)
-        break
+  results = gp.parse_annotation(annotation)
 
-N = gp.preprocess(notes)
-print notes
-n = len(N)
-chart = gp.parse(N)
-results = chart[0, n]
-test = chart[0, 2]
 trees = []
 dupes = 0
-
-out = open('test.txt', 'w')
-for r in test:
-  tree = gp.tree(r)
-  if r.hasLength():
-    out.write('{0}:\t{1}\n'.format(r.length, tree))
-  if tree in trees:
-    dupes += 1
-  else:
-    trees += [tree]
-out.write('{0}'.format(dupes))
-out.close()
 
 dupes = 0
 for r in results:
