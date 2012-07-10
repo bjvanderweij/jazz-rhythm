@@ -1,45 +1,83 @@
 from jazzr.rhythm import groupingparser as gp
-from music21 import stream, clef, tempo, meter, note, duration, metadata
+from music21 import stream, clef, tempo, meter, note, duration, metadata, tie
+import math, os
 
-def transcribeTree(tree, barlevel=0):
-    """Return a music21 score object, generated from a tree produced by the 
-    grouping parser"""
-    score = stream.Score()
-    score.metadata = metadata.Metadata()
-    score.metadata.title = 'Transcription of rhythmic analysis'
-    score.metadata.composer = ''
-    part = stream.Part()
-    part.insert(stream.Measure())
-    part[0].insert(0, clef.TrebleClef())
-    part[0].insert(0, meter.TimeSignature('4/4'))
-    part = transcribe(tree, part, 0, barlevel=0)
-    score.append(part)
-    return score
+ONSET = 0
+TIE = 1
 
-def transcribe(S, score, level, barlevel=0, one=0):
-  if not one:
-    one = S[0]
+def save_pdf(S, annotation=None, filename='transcription', barlevel=0):
+  score = transcribe(S, annotation=annotation, barlevel=barlevel)
+  out = open('{0}.xml'.format(filename), 'w')
+  out.write(score.musicxml)
+  out.close()
+  os.system('musescore -o "{0}.pdf" "{0}".xml'.format(filename))
+  os.system('rm {0}.xml'.format(filename))
 
-  workingstream = score
-  if level == barlevel:
-    print 'Inserting bar'
-    workingstream = stream.Measure()
+def view_pdf(S, annotation=None, barlevel=0):
+  save_pdf(S, annotation=annotation, barlevel=barlevel)
+  os.system('evince transcription.pdf')
+  os.system('rm transcription.pdf')
   
-  if S[2] == gp.IOI:
-    print 'Inserting note'
-    workingstream.append(note.Note(quarterLength=4* S[0]/float(one)))
-  elif S[2] == gp.TIE:
-    print 'Inserting tie'
-    if len(workingstream) == 0:
-      workingstream.append(note.Rest(quarterLength=4* S[0]/float(one)))
-    else:
-      workingstream[-1].quarterLength = 4*S[0]/float(one)
-  elif S[2] == gp.SYMB:
-    for child in S[1]:
-      workingstream = transcribe(child, workingstream, level+1, barlevel=barlevel, one=one)
-    if level == barlevel:
-      score.append(workingstream)
-      workingstream = score
-  return workingstream
 
+def transcribe(S, annotation=None, barlevel=0):
+  title = 'Transcription of rhythmic analysis'
+  if annotation:
+    title = annotation.name
+  score = stream.Score()
+  score.metadata = metadata.Metadata()
+  score.metadata.title = title
+  score.metadata.composer = ''
+  part = stream.Part()
+  part.insert(stream.Measure())
+  part[0].insert(0, clef.TrebleClef())
+  part[0].insert(0, meter.TimeSignature('4/4'))
+  notelist = scorelist(S, barlevel=barlevel)
+  lastmeasure = -1
+  measure = 1
+  position = 0
+  notesInserted = False
+  for item in notelist:
+    if measure > lastmeasure:
+      part.append(stream.Measure())
+      lastmeasure = measure
+    if item[0] == ONSET:
+      notesInserted = True
+      n = note.Note(quarterLength=4*item[1])
+      if annotation:
+        n.midi = annotation.pitch(item[2])
+      part[measure].append(n)
+    elif item[0] == TIE:
+      if not notesInserted:
+        part[measure].append(note.Rest(quarterLength=4*item[1]))
+      else:
+        if len(part[measure]) > 0:
+          part[measure][-1].quarterLength += 4*item[1]
+        else:
+          part[measure-1][-1].tie = tie.Tie('start')
+          n = note.Note(quarterLength=4*item[1])
+          n.pitch = part[measure-1][-1].pitch
+          n.tie = tie.Tie('end')
+    position += item[1]
+    if position == 1:
+      position = 0
+      measure += 1
+    if position > 1:
+      position = 0
+      measure += 1
+      print 'Warning, items don\'t sum to one.'
+  score.append(part)
+  return score
+
+def scorelist(S, barlevel=0, depth=0, duration=1):
+  score = []
+  if S.isOnset():
+    score = [(ONSET, duration, S.annotation)]
+  if S.isTie():
+    score = [(TIE, duration, 0)]
+  if S.isSymbol():
+    if depth >= barlevel:
+      duration /= float(len(S.children))
+    for child in S.children:
+      score += scorelist(child, depth=depth+1, barlevel=barlevel, duration=duration)
+  return score
 
