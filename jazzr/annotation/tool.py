@@ -1,4 +1,4 @@
-from jazzr.rhythm import grid, meter
+from jazzr.rhythm import meter
 from jazzr.annotation import Annotation
 from jazzr.midi import player, representation, generator
 from jazzr.tools import cgui, rbsearch, Fraction

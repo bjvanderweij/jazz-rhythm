@@ -1,62 +1,68 @@
-# A collection of tools for representing metrical grids
-from jazzr.midi import representation
-import math
 
-def level(measurepos, numlevels=4, division=2):
-  measurepos = measure_pos(measurepos)
-  levels = [[] for i in range(numlevels)]
-  for l in range(numlevels):
-    levels[l] = [beatlength(l) * i for i in range(numlevels)]
-    if measurepos > beatlength(l, division=division):
-      measurepos -= beatlength(l, division=division)
-    if measurepos in levels[l]: return l
-  return -1
 
-def beats_per_bar(numlevels, division=2):
-  # Calculate the number of beats per measure
-  return int(math.pow(2, numlevels-1))
+class Grid:
 
-def beatlength(level, division=2):
-  return 1/float(math.pow(2, level))
+  DOWN = 0
+  UP = 1
 
-def measure_pos(pos):
-  return pos - int(pos)
-
-def measure(pos):
-  return int(pos)
-
-def create_grid(numlevels, n, division=2, spacing=0):
-  beats = beats_per_bar(numlevels, division=division)
-  lines = []
-  # For every level:
-  for l in range(numlevels):
-    lines +=  ['']
-    for m in range(n):
-      for i in range(beats):
-        if level(i * beatlength(numlevels-1, division=division),\
-            division=division, numlevels=numlevels) <= l:
-          lines[l] += 'o'
-        else:
-          lines[l] += ' '
-        lines[l] += ''.join([' ' for i in range(spacing)])
-    print
-  return lines
+  ONSET=0
+  TIE=1
   
 
-def onsets2midi(onsets, bpm=120, pitch=60, velocity=80, swing=2/3.0):
-  mid = representation.MidiFile()
-  tactus = 2
-  #tactuslength = mid.seconds_to_ticks(60/float(bpm))
-  tactuslength = mid.quarternotes_to_ticks(1)
-  onsets = sorted(onsets)
-  mid['0'] = representation.Track(mid, 1)
-  for i in range(len(onsets)):
-    if level(onsets[i]) == 3:
-      onsets[i] = onsets[i] - 1/8.0 + swing*1/4.0
-    length = tactuslength
-    if i + 1< len(onsets):
-      length = (onsets[i+1] - onsets[i])*tactuslength*4
-    on = onsets[i]*tactuslength*4
-    off = on+length
-    mid['0'].notes.append(representation.Note(on, off, pitch, velocity))
-  return mid
+  def __init__(self):
+    self.levels = {}
+    self.beats = []
+    pass
+
+  def addTie(self, level, beat):
+    self.beats.append((level, beat, self.TIE))
+
+  def addBeat(self, level, beat, onset):
+    self.levels[(level, beat)] = onset
+    self.beats.append((level, beat, self.ONSET))
+
+  def combine(self, grids):
+    for grid in grids:
+      for beat in grid.beats:
+        self.beats.append(beat)
+      for level, onset in grid.levels.iteritems():
+        if not level in self.levels:
+          self.levels[level] = onset
+    levels = sorted(self.levels.keys(), key=lambda x: x[0])
+    maxlevel = levels[0]
+
+    newbeats = []
+    for level, beat, type in self.beats:
+      newbeats.append((level+1, beat, type))
+    self.beats = newbeats
+
+  def getOnset(self, position):
+    pass
+
+class Level:
+
+  def __init__(self, downbeats=[], upbeats=[]):
+    self.downbeats = downbeats
+    self.upbeats = upbeats
+    self.ratio=ratio
+
+  def ratio(self):
+    pass
+
+class MetricUnit:
+
+  def __init__(self, down=None, up=None, children=[]):
+    self.down = down
+    self.up = up
+
+  def getDownBeat():
+    if isinstance(self.down, MetricUnit):
+      return self.down.getDownBeat():
+    else:
+      return self.down
+
+
+
+
+
+

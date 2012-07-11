@@ -1,3 +1,5 @@
+import math
+
 class Symbol(object):
 
   # Types
@@ -7,28 +9,46 @@ class Symbol(object):
   SONG = 3
   
   #Beats
-  ON = 0
-  OFF = 1
+  DOWN = 0
+  UP = 1
 
-  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, grid=None):
+  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, downbeat=None, upbeat=None, beatLength=None):
     self.depth = depth
     self.type = type
     self.children = children
     self.length = length
     self.features = features
+    self.downbeat = downbeat
+    self.upbeat = upbeat
+    self.beatLength = beatLength
 
   @staticmethod
   def fromSymbols(Symbols):
     tiesLeft = 0.0
     tiesRight = 0.0
     previous = 0.0
+
     on = 0.0
     onsetDefined = False
+
     next = 0.0
     span = None
     childLength = 1/float(len(Symbols))
 
-    for S in Symbols:
+    downbeat = None
+    upbeat = None
+
+    beatLength = None
+    reference = 0
+    beatpos = 0
+    beatLengthDefined = False
+
+    if len(Symbols) == 2:
+      beats = [Symbol.DOWN, Symbol.UP]
+    elif len(Symbols) == 3:
+      beats = [Symbol.DOWN, Symbol.UP, Symbol.UP]
+
+    for S, beat in zip(Symbols, range(len(Symbols))):
       if S.isTie():
         if onsetDefined:
           tiesRight += childLength
@@ -36,6 +56,13 @@ class Symbol(object):
           tiesLeft += childLength
       elif S.isOnset():
         next = S.next
+
+        # GRID
+        if beats[beat] == Symbol.DOWN:
+          downbeat = S.on
+        elif beats[beat] == Symbol.UP:
+          upbeat = S.on
+
         if onsetDefined:
           span = (tiesRight, S.on - on)
           tiesRight += childLength
@@ -46,7 +73,22 @@ class Symbol(object):
           tiesRight = childLength
       else:
         (tl, (p, o, n), tr) = S.features
+
+        # GRID
         next = n
+        if S.hasBeatLength() and not beatLengthDefined:
+          beatlength = S.beatLength
+          reference = S.downbeat
+          beatpos = beat
+          beatLengthDefined = True
+        if S.hasDownbeat():
+          if beats[beat] == Symbol.DOWN:
+            downbeat = S.downbeat
+          elif beats[beat] == Symbol.UP:
+            upbeat = S.downbeat
+        elif S.hasUpbeat():
+          pass
+
         if onsetDefined:
           tiesRight += tl * childLength
           span = (tiesRight, o - on)
@@ -60,14 +102,58 @@ class Symbol(object):
           if S.hasLength():
             span = (childLength, S.length)
 
+    if downbeat != None and upbeat != None:
+      Symbols[0].setBeatLength(upbeat-downbeat)
+    if beatLengthDefined:
+      for pos in range(len(Symbols)):
+        if not S.hasDownbeat:
+          S.setDownbeat(reference + (pos - beatpos) * beatlength)
+
     features = (tiesLeft, (previous, on, next), tiesRight)
     length = None
     if span:
       length = 1/float(span[0]) * span[1]
     depth = max([S.depth for S in Symbols]) + 1
     children = Symbols
-    R = Symbol(features, length=length, children=children, depth=depth)
+    R = Symbol(features, length=length, children=children, depth=depth, upbeat=upbeat, downbeat=downbeat)
     return R
+
+  def setDownbeat(self, downbeat):
+    self.downbeat = downbeat
+    if self.hasChildren():
+      self.children[0].setDownbeat(downbeat)
+
+  def setUpbeat(self, upbeat):
+    self.upbeat = upbeat
+    if self.hasChildren():
+      self.children[1].setDownbeat(upbeat)
+
+  def setBeatLength(self, beatLength):
+    self.beatLength = beatLength
+
+  def downbeatLength(self):
+    if self.hasDownbeat() and self.hasUpbeat():
+      return self.upbeat - self.downbeat
+    return None
+
+  def upbeatLength(self):
+    if self.hasBeatLength() and self.hasDownbeat() and self.hasUpbeat():
+      return self.beatLength - self.downbeatLength()
+    return None
+
+  def logBeatRatio(self):
+    if self.hasBeatLength() and self.hasDownbeat() and self.hasUpbeat():
+      return math.log(self.upbeatLength()/float(self.downbeatLength()))
+    return None
+
+  def hasBeatLength(self):
+    return self.beatLength != None
+
+  def hasUpbeat(self):
+    return self.upbeat != None
+
+  def hasDownbeat(self):
+    return self.downbeat != None
 
   def hasLength(self):
     return self.length != None

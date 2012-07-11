@@ -33,7 +33,7 @@ def transcribe(S, annotation=None, barlevel=0):
   part[0].insert(0, meter.TimeSignature('4/4'))
   notelist = scorelist(S, barlevel=barlevel)
   lastmeasure = -1
-  measure = 1
+  measure = 0
   position = 0
   notesInserted = False
   for item in notelist:
@@ -57,6 +57,7 @@ def transcribe(S, annotation=None, barlevel=0):
           n = note.Note(quarterLength=4*item[1])
           n.pitch = part[measure-1][-1].pitch
           n.tie = tie.Tie('end')
+          part[measure].append(n)
     position += item[1]
     if position == 1:
       position = 0

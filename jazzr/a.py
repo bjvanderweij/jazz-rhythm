@@ -1,7 +1,8 @@
+#!/usr/bin/python
 from jazzr.rhythm import groupingparser as gp
 from jazzr.rhythm import grammar
 from jazzr.corpus import annotations
-from jazzr.tools import commandline
+from jazzr.tools import commandline, latex
 #import transcription
 import sys, math
 
@@ -13,6 +14,8 @@ else:
   annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
   results = gp.parse_annotation(annotation)
 
+latex.view_symbols(results, scale=False)
+exit(0)
 trees = []
 dupes = 0
 
@@ -34,7 +37,6 @@ if len(results) > 0:
 #chosen = results[commandline.menu('', [(r.length, gp.tree(r)) for r in results])]
 #gp.probability(chosen, verbose=True)
 
-exit(0)
 #results = sorted(results, key=lambda x: x[0])
 #score = None
 #from music21 import stream

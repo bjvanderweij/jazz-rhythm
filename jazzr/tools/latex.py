@@ -5,11 +5,22 @@ qtree = '/home/bastiaan/Courses/Jazz-Rhythm/Report/qtree.sty'
 def latexify(S, depth=0):
   res = ''
   if S.isOnset():
-    res += '[ .$\\bullet$ ] '
+    res += '[ .${0}$ ] '.format(S.on)
   elif S.isTie():
     res += '[ .$*$ ] '
   if S.isSymbol():
-    res += '[ .$\\frac{{1}}{{{0}}}$ '.format(int(math.pow(2, depth)))
+    extras = []
+    if S.hasBeatLength():
+      extras.append('D={0}')
+    if S.hasDownbeat():
+      extras.append('down={0}'.format(S.downbeat))
+      if S.hasBeatLength():
+        extras.append('down_l={0}'.format(S.downbeatLength()))
+    if S.hasUpbeat():
+      extras.append('up={0}'.format(S.upbeat))
+      if S.hasBeatLength():
+        extras.append('up_l={0}'.format(S.upbeatLength()))
+    res += '[ .{{$\\frac{{1}}{{{0}}}$({1})}} '.format(int(math.pow(2, depth)), ','.join(extras))
     for child in S.children:
       res += latexify(child, depth=depth+1)
     res += '] '
@@ -46,10 +57,11 @@ def symbols_to_pdf(symbols, filename='parse', scale=True):
   latex = open('{0}/{1}.tex'.format(time, filename), 'w')
   body = ''
   for S in symbols:
-    tree = '\Tree\n{0}\n'.format(latexify(S))
+    tree = '\Tree\n{0}\n\n'.format(latexify(S))
     if scale:
       tree = '\\begin{{landscape}}\n\\resizebox{{\\linewidth}}{{!}}{{\n{0}}}\n\\end{{landscape}}\n'.format(tree)
     body += tree
+  print create_document(body, packages=['qtree', 'fullpage', 'lscape'])
   latex.write(create_document(body, packages=['qtree', 'fullpage', 'lscape']))
   latex.close()
   os.chdir('{0}/'.format(time))
