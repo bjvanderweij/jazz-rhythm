@@ -59,9 +59,15 @@ class Symbol(object):
 
         # GRID
         if beats[beat] == Symbol.DOWN:
-          downbeat = S.on
+          if S.annotation != None:
+            downbeat = S.annotation.onset(S.index)
+          else:
+            downbeat = S.on
         elif beats[beat] == Symbol.UP:
-          upbeat = S.on
+          if S.annotation != None:
+            upbeat = S.annotation.onset(S.index)
+          else:
+            upbeat = S.on
 
         if onsetDefined:
           span = (tiesRight, S.on - on)
@@ -141,9 +147,9 @@ class Symbol(object):
       return self.beatLength - self.downbeatLength()
     return None
 
-  def logBeatRatio(self):
+  def logRatio(self):
     if self.hasBeatLength() and self.hasDownbeat() and self.hasUpbeat():
-      return math.log(self.upbeatLength()/float(self.downbeatLength()))
+      return math.log(self.downbeatLength()/float(self.upbeatLength()))
     return None
 
   def hasBeatLength(self):
@@ -180,11 +186,12 @@ class Symbol(object):
 
 class Onset(Symbol):
 
-  def __init__(self, previous, on, next, annotation=None):
+  def __init__(self, previous, on, next, annotation=None, index=None):
     self.previous = previous
     self.on = on
     self.next = next
     self.annotation = annotation
+    self.index = index
     super(Onset, self).__init__([], type=Symbol.ONSET)
 
   def __str__(self):

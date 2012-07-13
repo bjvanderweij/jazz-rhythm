@@ -37,9 +37,9 @@ def parse_annotation(a, verbose=False):
         break
   N = []
   lastonset = 0
-  for (a, i), (b, j) in zip(notes[0:-1], notes[1:]):
-    N.append(Onset(lastonset, a, b, annotation=i))
-    lastonset = a
+  for (x, i), (y, j) in zip(notes[0:-1], notes[1:]):
+    N.append(Onset(lastonset, x, y, annotation=a, index=i))
+    lastonset = x
   return parse(N, verbose=verbose, corpus=True, tolerance=0.0001)[0, len(N)]
 
 def probability(S, verbose=False, corpus=False, tolerance=0.0):

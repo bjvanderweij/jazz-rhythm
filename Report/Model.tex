@@ -5,16 +5,12 @@
 \usepackage[round]{natbib}
 \usepackage{graphicx}
 \usepackage{amsmath}
-\usepackage{fullpage}
+%\usepackage{fullpage}
 
 %\date{Augustus 17, 2012}
 
 
 \begin{document}
-
-\begin{large}
-Everything is work in progress, section \ref{sec:chart} is relevant for this email.
-\end{large}
 
 \section{Method}
 \label{sec:method}
@@ -75,103 +71,49 @@ Hidden groove is also motivated by the fact that, within one performance, deviat
 
 \label{sec:chart}
 
-If we consider Christopher Longuet-Higgin's early model of rhythmic analysis, rhythmic analysis can be described as syntactic parsing. In Longuet-Higgin's rhythmic analysis, every note is the start of an uninterrupted metrical unit. Formulated as a CFG there are a few types of rules:
+We consider a rhythm to be a list of note onsets. We ignore note offsets, even though in many cases, note offsets are rhythmically timed as well, note onsets seem to be the most important property of rhythms and also the property that a rhythms played by any instruments has in common (it is hard for example to define the note offsets of a drum line). When note onsets form a rhythm, we can assume that there is a set of units, or metrical durations that form are the atomic units that the onset times are build off. These metrical durations are mostly constrained to be duple or triple divisions of each other. Other divisions are allowed as well but are far less common. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
 
+The task of finding rhythmic structure can now be defined as finding the appropriate atomic units and finding the location of the downbeats. When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
 
-\begin{align}
-\label{eq:grammar}
-B/x &\rightarrow B/2x, B/2x&\textrm{Subdivide in two,}\\
-B/x &\rightarrow B/3x, B/3x & \textrm{Subdivide in three,}\\
-B/x &\rightarrow \textrm{On}_i & \textrm{Generate an onset,}\\
-B/x &\rightarrow * & \textrm{Generate an empty slot (bound note),}\\
-\end{align}
-
-This is a generalised form, when applying it we would probably want to instantiate the abstract $B/x$ symbols into metrical units.
-
-We can optionally consider rests and grace notes by incorporating more rules.
+A parser is presented here that forms hypotheses about the atomic units that make up a rhythm. The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. The parser uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
 
 \begin{align*}
-B/x &\rightarrow B/2x, B/2x&\textrm{Subdivide in two,}\\
-B/x &\rightarrow B/3x, B/3x & \textrm{Subdivide in three,}\\
-B/x &\rightarrow n & \textrm{Generate a note,}\\
-B/x &\rightarrow r & \textrm{Generate a rest,}\\
-B/x &\rightarrow * & \textrm{Generate nothing (a bound note),}\\
-B/x &\rightarrow g, n & \textrm{Generate a note preceded by a grace note,}\\
+\label{eq:rules}
+D(\textrm{combine}(h_1, h_2)) &\rightarrow D(h_1) D(h_2)\\
+D(\textrm{combine}(h_1, h_2)) &\rightarrow D(h_1) D(h_2) D((h_3)\\
+D(\textrm{h}) &\rightarrow \textrm{On}_i\\
+D(\textrm{h}) &\rightarrow *
 \end{align*}
+where $D(\phi)$ is a metrical duration with features $\phi$, $*$ represents a filler duration (this is needed when notes are tied together or when the first note is not the first beat of a measure) [SHOW SOME EXAMPLES HERE], $\textrm{On}_i$ is an onset at index $i$, $h$ is an hypothesis about the rhythmic analysis of the corresponding metrical duration and $\textrm{combine}/2$ and $\textrm{combine}/3$ are functions that take hypotheses and combine them into a new hypothesis.
 
-This extended form will considerably increase complexity and for now we will deal with the simple grammar where only onsets and bound notes can be generated.
+The two constraints are:
+\begin{enumerate}
+\item Any set of two or three metrical durations are not allowed to combine if the first one expands directly to an onset and the others do not recursively expand to an onset.
+\item Any set of two or three metrical durations is not allowed to combine if none of the recursively contains an onset.
+\end{enumerate}
 
-The simple grammar in \ref{eq:grammar} is highly ambiguous. As any beat can be indefinitely subdivided and an indefinite number of bound notes can be inserted, any sequence of three onsets could be parsed into an infinite number of three note patterns. Given that in our jazz corpus the smallest metrical unit was a 16th note triplet, it seems sensible to restrict the number of subdivisions to 4 or 5. We will introduce more restrictions but these will arise from a formalism that combines onsets into spans.
+The parser works like any other stochastic CKY parser where symbols are added to the chart only if their probability is higher than a certain threshold.
 
-The constrained grammar will still be able to parse a three note pattern into every possible combination of three notes and an infinite number of bound notes. It would make sense to ensure that a beat can only divide into at most one bound note for subdivisions into two and at most two bound notes for subdivisions into three. Instead of explicitly introducing rules for this, we will introduce a formalism for combining onsets and bound notes into spans that implicitly introduces this constraint.
+The performance of the parser is determined in the first place by how a onsets are translated into hypotheses and how hypotheses are combined and in the second place by how the probability of a certain hypothesis is determined. When the probability function would simply assign the probability 1.0 to each hypothesis, the parser would generate an infinite number of hypotheses. The following sections will introduce hypothesis generation and combination functions for inputs with metronomic timing.
 
-\begin{align*}
-B/x\!:\!\textrm{combine}(S_1 + S_2) &\rightarrow B/2x\!:\!S_1 \; B/2x\!:\!S_2 &\textrm{Subdivide in two,}\\
-B/x\!:\!\textrm{combine}(S_1 + S_2 + S_3) &\rightarrow B/3x:S_1 \; B/3x:S_2 \; B/3x:S_3 & \textrm{Subdivide in three,}\\
-B/x\!:\![\textrm{onset}(1/x, \textrm{On}_i)]&\rightarrow \textrm{On}_i & \textrm{Generate an onset,}\\
-B/x\!:\![\textrm{unit}(1/x)] &\rightarrow * & \textrm{Generate an empty slot (bound note),}\\
-\end{align*}
+\subsection{Metronomic onset hypothesis generation}
 
-Every onset now generates a feature list containing the absolute time of the onset and the metrical unit associated with the beat that generated the onset. Every empty slot generates a feature list as well, containing just the metrical unit associated with the beat that generated it. When two or three metrical units are combined into a longer metrical unit (the reverse of subdividing), the lists are concatenated and reduced by the combine function. 
+When we assume the onsets are metronomic, we can represent hypotheses in a compact and efficient format. Apart from metronomic onsets we need to make a few further assumptions: the parser can only come up with a valid analysis if we assume that (1) the time $t=0$ corresponds to the first beat of the time signature and that (2) there is an end marker which is placed at the $n$-th bar, where $n$ is the first power of two after the index of the last bar of the rhythm. For example, if we have a 3-bar rhythm, the end marker is placed at the first beat of the 4th bar.
 
-There are three types of features: onsets, spans and units. An onset has two attributes: its metrical length and its absolute onset. A span has three attributes: its metrical length two absolute onsets. Finally a unit has one attribute: its metrical length. Every onset can right-combine with another onset, a unit or a span. No other feature is allowed to combine. The rules are as follows:
+Let us define the parser input as rhythm $R$, consisting of a list of onset-times, the last of which is not an onset but an end-marker. 
 
-\begin{align}
-&\textrm{onset}(l_1), \textrm{on}_1) + \textrm{onset}(l_2, \textrm{on}_2) &= \textrm{span}(l_1, \textrm{on}_1, \textrm{on}_2) \textrm{onset}(l_2, \textrm{on}_2)\\
-&\textrm{onset}(l_1, \textrm{on}) + \textrm{unit}(l_2) &= \textrm{onset}(l_1 + l_2, \textrm{on})\\
-&\textrm{onset}(l_1), \textrm{on}_1) + \textrm{span}(l_2, \textrm{on}_2, \textrm{on}_3) &= \textrm{span}(l_1, \textrm{on}_1, \textrm{on}_2) \textrm{span}(l_2, \textrm{on}_2, \textrm{on}_3)
-\end{align}
+\begin{equation}
+R_{0,n} = [\textrm{On}_0, \textrm{On}_{1}, \cdots, \textrm{On}_n]
+\end{equation}
 
-%Two length units are not allowed to combine. This rules out 
+Before we can parse this rhythm we convert the rhythm $R_{0,n}$ to input $I_{0,n-1}$ (excluding the end marker at $R_n$). This conversion converts each onset to 3-tuple:
 
-This function takes a list of features, as input and is defined as follows (Prolog code, should eventually be formal definition).
+\begin{equation}
+I_i = (R_{i-1}, R_i, R_{i+1}),
+\end{equation}
+containing the previous onset, the current onset and the next onset. At $I_0$, the previous onset is assumed to be $0$, at $I_{n-1}$ the next onset is $R_n$, which is the end-marker. 
 
-\pagebreak
-\begin{verbatim}
-% The combine function iterates through  list left to right.
-% Items that cannot be combined are skipped, except for 
-% two length features, this causes the algorithm to fail,
-% which may not be the desired behaviour.
-% The length feature = unit feature in text above
-combine([S], [S]):- !.
-combine([], []):- !.
-
-% Onset , length --> onset
-combine([on(L1, Begin), length(L2) | Rest], Combined):-
-  !,
-  L is L1 + L2,
-  combine([on(L, Begin)| Rest], Combined).
-
-% Onset, onset --> span, onset
-combine([on(L1, Begin1), on(L2, Begin2) | Rest],
-    [span(L1, Begin1, Begin2) | Combined]):-
-  !,
-  validspan(L1, Begin1, Begin2),
-  combine([on(L2, Begin2) | Rest], Combined).
-
-% Onset, span --> span, span
-combine([on(L1, Begin1),  span(L2, Begin2, End) | Rest], 
-    [span(L1, Begin1, Begin2), span(L2, Begin2, End) | Combined]):-
-  !,
-  validspan(L1, Begin1, Begin2),
-  combine(Rest, Combined).
-
-% length, onset --> length, onset (ignore the length)
-combine([length(L1), on(L2, Begin) | Rest], 
-    [length(L1) | Combined]):-
-  combine([on(L2, Begin) | Rest], Combined).
-
-% span, onset --> span, onset (ignore the span)
-combine([span(L1, Begin1, End), on(L2, Begin2) | Rest], 
-    [span(L1, Begin1, End) | Combined]):-
-  combine([on(L2, Begin2) | Rest], Combined).
-
-% span, span --> span, span (ignore both spans)
-combine([span(L1, Begin1, End1), span(L2, Begin2, End2) | Rest], 
-    [span(L1, Begin1, End1), span(L2, Begin2, End2) | Combined]):-
-  combine(Rest, Combined).
-\end{verbatim}
-
+An hypothesis is represented as a set of features associated with the corresponding duration symbol $D$. 
 %Longuet-Higgins used a constant tolerance parameter to determine whether a beat should be subdivided or a rest should be generated. Increased computational power and availability of labelled data now allows us to makes these decisions probabilistic.
 
 %\begin{align*}
