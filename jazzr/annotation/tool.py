@@ -105,6 +105,9 @@ class Tool:
     self.refreshMidi = True
 
   def load(self, collection=None, name=None):
+    if not collection:
+      collection = annotationcorpus.collections()[\
+          cgui.menu(self.stdscr, 'Choose collection', annotationcorpus.collections())]
     results = annotationcorpus.load(collection, name)
     if results:
       self.annotations = []
@@ -278,7 +281,7 @@ class Tool:
           (song, book) = rbsearch.choose_book(index, hits, stdscr=self.stdscr)
           rbsearch.view(song, book)
       elif props['command'] == 'load':
-        if not self.load('annotations', self.name):
+        if not self.load(name=self.name):
 
           cgui.alert(self.stdscr, 'No annotations found!')
       elif props['command'] == 'q':

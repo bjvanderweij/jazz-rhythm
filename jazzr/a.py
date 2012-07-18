@@ -9,12 +9,12 @@ import sys, math
 notes = []
 if len(sys.argv) > 1:
   notes = [int(x) for x in sys.argv[1:]]
-  results = gp.parse_onsets(notes)
+  results = gp.parse_onsets(notes, verbose=True)
 else:
-  annotation = annotations.loadAll()[commandline.menu('', [a.name for a in annotations.loadAll()])]
-  results = gp.parse_annotation(annotation)
+  annotation = annotations.corpus()[commandline.menu('', [a[0].name for a in annotations.corpus()])]
+  results = gp.parse_annotation(annotation[0])
 
-latex.view_symbols(results, scale=False)
+latex.view_symbols(results)
 exit(0)
 trees = []
 dupes = 0

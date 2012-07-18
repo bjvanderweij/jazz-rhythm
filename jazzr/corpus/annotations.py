@@ -115,15 +115,19 @@ def save_parse(collection, name, part, parse):
   f = open('{0}{1}-parse_{2}'.format(path, name, part), 'wb')
   pickle.dump(annotation, f)
 
+def save_annotation(collection, annotation, midifile=None):
+  save(collection, annotation.name, annotation.metadata, annotation.annotation, annotation.notes, midifile) 
+
 def save(collection, name, metadata, annotations, notes, midifile):
-  path = getPath(collection)
-  if not path:
+  path = '{0}{1}/'.format(getPath(collection), name)
+  if not os.path.exists(path):
     os.makedirs(path)
   propswriter = csv.writer(open('{0}metadata.csv'.format(path), 'wb'))
   annotationcount = 0
   noteswriter = csv.writer(open('{0}notes.csv'.format(path), 'wb'))
 
-  midifile.exportMidi('{0}midi.mid'.format(path))
+  if midifile:
+    midifile.exportMidi('{0}midi.mid'.format(path))
 
   propswriter.writerow(['Property', 'Value'])
   for key, value in metadata.iteritems():
@@ -150,7 +154,7 @@ def load_parse(name, version, track, part, collection='annotations'):
   return pickle.load(f)
 
 def load_midifile(collection, name):
-  path = '{0}{1}-{2}-{3}'.format(getPath(collection), name, version, track)
+  path = '{0}{1}/'.format(getPath(collection), name)
   if not path: return None
   return representation.MidiFile('{0}midi.mid'.format(path))
 
@@ -189,6 +193,7 @@ def load_annotation(name, version, track, part, collection='annotations'):
 
 def load(collection, name, part=None):
   results = []
+  (n, v, t, singletrack) = parsename(name)
   for part in parts(n, v, t):
     results += load_annotation(n, v, t, part)
   return results

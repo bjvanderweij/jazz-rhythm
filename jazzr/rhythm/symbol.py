@@ -1,4 +1,7 @@
+from jazzr.tools import latex
+from jazzr.midi import representation
 import math
+import transcription
 
 class Symbol(object):
 
@@ -12,20 +15,19 @@ class Symbol(object):
   DOWN = 0
   UP = 1
 
-  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, downbeat=None, upbeat=None, beatLength=None):
+  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, beats=[]):
     self.depth = depth
     self.type = type
     self.children = children
     self.length = length
     self.features = features
-    self.downbeat = downbeat
-    self.upbeat = upbeat
-    self.beatLength = beatLength
+    self.beats = beats
+    self.prior = 1.0
+    self.likelihood = None
 
   @staticmethod
   def fromSymbols(Symbols):
-    tiesLeft = 0.0
-    tiesRight = 0.0
+    position = 0.0
     previous = 0.0
 
     on = 0.0
@@ -35,134 +37,81 @@ class Symbol(object):
     span = None
     childLength = 1/float(len(Symbols))
 
-    downbeat = None
-    upbeat = None
+    start = None
+    beats = [None for x in Symbols]
 
-    beatLength = None
-    reference = 0
-    beatpos = 0
-    beatLengthDefined = False
-
-    if len(Symbols) == 2:
-      beats = [Symbol.DOWN, Symbol.UP]
-    elif len(Symbols) == 3:
-      beats = [Symbol.DOWN, Symbol.UP, Symbol.UP]
-
+    currentposition = 0.0
     for S, beat in zip(Symbols, range(len(Symbols))):
       if S.isTie():
-        if onsetDefined:
-          tiesRight += childLength
-        else:
-          tiesLeft += childLength
+        if not onsetDefined:
+          position = currentposition
       elif S.isOnset():
         next = S.next
 
         # GRID
-        if beats[beat] == Symbol.DOWN:
-          if S.annotation != None:
-            downbeat = S.annotation.onset(S.index)
-          else:
-            downbeat = S.on
-        elif beats[beat] == Symbol.UP:
-          if S.annotation != None:
-            upbeat = S.annotation.onset(S.index)
-          else:
-            upbeat = S.on
+        if S.annotation != None:
+          beats[beat] = S.annotation.perf_onset(S.index)
+        else:
+          beats[beat] = S.on
+        if start == None:
+          start = (position, beats[beat])
 
         if onsetDefined:
-          span = (tiesRight, S.on - on)
-          tiesRight += childLength
+          span = (currentposition - position, S.on - on)
         else:
           onsetDefined = True
+          position = currentposition
           previous = S.previous
           on = S.on
-          tiesRight = childLength
       else:
-        (tl, (p, o, n), tr) = S.features
+        (pos, (p, o, n)) = S.features
+        pos *= childLength
+        next = n
 
         # GRID
-        next = n
-        if S.hasBeatLength() and not beatLengthDefined:
-          beatlength = S.beatLength
-          reference = S.downbeat
-          beatpos = beat
-          beatLengthDefined = True
         if S.hasDownbeat():
-          if beats[beat] == Symbol.DOWN:
-            downbeat = S.downbeat
-          elif beats[beat] == Symbol.UP:
-            upbeat = S.downbeat
-        elif S.hasUpbeat():
-          pass
+          beats[beat] = S.downbeat()
+        if start == None:
+          start = (position, o)
 
         if onsetDefined:
-          tiesRight += tl * childLength
-          span = (tiesRight, o - on)
-          tiesRight += tr * childLength
+          span = ((currentposition + pos) - position, o - on)
         else:
           onsetDefined = True
           previous = p
           on = o
-          tiesLeft += tl * childLength
-          tiesRight = tr * childLength
+          position = currentposition + pos
           if S.hasLength():
             span = (childLength, S.length)
+      currentposition += childLength
 
-    if downbeat != None and upbeat != None:
-      Symbols[0].setBeatLength(upbeat-downbeat)
-    if beatLengthDefined:
-      for pos in range(len(Symbols)):
-        if not S.hasDownbeat:
-          S.setDownbeat(reference + (pos - beatpos) * beatlength)
+    features = (position, (previous, on, next))
 
-    features = (tiesLeft, (previous, on, next), tiesRight)
     length = None
     if span:
       length = 1/float(span[0]) * span[1]
+      (position, on) = start
+      for i in range(len(beats)):
+        if beats[i] == None:
+          beats[i] = on + (i/float(len(Symbols)) - position) * length
+
+
     depth = max([S.depth for S in Symbols]) + 1
     children = Symbols
-    R = Symbol(features, length=length, children=children, depth=depth, upbeat=upbeat, downbeat=downbeat)
+    R = Symbol(features, length=length, children=children, depth=depth, beats=beats)
     return R
 
-  def setDownbeat(self, downbeat):
-    self.downbeat = downbeat
-    if self.hasChildren():
-      self.children[0].setDownbeat(downbeat)
-
-  def setUpbeat(self, upbeat):
-    self.upbeat = upbeat
-    if self.hasChildren():
-      self.children[1].setDownbeat(upbeat)
-
-  def setBeatLength(self, beatLength):
-    self.beatLength = beatLength
-
-  def downbeatLength(self):
-    if self.hasDownbeat() and self.hasUpbeat():
-      return self.upbeat - self.downbeat
-    return None
-
-  def upbeatLength(self):
-    if self.hasBeatLength() and self.hasDownbeat() and self.hasUpbeat():
-      return self.beatLength - self.downbeatLength()
-    return None
-
-  def logRatio(self):
-    if self.hasBeatLength() and self.hasDownbeat() and self.hasUpbeat():
-      return math.log(self.downbeatLength()/float(self.upbeatLength()))
-    return None
-
-  def hasBeatLength(self):
-    return self.beatLength != None
-
-  def hasUpbeat(self):
-    return self.upbeat != None
+  def downbeat(self):
+    return self.beats[0]
 
   def hasDownbeat(self):
-    return self.downbeat != None
+    return self.beats[0] != None
 
   def hasLength(self):
     return self.length != None
+
+  def hasLikelihood(self):
+    return self.likelihood != None
   
   def isOnset(self):
     return self.type == self.ONSET
@@ -173,14 +122,36 @@ class Symbol(object):
   def isSymbol(self):
     return self.type == self.SYMB
 
-  def isSong(self):
-    return self.type == self.SONG
+  def tree(self):
+    types = ['on', 'tie', 'symb']
+    if self.isTie() or self.isOnset():
+      return types[self.type]
+    return [child.tree() for child in self.children]
+
+  def transcribe(self, barlevel=0):
+    if self.isSymbol():
+      return transcription.transcribe(self, barlevel=barlevel)
+    else:
+      return None
+  
+  def midi(self, barlevel=0):
+    transcription.save_midi(self, barlevel=barlevel)
+    return representation.MidiFile('transcription.mid')
+    os.system('rm transcription.mid')
+
+  def view(self, scale=False):
+    """Generate a LaTeX tree using qtree.sty, convert to pdf with pdflatex and view using Evince. Remove the files afterwards."""
+    latex.view_symbols([self], scale=scale)
+
+  def view_score(self, barlevel=0):
+    """Transcribe the symbol, save as MusicXML, convert to pdf using MuseScore and view using Evince. Remove the file afterwards."""
+    transcription.view_pdf(self, barlevel=barlevel)
 
   def __str__(self):
     types = ['Onset', 'Tie', 'Symbol']
     info = ''
     if self.type == self.SYMB:
-      return '[{0}:\tLength {1} Features {2}]'.format(types[self.type], self.length, self.features)
+      return '[{0}:\tLength {1} Features {2} Depth {3}]'.format(types[self.type], self.length, self.features, self.depth)
     else:
       return '[{0}]'.format(types[self.type])
 

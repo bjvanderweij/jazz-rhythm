@@ -1,21 +1,37 @@
-from jazzr.rhythm import groupingparser as gp
 from music21 import stream, clef, tempo, meter, note, duration, metadata, tie
 import math, os
 
 ONSET = 0
 TIE = 1
 
-def save_pdf(S, annotation=None, filename='transcription', barlevel=0):
+def save_pdf(S, annotation=None, filename='transcription', barlevel=0, quiet=True):
   score = transcribe(S, annotation=annotation, barlevel=barlevel)
   out = open('{0}.xml'.format(filename), 'w')
   out.write(score.musicxml)
   out.close()
-  os.system('musescore -o "{0}.pdf" "{0}".xml'.format(filename))
+  pipe = ''
+  if quiet:
+    pipe = '> /dev/null'
+  os.system('musescore -o "{0}.pdf" "{0}".xml {1}'.format(filename, pipe))
   os.system('rm {0}.xml'.format(filename))
 
-def view_pdf(S, annotation=None, barlevel=0):
+def save_midi(S, annotation=None, filename='transcription', barlevel=0, quiet=True):
+  score = transcribe(S, annotation=annotation, barlevel=barlevel)
+  out = open('{0}.xml'.format(filename), 'w')
+  out.write(score.musicxml)
+  out.close()
+  pipe = ''
+  if quiet:
+    pipe = '> /dev/null'
+  os.system('musescore -o "{0}.mid" "{0}".xml {1}'.format(filename, pipe))
+  os.system('rm {0}.xml'.format(filename))
+
+def view_pdf(S, annotation=None, barlevel=0, quiet=True):
   save_pdf(S, annotation=annotation, barlevel=barlevel)
-  os.system('evince transcription.pdf')
+  pipe = ''
+  if quiet:
+    pipe = '> /dev/null'
+  os.system('evince transcription.pdf {0}'.format(pipe))
   os.system('rm transcription.pdf')
   
 

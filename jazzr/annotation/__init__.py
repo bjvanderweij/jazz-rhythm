@@ -82,17 +82,17 @@ class Annotation:
   def perf_onset(self, index):
     """Return the onset of the note corresponding to the annotation at 
     the given index."""
-    return self.notes[self[index][1]]
+    return self.notes[self[index][1]][0]
 
   def perf_offset(self, index):
     """Return the offset of the note corresponding to the annotation at 
     the given index."""
-    return self.notes[self[index][2]]
+    return self.notes[self[index][1]][1]
 
   def velocity(self, index):
     """Return the velocity of the note corresponding to the annotation at 
     the given index."""
-    return self.notes[self[index][4]]
+    return self.notes[self[index][1]][2]
 
   def deviation(self, index):
     """Calculate the proportion of a beat that the given onset deviates

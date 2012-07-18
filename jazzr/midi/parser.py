@@ -61,7 +61,8 @@ class MidiParser(MidiOutStream.MidiOutStream):
 
   def key_signature(self, sf, mi):
     self.midifile.key_signature = (sf, mi)
-
+  
+  def program_name(self, data):pass
   def sequencer_specific(self, data):pass
   def aftertouch(self, channel=0, note=0x40, velocity=0x40):pass
   def continuous_controller(self, channel, controller, value):pass
