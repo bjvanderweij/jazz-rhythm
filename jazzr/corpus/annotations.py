@@ -9,10 +9,7 @@ annotationspath = '/home/bastiaan/Courses/Jazz-Rhythm/Data/corpus/annotated/'
 
 def getPath(collection):
   path = '{0}{1}/'.format(annotationspath, collection)
-  if os.path.exists(path):
-    return path
-  print path
-  return None
+  return path
 
 def remove(collection, name):
   path = getPath(collection)
@@ -115,8 +112,31 @@ def save_parse(collection, name, part, parse):
   f = open('{0}{1}-parse_{2}'.format(path, name, part), 'wb')
   pickle.dump(annotation, f)
 
-def save_annotation(collection, annotation, midifile=None):
-  save(collection, annotation.name, annotation.metadata, annotation.annotation, annotation.notes, midifile) 
+def save_annotation(collection, annotation, midifile=None, part=0):
+  save_temp(collection, annotation.name, part, annotation.metadata, annotation.annotation, annotation.notes, midifile) 
+
+def save_temp(collection, name, part, metadata, annotations, notes, midifile):
+  path = '{0}{1}/'.format(getPath(collection), name)
+  if not os.path.exists(path):
+    os.makedirs(path)
+  propswriter = csv.writer(open('{0}metadata.csv'.format(path), 'wb'))
+  noteswriter = csv.writer(open('{0}notes.csv'.format(path), 'wb'))
+  annotationwriter = csv.writer(open('{0}annotations-{1}.csv'.format(path, part), 'wb'))
+
+  if midifile:
+    midifile.exportMidi('{0}midi.mid'.format(path))
+
+  propswriter.writerow(['Property', 'Value'])
+  for key, value in metadata.iteritems():
+    propswriter.writerow([key, value])
+
+  annotationwriter.writerow(['Beat', 'Position', 'Pitch', 'Type'])
+  for annotation in annotations:
+    annotationwriter.writerow(annotation[:])
+
+  noteswriter.writerow(['On', 'Off', 'Pitch', 'Velocity'])
+  for note in notes:
+    noteswriter.writerow(note[:])
 
 def save(collection, name, metadata, annotations, notes, midifile):
   path = '{0}{1}/'.format(getPath(collection), name)
@@ -195,14 +215,14 @@ def load(collection, name, part=None):
   results = []
   (n, v, t, singletrack) = parsename(name)
   for part in parts(n, v, t):
-    results += load_annotation(n, v, t, part)
+    results += [load_annotation(n, v, t, part, collection=collection)]
   return results
 
-def loadAnnotations():
+def loadAnnotations(collection='explicitswing'):
   corpus = []
-  for song in songs(): 
-    for version in versions(song):
-      for track in tracks(song, version):
+  for song in songs(collection=collection): 
+    for version in versions(song, collection=collection):
+      for track in tracks(song, version, collection=collection):
         corpus += load('annotations', '{0}-{1}-{2}'.format(song, version, track))
   return corpus
 

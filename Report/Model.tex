@@ -15,58 +15,6 @@
 \section{Method}
 \label{sec:method}
 
-
-\subsection{Motivation}
-
-We have a limited amount of labelled performance information available in a corpus. This corpus plus a number of constraints should be a substitute for human musical intuition.
-
-\subsection{Bayesian view}
-
-Our corpus tells us absolute time onsets of metrical positions. The sort of probability distribution that we would like to know is the following: how likely is it that a note we observed at onset corresponds to a certain metrical position $m$. Intuitively, this depends on how likely it is for a note to actually occur on that metrical position and the probability that a note on that metrical position would generate the onset we observed. Formally, we can write this using Bayes rule as
-
-\[P(m_i|\textrm{on}_j) = P(\textrm{on}_j|m_i)P(m_i).\]
-
-Optionally, we can include rests. The prior probability $P(m)$ now changes to the probability of either a note 
-
-\[P(m_i,n_j|\textrm{on}_j) = P(\textrm{on}_j|m_i)P(m_i,n_j),\]
-
-or a rest
-
-\[P(m_i,r_j|\textrm{off}_{j-1}) = P(\textrm{on}_j|m)P(m_i,r_j),\]
-
-occurring at metrical position $m_i$. Grace notes could potentially be considered a different category as well.
-
-There are now several options for estimating the prior and likelihood which will be discussed below.
-
-\subsection{Prior}
-The prior describes how likely it is for a note or rest to occur at a certain metrical position. This probability depends on intuitions about common practice rhythm, as David Temperley argues, as well as the musical style. The prior can be estimated from an unlabelled corpus of music transcriptions. There are several ways of doing this.
-
-Temperley proposes a very simple model: the metrical position model. This model estimates how likely it is for a beat to occur at every metrical position in a bar. If we assume the smallest note length in our corpus is an eighth note, the metrical position model consists simply of eight probabilities for a note occurring at each possible metrical position in a bar.
-
-A slightly more complex model is the hierarchical model.
-
-Longuet-Higgins proposes a subdivision based approach to rhythm detection. The model starts with the largest possible metrical unit, say a whole note, and an associated real duration. A beat can either be at the start or end of this unit or interrupt it. If a beat interrupts this unit, the unit is split in two or three parts. If the beat still interrupts the smaller metrical unit this process is continued until the beat is at the start of a whole metrical unit. This process is repeated until every note is located at the start of an uninterrupted metrical unit.
-
-The resulting code looks something like this: a wh
-The resulting code can be seen as a parse tree. A whole 
-
-
-
-
-% Statistical Longuet-Higgins
-
-\subsection{Hidden Groove Model}
-Any timing deviation that we are able to detect from our small corpus is likely to be a (locally) consistent one. That is, if the strong beats are stretched, this probably occurs over the entire piece. If eighth notes on strong beats are delayed, this likely occurs during the entire piece, or at least during a certain period during which this pattern of delayed off-beat eighth notes does not change, and when it does change, it changes into another pattern that will be consistent for some time. It is probable that \emph{any other deviation} from score notations, like rubatos in a ballad, is to complex or random to learn as their occurrence likely depends on complex local rhythmic or tonic context. 
-
-The concept of locally consistent deviation of timing is known to musicians as \textit{the groove}. Groove is a locally stable and usually does not change throughout a performance and if it does change it is rarely a gradual change. Some parts of the groove, like lengthening of strong beats are pretty universal and may occur in all pieces, others may be less universal and differ between different pieces or even different performances of the same piece.
-
-The best we may be able to do for rubato is to consider it a temporary change of groove
-
-Likelihoods probably become a simple penalty for how much a note deviates from the groove. Unless we only define a limited number of grooves (swing/no swing).
-
-Humans can feel a groove after hearing it for a few measures.
-
-Hidden groove is also motivated by the fact that, within one performance, deviations of certain metrical positions may be relatively consistent. But between performances, they might vary quite a bit.
 \subsection{Chart Parsing/Statistical Longuet-Higgins}
 
 \label{sec:chart}
@@ -115,13 +63,18 @@ containing the previous onset, the current onset and the next onset. At $I_0$, t
 
 An hypothesis is represented as a set of features associated with the corresponding duration symbol $D$. Each duration symbol will have at least two: the first onset in the symbol, $I_i$ and its position within the symbol. When a duration symbol contains more than one onset, a third feature is added that contains the length of the symbol that is implied by the onsets in the symbol.
 
+\subsection{Expressive onset hypothesis generation}
+
+When onsets are not guaranteed to be metronomic we need a different way of representing hypotheses. It is particularly important where we predict future onsets to be given what we have already seen.
+
+For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given this onset.
 \subsection*{Probabilistic parsing}
 
 A probabilistic model of rhythm can be formulated in a Bayesian way. 
 
 \begin{equation}
 \label{eq:model}
-P(A|N) = P(N|A)P(A),
+P(A|N) \propto P(N|A)P(A),
 \end{equation}
 
 where $A$ is a rhythmic analysis and $N$ is a list of onset times. The goal of the analysis is to find the analysis that maximises the formula above.
@@ -135,6 +88,10 @@ Most models use a tempo curve and a normal distribution that penalises deviation
 Many models use tempo curves to determine
 
 Other authors have suggested balancing simplicity and accuracy. We can now elaborate simplicity as the degree to which a rhythmic structure is similar to what we have seen in a corpus and accuracy as the degree to which the onsets generated by the structure are similar to what we would expect.
+
+Many models consider the expressive timing to be Gaussian noise relative to the tempo curve. Since we have structural information we can see if there is a correlation between structure and expressive timing. Often, in such models, the prior is measured as the complexity of the score. Our analysis allows us to determine the likelihood of the rhythmic structure itself. 
+
+
 
 
 

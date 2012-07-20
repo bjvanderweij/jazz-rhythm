@@ -27,6 +27,7 @@ class Symbol(object):
 
   @staticmethod
   def fromSymbols(Symbols):
+    # First onset position
     position = 0.0
     previous = 0.0
 
@@ -40,8 +41,8 @@ class Symbol(object):
     start = None
     beats = [None for x in Symbols]
 
-    currentposition = 0.0
     for S, beat in zip(Symbols, range(len(Symbols))):
+      currentposition = beat/float(len(Symbols))
       if S.isTie():
         if not onsetDefined:
           position = currentposition
@@ -54,7 +55,7 @@ class Symbol(object):
         else:
           beats[beat] = S.on
         if start == None:
-          start = (position, beats[beat])
+          start = (currentposition, beats[beat])
 
         if onsetDefined:
           span = (currentposition - position, S.on - on)
@@ -71,19 +72,21 @@ class Symbol(object):
         # GRID
         if S.hasDownbeat():
           beats[beat] = S.downbeat()
+          o = S.downbeat()
+        else:
+          currentposition += pos
         if start == None:
-          start = (position, o)
+          start = (currentposition, o)
 
         if onsetDefined:
-          span = ((currentposition + pos) - position, o - on)
+          span = (currentposition - position, o - on)
         else:
           onsetDefined = True
           previous = p
           on = o
-          position = currentposition + pos
+          position = currentposition
           if S.hasLength():
             span = (childLength, S.length)
-      currentposition += childLength
 
     features = (position, (previous, on, next))
 

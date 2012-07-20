@@ -7,32 +7,44 @@ import math
 
 class Parser(object):
 
+  shave_and_a_haircut = [0, 0.492283, 0.749513, 0.992638, 1.487284, 2.605692, 3.104224, 4.185684]
+  shave_and_a_haircut2 = [0, 0.529862, 0.713465, 0.899274, 1.072124, 1.608282, 2.772783, 3.280167, 4.380727] 
+  rhumba_clave = [0, 0.491439, 0.975992, 1.618332, 1.945464, 2.597757, 3.118297, 3.574721, 4.226787, 4.560222, 5.284089]
+
   def __init__(self, beam=0.5):
     self.beam = beam
     self.verbose=False
+
+  def test1(self):
+    N = self.list_to_onsets(self.shave_and_a_haircut)
+    parses = self.parse(N)[0, len(N)]
+    S = Symbol.fromSymbols([Symbol.fromSymbols([Symbol.fromSymbols([N[0], Symbol.fromSymbols([N[1], N[2]])]), Symbol.fromSymbols([N[3], N[4]])]), Symbol.fromSymbols([Symbol.fromSymbols([Tie(), N[5]]), N[6]])]) 
+    return parses, S
+
+  def test2(self):
+    N = self.list_to_onsets(self.shave_and_a_haircut2)
+    parses = self.parse(N)[0, len(N)]
+    S = Symbol.fromSymbols([Symbol.fromSymbols([Symbol.fromSymbols([N[0], Symbol.fromSymbols([N[1], N[2], N[3]])]), Symbol.fromSymbols([N[4], N[5]])]), Symbol.fromSymbols([Symbol.fromSymbols([Tie(), N[6]]), N[7]])]) 
+    return parses, S
 
   def probability(self, H):
     """To be implemented by subclass."""
     return 1.0
 
-  def close(self, items):
+  def close(self, symbols):
     cell = []
     unseen = []
     while True:
       p = 1.0
-      symbols = []
-      for s in items:
-        p *= s[1]
-        symbols.append(s[0])
       hypotheses = self.group(symbols)
       for h in hypotheses:
         probability = self.probability(h)
         if probability > self.beam:
-          unseen += [(h, probability)]
+          unseen += [h]
       if unseen == []:
         break
-      items = [unseen.pop()]
-      cell += items
+      symbols = [unseen.pop()]
+      cell += symbols
     return cell
 
   def group(self, S):
@@ -45,12 +57,13 @@ class Parser(object):
     elif len(S) == 2:
       result += [Symbol.fromSymbols(S)]
       # Triple division
-      if S[0].isSymbol() and len(S[0].children) == 2:
+      if S[1].isSymbol() and len(S[1].children) == 2:
         # Only allow triple divisions at note level to parse the corpus efficiently:
         # If triple divisions into symbols were allowed, the children of S[0] need to be upgraded a level
         # (Their ties need to be multiplied by two)
-        if S[1].isOnset() and S[0].children[0].isOnset() and S[0].children[1].isOnset():
-          result += [Symbol.fromSymbols(S[0].children + [S[1]])]
+        if S[0].isOnset() and S[1].children[0].isOnset() and S[1].children[1].isOnset() or\
+          S[0].isOnset() and S[1].children[0].isTie() and S[1].children[1].isOnset():
+          result += [Symbol.fromSymbols([S[0]] + S[1].children)]
     elif len(S) == 3:
       # Not supported yet
       pass
@@ -129,7 +142,22 @@ class Parser(object):
     for (x, i), (y, j) in zip(notes[0:-1], notes[1:]):
       N.append(Onset(lastonset, x, y, annotation=a, index=i))
       lastonset = x
-    return parse(N)[0, len(N)]
+    return self.parse(N)[0, len(N)]
+
+  def parse_corpus(self, a, begin=None, end=None):
+    if end == None:
+      end = len(a)
+    N = []
+    notes = []
+    # Filter out onsets and end markers
+    counter = 0
+    for i in range(len(a)):
+      if a.type(i) in [a.NOTE, a.END] and counter >= begin and counter < end:
+        notes.append(a.perf_onset(i))
+      counter += 1
+    notes[-1] = 2*notes[-1]
+    N = self.list_to_onsets(notes)
+    return self.parse(N)[0, len(N)]
 
 class StochasticParser(Parser):
 
@@ -137,8 +165,8 @@ class StochasticParser(Parser):
     corpus = annotations.corpus()
     self.model = pcfg.train(corpus)
     self.allowed = treeconstraints.train(corpus)
-    self.n = 20
-    self.beam = 0.5
+    self.n = 10
+    self.beam = 0.8
     # Standard deviation expressed in proportion of beatlength
     self.std = 0.1
     super(StochasticParser, self).__init__(beam=self.beam)
@@ -151,35 +179,37 @@ class StochasticParser(Parser):
     # Normalised likelihood
     return math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
 
-  def beats_likelihood(self, S, start, length):
-    std = self.std * length
-
-    if not S.hasLength():
-      (pos, (previous, on, next)) = S.features
-      return self.likelihood(start + pos * length, std, on), 1
+  def beats_likelihood(self, S, downbeat, length):
+    implied_beatLength = length / float(len(S.children))
+    std = self.std * implied_beatLength
+    beatLength = implied_beatLength
+    time = downbeat
+    if S.hasLength():
+      beatLength = S.beats[1] - S.beats[0]
+      time = S.downbeat()
 
     p = 1.0
     n = 0
-    implied_beatLength = length / float(len(S.children))
-    beatLength = S.beats[1] - S.beats[0]
-    #beatLength = S.length / float(len(S.children))
-    time = start
-    #time = S.downbeat()
-    for child, beat in zip(S.children, S.beats):
-      #if child.hasLikelihood():
-        #p *= child.likelihood
-      #else:
-      #  p *= self.beats_likelihood(child, time, beatLength)
-      if child.isOnset():
-        p *= self.likelihood(time, self.std, child.on)
-        n += 1
-      elif child.isTie():
-        p *= self.likelihood(time, self.std, beat)
-        n += 1
-      else:
+    # Skip downbeat likelihood, but if it's a symbol, calculate it's likelihood
+    if S.children[0].isSymbol():
+      p, n = self.beats_likelihood(S.children[0], downbeat, beatLength)
+    elif S.children[0].isOnset():
+      n = 1
+      p = self.likelihood(downbeat, std, S.children[0].on)
+    elif S.children[0].isTie():
+      n = 1
+      p = self.likelihood(downbeat, std, time)
+    time += implied_beatLength
+    # Upbeat likelihoods
+    for child, beat in zip(S.children[1:], S.beats[1:]):
+    #for child, beat in zip(S.children, S.beats):
+      if child.isSymbol():
         prob, count = self.beats_likelihood(child, time, beatLength)
         p *= prob
         n += count
+      elif beat != None:
+        p *= self.likelihood(time, std, beat)
+        n += 1
       time += implied_beatLength
     return p, n
 
@@ -196,8 +226,8 @@ class StochasticParser(Parser):
     if previous - start > 0.5 * S.length or\
         (start + S.length) - next > 0.5 * S.length:
       return 0.0, 1
-
-    return self.beats_likelihood(S, S.downbeat(), S.length)
+    p, n = self.beats_likelihood(S, S.downbeat(), S.length)
+    return p, n
     
   def close(self, symbols):
     cell = []
@@ -210,11 +240,14 @@ class StochasticParser(Parser):
       hypotheses = self.group(symbols)
       for h in hypotheses:
         likelihood, n = self.probability(h)
-        prior *= self.model[pcfg.ruleType(h)]
+        #prior *= self.model[pcfg.ruleType(h)]
+        prior = pcfg.probability(h, self.model)
         if likelihood > 0.0:
           if math.exp(math.log(likelihood) / float(n)) > self.beam:
             h.likelihood = likelihood
+            h.n = n
             h.prior = prior
+            h.posterior = likelihood * prior
             unseen += [h]
       if unseen == []:
         break
@@ -240,11 +273,17 @@ class StochasticParser(Parser):
             for C in t[k,j]:
               cell += self.close([B,C])
         if len(cell) > self.n:
-          cell = [item for item in sorted(cell, key=lambda x: x.prior * x.likelihood, reverse=True)][:self.n]
+          cell = [item for item in sorted(cell, key=lambda x: x.posterior, reverse=True)][:self.n]
         t[i,j] = cell
         if self.verbose:
           print '{0} hypotheses'.format(len(cell))
     return t
+
+  def transcribe(self, onsets, barlevel=0):
+    N = self.list_to_onsets(onsets)
+    parses = self.parse(N)[0, len(N)]
+    parses[0].view_score(barlevel=barlevel)
+
 
 class SimpleParser(Parser):
 
@@ -255,6 +294,16 @@ class SimpleParser(Parser):
     self.maxdepth = maxdepth
     self.verbose = False
     super(SimpleParser, self).__init__()
+
+  @staticmethod
+  def corpusParser():
+    from jazzr.models import pcfg, treeconstraints
+    from jazzr.corpus import annotations
+    corpus = annotations.corpus()
+    allowed = treeconstraints.train(corpus)
+    model = pcfg.train(corpus)
+    return corpus, SimpleParser(corpus=True, allowed=allowed, tolerance=0.001, maxdepth=5)
+    
     
   def bottomlevel(self, S):
     if not S.isSymbol():
