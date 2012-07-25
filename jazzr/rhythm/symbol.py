@@ -15,13 +15,14 @@ class Symbol(object):
   DOWN = 0
   UP = 1
 
-  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, beats=[]):
+  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, beats=[], onsets=[]):
     self.depth = depth
     self.type = type
     self.children = children
     self.length = length
     self.features = features
     self.beats = beats
+    self.onsets = onsets
     self.prior = 1.0
     self.likelihood = None
 
@@ -40,6 +41,7 @@ class Symbol(object):
 
     start = None
     beats = [None for x in Symbols]
+    onsets = [None for x in Symbols]
 
     for S, beat in zip(Symbols, range(len(Symbols))):
       currentposition = beat/float(len(Symbols))
@@ -48,12 +50,10 @@ class Symbol(object):
           position = currentposition
       elif S.isOnset():
         next = S.next
+        onsets[beat] = S
 
         # GRID
-        if S.annotation != None:
-          beats[beat] = S.annotation.perf_onset(S.index)
-        else:
-          beats[beat] = S.on
+        beats[beat] = S.on
         if start == None:
           start = (currentposition, beats[beat])
 
@@ -68,6 +68,8 @@ class Symbol(object):
         (pos, (p, o, n)) = S.features
         pos *= childLength
         next = n
+        if S.onsets[0] != None:
+          onsets[beat] = S.onsets[0]
 
         # GRID
         if S.hasDownbeat():
@@ -101,7 +103,7 @@ class Symbol(object):
 
     depth = max([S.depth for S in Symbols]) + 1
     children = Symbols
-    R = Symbol(features, length=length, children=children, depth=depth, beats=beats)
+    R = Symbol(features, length=length, children=children, depth=depth, beats=beats, onsets=onsets)
     return R
 
   def downbeat(self):

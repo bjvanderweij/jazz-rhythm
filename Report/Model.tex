@@ -67,7 +67,7 @@ An hypothesis is represented as a set of features associated with the correspond
 
 When onsets are not guaranteed to be metronomic we need a different way of representing hypotheses. It is particularly important where we predict future onsets to be given what we have already seen.
 
-For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given this onset.
+For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given the two onsets.
 \subsection*{Probabilistic parsing}
 
 A probabilistic model of rhythm can be formulated in a Bayesian way. 

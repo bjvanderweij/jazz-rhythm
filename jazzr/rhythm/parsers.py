@@ -54,6 +54,8 @@ class Parser(object):
         result += [Symbol.fromSymbols([Tie()] + S)]
       elif S[0].isSymbol():
         result += [Symbol.fromSymbols([Tie()] + S), Symbol.fromSymbols(S + [Tie()])]
+        if S[0].children[0].isTie() and S[0].children[1].isOnset():
+          result += [Symbol.fromSymbols([Tie()] + S[0].children)]
     elif len(S) == 2:
       result += [Symbol.fromSymbols(S)]
       # Triple division
@@ -62,7 +64,7 @@ class Parser(object):
         # If triple divisions into symbols were allowed, the children of S[0] need to be upgraded a level
         # (Their ties need to be multiplied by two)
         if S[0].isOnset() and S[1].children[0].isOnset() and S[1].children[1].isOnset() or\
-          S[0].isOnset() and S[1].children[0].isTie() and S[1].children[1].isOnset():
+            S[0].isOnset() and S[1].children[0].isTie() and S[1].children[1].isOnset():
           result += [Symbol.fromSymbols([S[0]] + S[1].children)]
     elif len(S) == 3:
       # Not supported yet
@@ -137,6 +139,7 @@ class Parser(object):
           notes[-1] = (float(power) * 4.0, 0)
           print '{0}'.format(power)
           break
+    print [n[0] for n in notes]
     N = []
     lastonset = 0
     for (x, i), (y, j) in zip(notes[0:-1], notes[1:]):
@@ -144,6 +147,7 @@ class Parser(object):
       lastonset = x
     return self.parse(N)[0, len(N)]
 
+  # Parse a performance from the corpus
   def parse_corpus(self, a, begin=None, end=None):
     if end == None:
       end = len(a)
@@ -155,7 +159,7 @@ class Parser(object):
       if a.type(i) in [a.NOTE, a.END] and counter >= begin and counter < end:
         notes.append(a.perf_onset(i))
       counter += 1
-    notes[-1] = 2*notes[-1]
+    notes[-1] = 3*notes[-1]
     N = self.list_to_onsets(notes)
     return self.parse(N)[0, len(N)]
 
@@ -165,7 +169,7 @@ class StochasticParser(Parser):
     corpus = annotations.corpus()
     self.model = pcfg.train(corpus)
     self.allowed = treeconstraints.train(corpus)
-    self.n = 10
+    self.n = 15
     self.beam = 0.8
     # Standard deviation expressed in proportion of beatlength
     self.std = 0.1
@@ -181,11 +185,13 @@ class StochasticParser(Parser):
 
   def beats_likelihood(self, S, downbeat, length):
     implied_beatLength = length / float(len(S.children))
-    std = self.std * implied_beatLength
+    #std = self.std * implied_beatLength
+    std = self.std * length
     beatLength = implied_beatLength
     time = downbeat
     if S.hasLength():
-      beatLength = S.beats[1] - S.beats[0]
+      #beatLength = S.beats[1] - S.beats[0]
+      beatLength = S.length / float(len(S.beats))
       time = S.downbeat()
 
     p = 1.0
@@ -301,8 +307,9 @@ class SimpleParser(Parser):
     from jazzr.corpus import annotations
     corpus = annotations.corpus()
     allowed = treeconstraints.train(corpus)
+    allowed.append(['tie', 'tie', 'on'])
     model = pcfg.train(corpus)
-    return corpus, SimpleParser(corpus=True, allowed=allowed, tolerance=0.001, maxdepth=5)
+    return annotations.loadAnnotations(), SimpleParser(corpus=True, allowed=allowed, tolerance=0.001, maxdepth=5)
     
     
   def bottomlevel(self, S):
@@ -312,7 +319,7 @@ class SimpleParser(Parser):
       if not c.isOnset():
         return False
     return True
-
+    
   def probability(self, S):
     p = 1.0
     if self.allowed != None:
@@ -325,7 +332,7 @@ class SimpleParser(Parser):
         return 0.0
       return 1.0
 
-    tolerance = self.tolerance * S.length
+    tolerance = self.tolerance
 
     # A hack to parse the corpus efficiently
     if abs(S.length * 2.0 - round(S.length * 2.0)) > 0.0001 and self.corpus:
@@ -335,24 +342,23 @@ class SimpleParser(Parser):
         return 0.0
 
     (position, (previous, on, next)) = S.features
+    downbeat = on - position * S.length
+    time = downbeat
     if self.verbose > 1:
       print S.features
-    if previous - (on - position * S.length) > tolerance:
+    if previous - downbeat > tolerance:
       if self.verbose > 1:
         print 'Rejected 1'
       return 0.0
-    elif (on + (1-position) * S.length) - next > tolerance:
+    elif (downbeat + S.length) - next > tolerance:
       if self.verbose > 1:
         print 'Rejected 2'
       return 0.0
     childLength = S.length / float(len(S.children))
-    currentposition = 0.0
     for child in S.children:
       # Check if the onsets are right
-      time = on + (currentposition - position) * S.length
-      currentposition += 1/float(len(S.children))
       if child.isSymbol():
-        (childposition, (previous, on, next)) = child.features
+        (childposition, (p, on, n)) = child.features
         if abs(on - (time + childposition * childLength)) > tolerance:
           if self.verbose > 1:
             print 'Rejected 3'
@@ -368,6 +374,7 @@ class SimpleParser(Parser):
           if self.verbose > 1:
             print 'Rejected 5'
           return 0.0
+      time += childLength
     return 1.0
 
   def parse_best_n(N, window, rating_function):
