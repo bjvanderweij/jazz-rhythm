@@ -109,8 +109,8 @@ def save_parse(collection, name, part, parse):
   path = getPath(collection)
   if not path:
     os.makedirs(path)
-  f = open('{0}{1}-parse_{2}'.format(path, name, part), 'wb')
-  pickle.dump(annotation, f)
+  f = open('{0}{1}/{1}-{2}-parse.pickle'.format(path, name, part), 'wb')
+  pickle.dump(parse, f)
 
 def save_annotation(collection, annotation, midifile=None, part=0):
   save_temp(collection, annotation.name, part, annotation.metadata, annotation.annotation, annotation.notes, midifile) 
@@ -226,17 +226,17 @@ def loadAnnotations(collection='explicitswing'):
         corpus += load(collection, '{0}-{1}-{2}'.format(song, version, track))
   return corpus
 
-def corpus():
+def corpus(collection='annotations'):
   corpus = []
-  for song in songs(): 
-    for version in versions(song):
-      for track in tracks(song, version):
-        p = parses(song, version, track)
-        for part in parts(song, version, track):
+  for song in songs(collection=collection): 
+    for version in versions(song, collection=collection):
+      for track in tracks(song, version, collection=collection):
+        p = parses(song, version, track, collection=collection)
+        for part in parts(song, version, track, collection=collection):
           # Made an error earlier, parses start counting at 1
           if part+1 in p:
-            annotation = load_annotation(song, version, track, part)
-            parse = load_parse(song, version, track, part+1)
+            annotation = load_annotation(song, version, track, part, collection=collection)
+            parse = load_parse(song, version, track, part+1, collection=collection)
             corpus.append((annotation, parse))
           else:
             name = '{0}-{1}-{2}'.format(song, version, track)

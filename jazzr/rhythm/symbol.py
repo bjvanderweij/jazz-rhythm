@@ -15,7 +15,7 @@ class Symbol(object):
   DOWN = 0
   UP = 1
 
-  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, beats=[], onsets=[]):
+  def __init__(self, features, length=None, children=None, depth=0, type=SYMB, beats=[], onsets=[], divisions=[]):
     self.depth = depth
     self.type = type
     self.children = children
@@ -25,6 +25,7 @@ class Symbol(object):
     self.onsets = onsets
     self.prior = 1.0
     self.likelihood = None
+    self.divisions = divisions
 
   @staticmethod
   def fromSymbols(Symbols):
@@ -100,10 +101,11 @@ class Symbol(object):
         if beats[i] == None:
           beats[i] = on + (i/float(len(Symbols)) - position) * length
 
-
+    divisions = max([S.divisions for S in Symbols], key=lambda x: len(x))[:]
+    divisions.append(len(Symbols))
     depth = max([S.depth for S in Symbols]) + 1
     children = Symbols
-    R = Symbol(features, length=length, children=children, depth=depth, beats=beats, onsets=onsets)
+    R = Symbol(features, length=length, children=children, depth=depth, beats=beats, onsets=onsets, divisions=divisions)
     return R
 
   def downbeat(self):
@@ -148,9 +150,9 @@ class Symbol(object):
     """Generate a LaTeX tree using qtree.sty, convert to pdf with pdflatex and view using Evince. Remove the files afterwards."""
     latex.view_symbols([self], scale=scale)
 
-  def view_score(self, barlevel=0):
+  def score(self, barlevel=0, annotation=None):
     """Transcribe the symbol, save as MusicXML, convert to pdf using MuseScore and view using Evince. Remove the file afterwards."""
-    transcription.view_pdf(self, barlevel=barlevel)
+    transcription.view_pdf(self, barlevel=barlevel, annotation=annotation)
 
   def __str__(self):
     types = ['Onset', 'Tie', 'Symbol']

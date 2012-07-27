@@ -11,15 +11,14 @@ def bottomlevel(S):
   return True
 
 
-def latexify(S, depth=0, showOnsets=False, showRatios=False, showFeatures=False):
+def latexify(S, depth=0, showOnsets=False, showPerfOnsets=False, showRatios=False, showFeatures=False):
   res = ''
   c = 0.000001
   if S.isOnset():
-    if showOnsets:
-      if S.annotation != None:
-        res += '[ .${0:.3}$ ] '.format(S.annotation.perf_onset(S.index)*c)
-      else:
-        res += '[ .${0}$ ] '.format(S.on)
+    if showPerfOnsets:
+      res += '[ .${0:.3}$ ] '.format(S.annotation.perf_onset(S.index)*c)
+    elif showOnsets:
+      res += '[ .${0}$ ] '.format(S.on)
     else:
       res += '[ .$\\bullet$ ] '
   elif S.isTie():
@@ -66,14 +65,14 @@ def create_document(body, packages=[], title=None, author=None):
   f += '\\begin{{document}}\n{0}\n\\end{{document}}\n'.format(body)
   return f
 
-def symbols_to_pdf(symbols, filename='parse', scale=True, showOnsets=False, showRatios=False, showFeatures=False, quiet=True):
+def symbols_to_pdf(symbols, filename='parse', scale=True, showPerfOnsets=False, showOnsets=False, showRatios=False, showFeatures=False, quiet=True):
   time = str(datetime.datetime.now())
   os.mkdir('{0}/'.format(time))
   os.system('cp "{0}" "{1}/"'.format(qtree, time))
   latex = open('{0}/{1}.tex'.format(time, filename), 'w')
   body = ''
   for S in symbols:
-    tree = '\Tree\n{0}\n\n'.format(latexify(S, showOnsets=showOnsets, showRatios=showRatios, showFeatures=showFeatures))
+    tree = '\Tree\n{0}\n\n'.format(latexify(S, showOnsets=showOnsets, showPerfOnsets=showPerfOnsets, showRatios=showRatios, showFeatures=showFeatures))
     if scale:
       tree = '\\begin{{landscape}}\n\\resizebox{{\\linewidth}}{{!}}{{\n{0}\n}}\n\\end{{landscape}}\n'.format(tree)
     body += tree
@@ -89,8 +88,8 @@ def symbols_to_pdf(symbols, filename='parse', scale=True, showOnsets=False, show
   os.chdir('../')
   os.system('rm -r "{0}/"'.format(time))
 
-def view_symbols(symbols, scale=True, showOnsets=False, showRatios=False, showFeatures=False, quiet=True):
-  symbols_to_pdf(symbols, scale=scale, showOnsets=showOnsets, showRatios=showRatios, showFeatures=showFeatures, quiet=quiet)
+def view_symbols(symbols, scale=True, showOnsets=False, showPerfOnsets=False, showRatios=False, showFeatures=False, quiet=True):
+  symbols_to_pdf(symbols, scale=scale, showPerfOnsets=showPerfOnsets, showOnsets=showOnsets, showRatios=showRatios, showFeatures=showFeatures, quiet=quiet)
 
   os.system('evince parse.pdf')
   os.system('rm parse.pdf')

@@ -11,9 +11,11 @@ class Parser(object):
   shave_and_a_haircut2 = [0, 0.529862, 0.713465, 0.899274, 1.072124, 1.608282, 2.772783, 3.280167, 4.380727] 
   rhumba_clave = [0, 0.491439, 0.975992, 1.618332, 1.945464, 2.597757, 3.118297, 3.574721, 4.226787, 4.560222, 5.284089]
 
-  def __init__(self, beam=0.5):
+  def __init__(self, model=None, beam=0.5, n=-1):
     self.beam = beam
-    self.verbose=False
+    self.verbose= False
+    self.model = model
+    self.n = n
 
   def test1(self):
     N = self.list_to_onsets(self.shave_and_a_haircut)
@@ -30,22 +32,6 @@ class Parser(object):
   def probability(self, H):
     """To be implemented by subclass."""
     return 1.0
-
-  def close(self, symbols):
-    cell = []
-    unseen = []
-    while True:
-      p = 1.0
-      hypotheses = self.group(symbols)
-      for h in hypotheses:
-        probability = self.probability(h)
-        if probability > self.beam:
-          unseen += [h]
-      if unseen == []:
-        break
-      symbols = [unseen.pop()]
-      cell += symbols
-    return cell
 
   def group(self, S):
     result = []
@@ -71,6 +57,33 @@ class Parser(object):
       pass
     return result
 
+  def close(self, symbols):
+    cell = []
+    unseen = []
+    while True:
+      p = 1.0
+      prior = 1.0
+      for s in symbols:
+        prior *= s.prior
+      hypotheses = self.group(symbols)
+      for h in hypotheses:
+        likelihood, n = self.probability(h)
+        #prior *= self.model[pcfg.ruleType(h)]
+        if self.model:
+          prior = pcfg.probability(h, self.model)
+        if likelihood > 0.0:
+          if math.exp(math.log(likelihood) / float(n)) > self.beam:
+            h.likelihood = likelihood
+            h.n = n
+            h.prior = prior
+            h.posterior = likelihood * prior
+            unseen += [h]
+      if unseen == []:
+        break
+      symbols = [unseen.pop()]
+      cell += symbols
+    return cell
+
   def parse(self, N):
     n = len(N)
     t = {}
@@ -88,10 +101,26 @@ class Parser(object):
           for B in t[i,k]:
             for C in t[k,j]:
               cell += self.close([B,C])
+        if self.n > 0 and len(cell) > self.n:
+          if self.model:
+            cell = [item for item in sorted(cell, key=lambda x: x.posterior, reverse=True)][:self.n]
+          else:
+            sortedcell = sorted(cell, key=lambda x: x.depth)
+            if abs(i-j) > 1:
+              newcell = []
+              firstdepth = sortedcell[0].depth
+              for c in sortedcell:
+                if c.depth - firstdepth > 0:
+                  break
+                newcell.append(c)
+              cell = newcell
+            else: 
+              cell = [item for item in sortedcell][:self.n]
         t[i,j] = cell
         if self.verbose:
           print '{0} hypotheses'.format(len(cell))
     return t
+
 
   def profile():
     import cProfile
@@ -167,13 +196,13 @@ class StochasticParser(Parser):
 
   def __init__(self):
     corpus = annotations.corpus()
-    self.model = pcfg.train(corpus)
+    model = pcfg.train(corpus)
     self.allowed = treeconstraints.train(corpus)
-    self.n = 15
-    self.beam = 0.8
+    n = 15
+    beam = 0.8
     # Standard deviation expressed in proportion of beatlength
     self.std = 0.1
-    super(StochasticParser, self).__init__(beam=self.beam)
+    super(StochasticParser, self).__init__(beam=beam, model=model, n=n)
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -185,8 +214,8 @@ class StochasticParser(Parser):
 
   def beats_likelihood(self, S, downbeat, length):
     implied_beatLength = length / float(len(S.children))
-    #std = self.std * implied_beatLength
-    std = self.std * length
+    std = self.std * implied_beatLength
+    #std = self.std * length
     beatLength = implied_beatLength
     time = downbeat
     if S.hasLength():
@@ -235,56 +264,6 @@ class StochasticParser(Parser):
     p, n = self.beats_likelihood(S, S.downbeat(), S.length)
     return p, n
     
-  def close(self, symbols):
-    cell = []
-    unseen = []
-    while True:
-      p = 1.0
-      prior = 1.0
-      for s in symbols:
-        prior *= s.prior
-      hypotheses = self.group(symbols)
-      for h in hypotheses:
-        likelihood, n = self.probability(h)
-        #prior *= self.model[pcfg.ruleType(h)]
-        prior = pcfg.probability(h, self.model)
-        if likelihood > 0.0:
-          if math.exp(math.log(likelihood) / float(n)) > self.beam:
-            h.likelihood = likelihood
-            h.n = n
-            h.prior = prior
-            h.posterior = likelihood * prior
-            unseen += [h]
-      if unseen == []:
-        break
-      symbols = [unseen.pop()]
-      cell += symbols
-    return cell
-
-  def parse(self, N):
-    n = len(N)
-    t = {}
-    print "Input length {0}".format(n)
-    # Iterate over rows
-    for j in range(1, n+1):
-      # Fill diagonal cells
-      t[j-1, j] = [N[j-1]] + self.close([N[j-1]])
-      # Iterate over columns
-      for i in range(j-2, -1, -1):
-        if self.verbose:
-          print 'Filling ({0}, {1}) '.format(i, j),
-        cell = []
-        for k in range(i+1, j):
-          for B in t[i,k]:
-            for C in t[k,j]:
-              cell += self.close([B,C])
-        if len(cell) > self.n:
-          cell = [item for item in sorted(cell, key=lambda x: x.posterior, reverse=True)][:self.n]
-        t[i,j] = cell
-        if self.verbose:
-          print '{0} hypotheses'.format(len(cell))
-    return t
-
   def transcribe(self, onsets, barlevel=0):
     N = self.list_to_onsets(onsets)
     parses = self.parse(N)[0, len(N)]
@@ -293,23 +272,24 @@ class StochasticParser(Parser):
 
 class SimpleParser(Parser):
 
-  def __init__(self, corpus=False, allowed=None, tolerance=0.0, maxdepth=5):
+  def __init__(self, corpus=False, allowed=None, tolerance=0.0, maxdepth=5, model=None, n=-1):
     self.corpus = corpus
     self.allowed = allowed
     self.tolerance = tolerance
     self.maxdepth = maxdepth
     self.verbose = False
-    super(SimpleParser, self).__init__()
+    super(SimpleParser, self).__init__(model=model, n=n)
 
   @staticmethod
-  def corpusParser():
+  def corpusParser(n=15):
     from jazzr.models import pcfg, treeconstraints
     from jazzr.corpus import annotations
     corpus = annotations.corpus()
     allowed = treeconstraints.train(corpus)
     allowed.append(['tie', 'tie', 'on'])
     model = pcfg.train(corpus)
-    return annotations.loadAnnotations(), SimpleParser(corpus=True, allowed=allowed, tolerance=0.001, maxdepth=5)
+    #model = None
+    return annotations.loadAnnotations(), SimpleParser(n=n, model=model, corpus=True, allowed=allowed, tolerance=0.001, maxdepth=5)
     
     
   def bottomlevel(self, S):
@@ -321,25 +301,32 @@ class SimpleParser(Parser):
     return True
     
   def probability(self, S):
-    p = 1.0
     if self.allowed != None:
       if not S.hasLength() and not S.tree() in self.allowed:
-        return 0.0
+        return 0.0, 1
     if not S.hasLength():
       if S.depth > self.maxdepth:
-        if self.verbose > 1:
-          print 'Rejected -1'
-        return 0.0
-      return 1.0
+        return 0.0, 1
+      return 1.0, 1
 
     tolerance = self.tolerance
 
     # A hack to parse the corpus efficiently
-    if abs(S.length * 2.0 - round(S.length * 2.0)) > 0.0001 and self.corpus:
-      if abs(S.length * 3.0 - round(S.length * 3.0)) > 0.0001:
-        if self.verbose > 1:
-          print 'Rejected 0'
-        return 0.0
+    if len(S.children) == 2 and self.corpus:
+      if abs(S.length * 2.0 - round(S.length * 2.0)) > 0.00001 and abs(S.length * 3.0 - round(S.length * 3.0)) > 0.00001:
+        return 0.0, 1
+      #if S.onsets[0] != None:
+      #  if abs(S.onsets[0].on - int(S.onsets[0].on)) > 0.00001:
+      #    return 0.0, 1
+      #if S.onsets[1] != None:
+      #  if abs(S.onsets[1].on - int(S.onsets[1].on)) > 0.00001:
+      #    return 0.0, 1
+    elif len(S.children) == 3 and self.corpus:
+      if abs(S.length * 3.0 - round(S.length * 3.0)) > 0.00001:
+        return 0.0, 1
+      if not (abs(S.onsets[2].on - int(S.onsets[2].on) - 1/3.0) > 0.00001 or\
+        abs(S.onsets[2].on - int(S.onsets[2].on) - 2/3.0) > 0.00001) and self.corpus:
+        return 0.0, 1
 
     (position, (previous, on, next)) = S.features
     downbeat = on - position * S.length
@@ -347,35 +334,25 @@ class SimpleParser(Parser):
     if self.verbose > 1:
       print S.features
     if previous - downbeat > tolerance:
-      if self.verbose > 1:
-        print 'Rejected 1'
-      return 0.0
+      return 0.0, 1
     elif (downbeat + S.length) - next > tolerance:
-      if self.verbose > 1:
-        print 'Rejected 2'
-      return 0.0
+      return 0.0, 1
     childLength = S.length / float(len(S.children))
     for child in S.children:
       # Check if the onsets are right
       if child.isSymbol():
         (childposition, (p, on, n)) = child.features
         if abs(on - (time + childposition * childLength)) > tolerance:
-          if self.verbose > 1:
-            print 'Rejected 3'
-          return 0.0
+          return 0.0, 1
       elif child.isOnset():
         if abs(time - child.on) > tolerance:
-          if self.verbose > 1:
-            print 'Rejected 4'
-          return 0.0
+          return 0.0, 1
       # Check if the ratio is right
       if child.hasLength():
         if abs(childLength - child.length) > tolerance:
-          if self.verbose > 1:
-            print 'Rejected 5'
-          return 0.0
+          return 0.0, 1
       time += childLength
-    return 1.0
+    return 1.0, 1
 
   def parse_best_n(N, window, rating_function):
     n = len(N)
