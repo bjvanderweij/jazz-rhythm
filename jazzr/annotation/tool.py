@@ -143,10 +143,12 @@ class Tool:
     annotationcorpus.save(collection, name, metadata, sorted(self.annotations, key=lambda x: x[0]), self.notelist, self.midifile)
 
   def addNote(self, pitch=0, type=0, position=-1):
-    if not pitch and type in [Annotation.NOTE, Annotation.GRACE, Annotation.ERROR]:
+    if not pitch and type in [Annotation.NOTE, Annotation.GRACE, Annotation.ERROR, Annotation.SWUNG]:
       pitch = self.notelist[self.midipos][2]
     if position == -1:
       position = self.units2quarters(self.cursor)
+    if type == Annotation.SWUNG and position - int(position) == 0.5:
+      position = int(position) + 2/3.0
     self.annotations.append((position, self.midipos, pitch, type))
     self.save(collection='autosave', name='autosave', force=True)
 
@@ -179,6 +181,10 @@ class Tool:
       elif props['command'] == 'e':
         # Add end marker
         self.addNote(type=Annotation.END)
+      elif props['command'] == 'w':
+        # Add end marker
+        self.addNote(type=Annotation.SWUNG)
+        self.midipos += 1
       elif props['command'] == 's':
         # Skip and mark as error
         self.addNote(type=Annotation.ERROR)
@@ -355,7 +361,7 @@ class Tool:
     while True:
       exp = re.compile(r'(?P<repetitions>[0-9]+)?(?P<action>[iqpsx ])$|:(?P<command>set |play|stop|pause|save|strip|subtract|q|load|score|restore)(?P<arg1>resolution|correction|beatsperbar|beatdiv)?(?P<arg2> (-)?[0-9]+)?\n$')
       if self.mode == self.INSERT:
-        exp = re.compile(r'(?P<command>[ srge]|t(?P<arg>[0-9]+))$') 
+        exp = re.compile(r'(?P<command>[ wsrge]|t(?P<arg>[0-9]+))$') 
       # Check if the buffer contains a command
       m = exp.match(self.buf)
       if m:
@@ -486,7 +492,7 @@ class Tool:
     # Refresh screen
     self.stdscr.clear()
     modes = ['ANNOTATING', 'PLAYING', 'INSERT']
-    types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END']
+    types = ['NOTE', 'REST', 'GRACE', 'ERROR', 'END', 'SWUNG']
     beatpos = self.units2quarters(self.cursor) / self.meter.quarters_per_beat()
     self.stdscr.addstr(self.posy+2+2*self.height, self.posx, 'Cursor: {0}\tAnnotation: {1}\tNotes:{2}'.format(self.cursor, self.notepos, self.midipos))
     self.stdscr.addstr(self.posy+3+2*self.height, self.posx, 'Beats: {0}\tBar: {1}'.format(beatpos, beatpos // self.meter.beatspb))

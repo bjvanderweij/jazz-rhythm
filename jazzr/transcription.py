@@ -60,6 +60,7 @@ def transcribe(S, annotation=None, barlevel=0):
       notesInserted = True
       n = note.Note(quarterLength=4*item[1])
       if annotation:
+        print item
         n.midi = annotation.pitch(item[2])
       part[measure].append(n)
     elif item[0] == TIE:
@@ -88,7 +89,7 @@ def transcribe(S, annotation=None, barlevel=0):
 def scorelist(S, barlevel=0, depth=0, duration=1):
   score = []
   if S.isOnset():
-    score = [(ONSET, duration, S.annotation)]
+    score = [(ONSET, duration, S.index)]
   if S.isTie():
     score = [(TIE, duration, 0)]
   if S.isSymbol():

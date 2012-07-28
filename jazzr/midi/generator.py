@@ -1,5 +1,5 @@
 from jazzr.midi import representation
-from jazzr.rhythm import grid, meter
+from jazzr.rhythm import meter
 import math
 
 def annotations2midi(notes, meter=meter.Meter(4, 4), bpm=120, velocity=80, swing=2/3.0):
@@ -13,8 +13,6 @@ def annotations2midi(notes, meter=meter.Meter(4, 4), bpm=120, velocity=80, swing
     (quarter, pitch, type) = notes[i]
     beat = quarter / meter.quarters_per_beat()
     if type == 1: continue
-    if grid.level(beat) == 3:
-      beat = beat - 1/8.0 + swing*1/4.0
     length = tactuslength
     if i + 1< len(notes):
       length = (notes[i+1][0] - beat)*tactuslength

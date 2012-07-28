@@ -14,7 +14,6 @@ The metrical length of a note can be derived by subtracting its metrical positio
 \[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
 \[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]
 
-\subsection{Models}
 
 Possible models include:
 \begin{itemize}
@@ -32,56 +31,13 @@ Corpora:
 \item Jazz corpus (my own)
 \end{itemize}
 
-\subsubsection*{Any approach that includes performance information}
+\subsection{Definitions}
 
-% This is actually an argument/motivation and should be moved to the appropriate section 
-
-It is likely that the timing with which humans realise/perform a rhythm presents valuable information about rhythmic structure. It is for example well known that downbeats/the first beat of a measure tend to be stressed by playing them louder and slightly longer. This occurs even when the rhythm is highly syncopated [references?]. Rhythm in jazz music is often played with swing: a slight lengthening of strong beats. Despite these findings, many models of rhythm treat expressive deviation as noise (are there any models that do not?). 
-
-How can we include this information in a model of rhythm? Our corpus is fairly small so we should be cautious of over fitting.
-
-\subsubsection*{Chart parsing rhythm - a compositional theory of rhythm}
-
-...
-
-\subsection{Experiments and evaluation}
-
-
-\subsubsection*{Common practice rhythm}
-Temperley proposes a method to compare different models of Rhythm generation \citep{temperley2010modeling}. A good model is, in his definition, one that assigns the highest probability to the data. To evaluate a model, n-fold cross-validation can be used. Use (n-1)/n of the corpus to train the model and test the model on 1/n of the corpus. 
-
-We can do this for Jazz but this would be very uninformative. We would end up with just a single score for the probability that the model assigns to Jazz scores. Possible evaluations are:
-\begin{itemize}
-\item Train the model on Jazz, evaluate on Jazz, Classical, Uniform random
-\item Train the model on folk (Temperley) or Jazz, evaluate on folk or jazz (and uniform random?)
-\end{itemize}
-
-This approach makes no use of any information in the performance. 
-
-\subsubsection*{Unified probabilistic model}
-Temperley proposes a probabilistic model that does meter finding and rhythm detection. As far as I know now, the model simply finds the most likely way the notes could be generated from a grid. Expressiveness is seen as noise.
-
-A model like this allows a quantitative evaluation. It can be directly compared to a model of my own. Possible evaluations include:
-\begin{itemize}
-\item The proportion of correctly classified notes
-\item Mean square error (measured in quarter notes for example)
-\end{itemize}
-
-
-
-\subsection{Data preparation}
-
-
-\subsection{Chart Parsing/Statistical Longuet-Higgins}
-\label{sec:chart}
-
-A subdivision rhythmic analysis is useful because it allows us to calculate onset likelihoods given that we know where down- and upbeats are located at each level.
-
-Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
-
-We consider a rhythm to be a list of note onsets. We ignore note offsets, even though in many cases, note offsets are rhythmically timed as well, note onsets seem to be the most important property of rhythms and also the property that a rhythms played by any instruments has in common (it is hard for example to define the note offsets of a drum line). When note onsets form a rhythm, we can assume that there is a set of units, or metrical durations that form are the atomic units that the onset times are build off. These metrical durations are mostly constrained to be duple or triple divisions of each other. Other divisions are allowed as well but are far less common. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
+We consider a rhythm to be a list of note onsets. We ignore note offsets, even though in many cases, note offsets are rhythmically timed as well, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets form a rhythm, we can assume that there is a set of units, or metrical durations that form are the atomic units that the onset times are build off. These metrical durations are mostly constrained to be duple or triple divisions of each other. Other divisions are allowed as well but are far less common. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
 
 The task of finding rhythmic structure can now be defined as finding the appropriate atomic units and finding the location of the downbeats. When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
+
+\subsection{Parser}
 
 A parser is presented here that forms hypotheses about the atomic units that make up a rhythm. The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. The parser uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
 
@@ -104,6 +60,8 @@ The parser works like any other stochastic CKY parser where symbols are added to
 
 The performance of the parser is determined in the first place by how a onsets are translated into hypotheses and how hypotheses are combined and in the second place by how the probability of a certain hypothesis is determined. When the probability function would simply assign the probability 1.0 to each hypothesis, the parser would generate an infinite number of hypotheses. The following sections will introduce hypothesis generation and combination functions for inputs with metronomic timing.
 
+\subsection{Hypothesis generation and rejection}
+
 \subsection{Metronomic onset hypothesis generation}
 
 When we assume the onsets are metronomic, we can represent hypotheses in a compact and efficient format. Apart from metronomic onsets we need to make a few further assumptions: the parser can only come up with a valid analysis if we assume that (1) the time $t=0$ corresponds to the first beat of the time signature and that (2) there is an end marker which is placed at the $n$-th bar, where $n$ is the first power of two after the index of the last bar of the rhythm. For example, if we have a 3-bar rhythm, the end marker is placed at the first beat of the 4th bar.
@@ -122,6 +80,30 @@ I_i = (R_{i-1}, R_i, R_{i+1}),
 containing the previous onset, the current onset and the next onset. At $I_0$, the previous onset is assumed to be $0$, at $I_{n-1}$ the next onset is $R_n$, which is the end-marker. 
 
 An hypothesis is represented as a set of features associated with the corresponding duration symbol $D$. Each duration symbol will have at least two: the first onset in the symbol, $I_i$ and its position within the symbol. When a duration symbol contains more than one onset, a third feature is added that contains the length of the symbol that is implied by the onsets in the symbol.
+
+\subsection{Prior}
+\subsubsection*{PCFG}
+\subsubsection*{Hierarchical position}
+\subsection{Expression}
+
+
+
+
+\subsection{Data preparation}
+
+
+\subsection{Chart Parsing/Statistical Longuet-Higgins}
+\label{sec:chart}
+
+A subdivision rhythmic analysis is useful because it allows us to calculate onset likelihoods given that we know where down- and upbeats are located at each level.
+
+Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
+
+
+
+
+
+
 
 \subsection{Expressive onset hypothesis generation}
 

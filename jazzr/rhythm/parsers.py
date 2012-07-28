@@ -1,4 +1,5 @@
 from jazzr.rhythm.symbol import *
+from jazzr.annotation import Annotation
 from jazzr.corpus import annotations
 from jazzr.models import treeconstraints, pcfg
 from jazzr.tools import latex
@@ -37,21 +38,24 @@ class Parser(object):
     result = []
     if len(S) == 1:
       if S[0].isOnset():
-        result += [Symbol.fromSymbols([Tie()] + S)]
+        result += [Symbol.fromSymbols([Tie()] + S, corpus=self.corpus)]
       elif S[0].isSymbol():
-        result += [Symbol.fromSymbols([Tie()] + S), Symbol.fromSymbols(S + [Tie()])]
+        result += [Symbol.fromSymbols([Tie()] + S, corpus=self.corpus), Symbol.fromSymbols(S + [Tie()], corpus=self.corpus)]
+        # Triple division
         if S[0].children[0].isTie() and S[0].children[1].isOnset():
-          result += [Symbol.fromSymbols([Tie()] + S[0].children)]
+          result += [Symbol.fromSymbols([Tie()] + S[0].children, corpus=self.corpus)]
     elif len(S) == 2:
-      result += [Symbol.fromSymbols(S)]
+      result += [Symbol.fromSymbols(S, corpus=self.corpus)]
       # Triple division
+      if S[0].isOnset() and S[1].isOnset():
+        result += [Symbol.fromSymbols([Tie()] + S, corpus=self.corpus)]
       if S[1].isSymbol() and len(S[1].children) == 2:
         # Only allow triple divisions at note level to parse the corpus efficiently:
         # If triple divisions into symbols were allowed, the children of S[0] need to be upgraded a level
         # (Their ties need to be multiplied by two)
         if S[0].isOnset() and S[1].children[0].isOnset() and S[1].children[1].isOnset() or\
             S[0].isOnset() and S[1].children[0].isTie() and S[1].children[1].isOnset():
-          result += [Symbol.fromSymbols([S[0]] + S[1].children)]
+          result += [Symbol.fromSymbols([S[0]] + S[1].children, corpus=self.corpus)]
     elif len(S) == 3:
       # Not supported yet
       pass
@@ -154,20 +158,21 @@ class Parser(object):
     counter = 0
     for i in range(len(a)):
     #for i in range(10):
-      if a.type(i) in [a.NOTE, a.END] and counter >= begin and counter < end:
+      if a.type(i) in [a.NOTE, a.SWUNG, a.END] and counter >= begin and counter < end:
         if a.type(i) == a.END and a.barposition(a.position(i)) != 0:
           print 'Warning, end marker note not on beginning of bar'
         notes.append((a.position(i) - correction, i))
+        if a.position(i) - int(a.position(i)) in [0.25, 0.75]:
+            print 'Warning, 16th note at position {0}'.format(i)
       counter += 1
-    powers = [math.pow(2, x) for x in range(10)]
-    bars = a.bar(a.position(-1) - correction)
-    if bars not in powers:
-      print 'Correcting bar count from {0} to '.format(bars),
-      for power in powers:
-        if bars < power:
-          notes[-1] = (float(power) * 4.0, 0)
-          print '{0}'.format(power)
-          break
+    powers = [math.pow(2, x) for x in range(1, 10)]
+    bars = a.bar(notes[-1][0] - correction) + 1
+    print 'Correcting bar count from {0} to '.format(bars),
+    for power in powers:
+      if bars <= power:
+        notes[-1] = (float(power+1) * 4.0, 0)
+        print '{0}'.format(power+1)
+        break
     print [n[0] for n in notes]
     N = []
     lastonset = 0
@@ -281,7 +286,7 @@ class SimpleParser(Parser):
     super(SimpleParser, self).__init__(model=model, n=n)
 
   @staticmethod
-  def corpusParser(n=15):
+  def corpusAndParser(n=15):
     from jazzr.models import pcfg, treeconstraints
     from jazzr.corpus import annotations
     corpus = annotations.corpus()
@@ -301,6 +306,17 @@ class SimpleParser(Parser):
     return True
     
   def probability(self, S):
+    if S.isSymbol() and self.corpus:
+      for child in S.children:
+        if child.isSymbol():
+          if len(child.children) == 2:
+            if child.children[0].isOnset():
+              if child.children[0].annotation.type(child.children[0].index) == Annotation.SWUNG:
+                return 0.0, 1
+            if child.children[1].isOnset():
+              if child.children[1].annotation.type(child.children[1].index) == Annotation.SWUNG:
+                return 0.0, 1
+
     if self.allowed != None:
       if not S.hasLength() and not S.tree() in self.allowed:
         return 0.0, 1
@@ -327,6 +343,11 @@ class SimpleParser(Parser):
       if not (abs(S.onsets[2].on - int(S.onsets[2].on) - 1/3.0) > 0.00001 or\
         abs(S.onsets[2].on - int(S.onsets[2].on) - 2/3.0) > 0.00001) and self.corpus:
         return 0.0, 1
+      if S.children[2].annotation.type(S.children[2].index) == Annotation.SWUNG:
+        if not S.children[1].isTie():
+          return 0.0, 1
+        if not S.beats[0] == int(S.beats[2]):
+          return 0.0, 1
 
     (position, (previous, on, next)) = S.features
     downbeat = on - position * S.length
@@ -353,29 +374,4 @@ class SimpleParser(Parser):
           return 0.0, 1
       time += childLength
     return 1.0, 1
-
-  def parse_best_n(N, window, rating_function):
-    n = len(N)
-    t = {}
-    print "Input length {0}".format(n)
-    # Iterate over rows
-    for j in range(1, n+1):
-      # Fill diagonal cells
-      t[j-1, j] = [N[j-1]] + close([N[j-1]])
-      # Iterate over columns
-      for i in range(j-2, -1, -1):
-        if self.verbose:
-          print 'Filling ({0}, {1}) '.format(i, j),
-        cell = []
-        for k in range(i+1, j):
-          for B in t[i,k]:
-            for C in t[k,j]:
-              cell += self.close([B,C])
-        if len(cell) > n:
-          ratings = [(S, rating_function(S)) for S in cell]
-          cell = [S for (S, rating) in sorted(ratings, key=lambda x: x[1], reverse=True)][:window]
-        t[i,j] = cell
-        if self.verbose:
-          print '{0} hypotheses'.format(len(cell))
-    return t
 

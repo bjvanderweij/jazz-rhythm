@@ -11,6 +11,7 @@ class Annotation:
   GRACE = 2
   ERROR = 3
   END = 4
+  SWUNG = 5
 
   def __init__(self, annotation, notes, metadata):
     from jazzr.rhythm import meter
