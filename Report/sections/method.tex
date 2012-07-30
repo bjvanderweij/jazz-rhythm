@@ -135,6 +135,129 @@ Many models consider the expressive timing to be Gaussian noise relative to the 
 
 
 
+\subsubsection{Algorithm}
+
+
+An hypothesis is represented as a tree node with a list of beats. The list of beats contains onsets or expected onsets of the downbeat of each of its children. When a duration node is a terminal node the list of beats simply contains the onsets that the node contains.
+
+As soon as a node governs two or more onsets, empty slots are filled in. An hypothesis containing two or more nodes always implies a downbeat. When these hypotheses are combined with other nodes, onsets or ties
+The hypothesis combination process works by filling in as follows. An hypothesis can be an onset, a tie or a combination of hypotheses. When an hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
+
+The goal of the combination process is to get the best possible estimates of where the up and downbeats of an hypothesis are. 
+\begin{algorithm}
+\caption{Combine hypotheses}
+\label{alg:hypotheses}
+\begin{algorithmic}
+\Function{combine}{$H$}
+	\State $d \leftarrow$ length($H$)
+	\State onsets = []
+	\State complexonsets = []
+	\For{$i \leftarrow 0,d$}
+		\If{isOnset($H[i]$)}
+			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
+		\EndIf
+		\If{hasChildren(H[i])}
+			\State $d \leftarrow$ length($H[i]$.children)
+			\State $p$, complexOnset $\leftarrow H[i]$
+			\If{H[$i$].beats[0] $\neq$ \textit{Null}}
+			\Comment{Check if the hypothesis suggests a downbeat}
+				\State \textbf{append} ($i, H[i$].beats[0]) \textbf{to} onsets
+			\Else
+				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexonsets
+			\EndIf
+		\EndIf
+	\EndFor
+	\If{length(onsets) <= 1}
+		\State \textbf{append} complexOnsets \textbf{to} onsets
+	\EndIf
+	\State beats $\leftarrow$ \Call{fill}{onsets, $d$}
+	\State children = $H[:]$
+	\State $h \leftarrow$ children, (onsets$[0][0]/d$, onsets$[0][1]$), beats
+	\State \textbf{return} $h$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Fill beat matrix}
+\label{alg:hypotheses}
+\begin{algorithmic}
+\Function{fill}{beats}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+So a hypothesis is a tuple containing its children, a complex onset and its estimated beats.
+Every hypothesis also keeps track of the first onset before and after the hypothesis. This is used later to restrict adding ties to the hypothesis.
+
+Getting observations
+
+
+A rhythmic analysis containing two or more notes makes some sort of prediction about where other onsets are likely to appear. 
+
+The observations function is defined recursively. The basic intuition is that for every duration symbol, the likelihood of the upbeats is calculated given the downbeats of the level above. 
+
+\begin{algorithm}
+\caption{Generate observations}
+\label{alg:observations}
+\begin{algorithmic}
+\Function{observations}{$h$, downbeat, nextDownbeat}
+	\State childNodes, beats $\leftarrow h$.children
+	\If {beats[0] $\neq$ \textit{Null}}
+		\State downbeat $\leftarrow$ beats[0]
+	\EndIf
+	\State $d \leftarrow$ length(childNodes)
+	\State $l \leftarrow$ nextDownbeat - downbeat
+	\State obs $\leftarrow$ []
+	\If {hasChildren(childNodes[0])}
+		\State upbeat $\leftarrow l/d$
+		\If{beats[1] $\neq$ \textit{Null}}
+			\State upbeat $\leftarrow$ beats[1]
+		\EndIf
+		\State obs $\leftarrow$ \Call{observations}{childNodes[0], downbeat, upbeat}
+	\EndIf
+	
+	\For {$i \leftarrow 1,d$}
+		\If {beats[$i$] $\neq$ \textit{Null}}
+			\State \textbf{append} \Call{features}{downbeat, nextDownbeat, beat, $i, d$} \textbf{to} obs
+		\EndIf	
+		\If {childNodes[$i$] $\neq$ \textit{Null}}
+			\State \textbf{append} \Call{observations}{childNode[$i$], $i/d * l$, nextDownbeat} \textbf{to} obs
+		\EndIf
+	\EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Calculate the ratio of downbeat length and upbeat length. Other features could be calculated here.}
+\label{alg:features}
+\begin{algorithmic}
+\Function{features}{downbeat, nextDownbeat, beat}
+	\State \textbf{return} $\frac{((\mathrm{beat} - \mathrm{downbeat}) / i)}{((\mathrm{nextDownbeat} - \mathrm{beat}) / (d - i))}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Calculating likelihood
+
+We can now calculate the likelihood of any hypothesis by taking the product of the observations that it implies. Optionally we can add an expression parameter that suggests the ratios to be slightly larger than one.
+
+\begin{equation}
+\label{eq:h_likelihood}
+\mathcal{L}(O|h, \mu, \sigma) \propto \prod_{i=0}^N \exp\left(-\frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
+\end{equation}
+
+Where $O$ is a set of down-/upbeat ratios. We expect the down-/upbeat ratios to be close to one and their logarithm close to zero. Therefore it makes sense to set $\mu$ to zero. However we may expect downbeats to be slightly stretched and we can set $\mu$ to reflect this.
+
+Rejecting hypotheses
+
+An hypothesis is rejected if the per item likelihood is lower than a certain threshold. The per-observation likelihood is defined as
+
+\begin{equation}
+\label{eq:per_obs_likelihood}
+\mathcal{L}(O|h, \mu, \sigma) \mathrm{ per observation } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
+\end{equation}
 
 
 %Longuet-Higgins used a constant tolerance parameter to determine whether a beat should be subdivided or a rest should be generated. Increased computational power and availability of labelled data now allows us to makes these decisions probabilistic.

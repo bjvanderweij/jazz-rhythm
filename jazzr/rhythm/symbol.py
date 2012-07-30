@@ -31,6 +31,106 @@ class Symbol(object):
     self.perf_on = perf_on
 
   @staticmethod
+  def fill(onsets, division):
+    beats = [None for x in range(division)]
+    for pos, onset in onsets:
+      if int(pos) == pos and pos < division:
+        beats[int(pos)] = onset
+    if len(onsets) <= 1:
+      return beats
+    
+    for (p1, t1), (p2, t2) in zip(onsets[:-1], onsets[1:]):
+      if p2 - p1 == 0:
+        length = 0
+      else:
+        length = (t2 - t1)/float(p2 - p1)
+      for i in range(0, int(p2)):
+        if beats[i] == None:
+          beats[i] = t1 + (i - p1) * length
+    if division > int(p2):
+      for i in range(int(p2), division):
+        if beats[i] == None:
+          beats[i] = t1 + (i - p1) * length
+    return beats
+
+  @staticmethod
+  def fromSymbols(Symbols, corpus=False):
+    # beats should be filled with actual onsets, and filled with onsets estimated from those
+    # as soon as two onsets are defined, upper symbols only add their own onsets
+    division = len(Symbols)
+    positions = []
+    onsets = [None for x in range(division)]
+    complexpositions = []
+
+    previous = None
+    next = None
+
+    perf_complexpositions = []
+    perf_positions = []
+    perf_onsets = [None for x in range(division)]
+    perf_on = None
+
+    for S, pos in zip(Symbols, range(0, division)):
+      if S.isOnset():
+        positions.append((pos, S.on))
+        onsets[pos] = S.on
+        if previous == None:
+          previous = S.previous
+        next = S.next
+        if corpus:
+          perf_positions[pos] = S.annotation.perf_onset(S.index)
+          perf_onsets[pos] = S.annotation.perf_onset(S.index)
+
+      elif S.isSymbol():
+        (complexpos, (p, onset, n)) = S.features
+        if corpus:
+          perf_on = S.perf_on
+        next = n
+        if previous == None:
+          previous = p
+
+        if S.beats[0] != None:
+          positions.append((pos, S.beats[0]))
+          if S.onsets[0] != None:
+            onsets[pos] = S.onsets[0]
+            if corpus:
+              perf_onsets[pos] = S.perf_onsets[0]
+        else:
+          complexpositions.append((pos + complexpos, onset))
+          if corpus:
+            perf_complexpositions.append((pos + complexpos, perf_on))
+        if S.beats[1] != None and S.beats[0] != None:
+          positions.append((pos+1, S.beats[0] + len(S.children) * (S.beats[1] - S.beats[0])))
+          if corpus:
+            perf_positions.append((pos+1, S.perf_beats[0] + len(S.children) * (S.perf_beats[1] - S.perf_beats[0])))
+  
+    length = None
+    if len(positions) <= 1:
+      positions += complexpositions
+    position, onset = positions[0]
+    features = (position/float(division), (previous, onset, next))
+
+    positions = sorted(positions, key=lambda x:x[0])
+    beats = Symbol.fill(positions, division)
+    if len(positions) >= 2:
+      length = division * (beats[1] - beats[0])
+
+   
+    perf_beats = None
+    if corpus:
+      position, perf_on = perf_positions[0]
+    if corpus:
+      perf_beats = Symbol.fill(perf_positions, division)
+
+    children = Symbols
+    divisions = max([S.divisions for S in Symbols], key=lambda x: len(x))[:]
+    divisions.append(len(Symbols))
+    depth = max([S.depth for S in Symbols]) + 1
+    R = Symbol(features, length=length, children=children, depth=depth, beats=beats, onsets=onsets, divisions=divisions, perf_beats=perf_beats, perf_on=perf_on)
+    return R 
+
+  """
+  @staticmethod
   def fromSymbols(Symbols, corpus=False):
     # First onset position
     position = 0.0
@@ -102,12 +202,13 @@ class Symbol(object):
         # GRID
         if S.hasDownbeat():
           beats[beat] = S.downbeat()
-          o = S.downbeat()
+          #o = S.downbeat()
           if corpus:
             perf_beats[beat] = S.perf_beats[0]
-            perf_o = S.perf_beats[0]
-        else:
-          currentposition += pos
+          #  perf_o = S.perf_beats[0]
+        #else:
+        #  currentposition += pos
+        currentposition += pos
         if start == None:
           start = (currentposition, o)
           if corpus:
@@ -151,7 +252,11 @@ class Symbol(object):
     depth = max([S.depth for S in Symbols]) + 1
     children = Symbols
     R = Symbol(features, length=length, children=children, depth=depth, beats=beats, onsets=onsets, divisions=divisions, perf_beats=perf_beats, perf_on=perf_on)
+    if length == 0:
+      print beats, start, span
+      R.view(showOnsets=True, showFeatures=True)
     return R
+    """
 
   def downbeat(self):
     return self.beats[0]
@@ -191,9 +296,9 @@ class Symbol(object):
     return representation.MidiFile('transcription.mid')
     os.system('rm transcription.mid')
 
-  def view(self, scale=False):
+  def view(self, scale=False, showOnsets=False, showPerfOnsets=False, showRatios=False, showFeatures=False, quiet=True):
     """Generate a LaTeX tree using qtree.sty, convert to pdf with pdflatex and view using Evince. Remove the files afterwards."""
-    latex.view_symbols([self], scale=scale)
+    latex.view_symbols([self], scale=scale, showOnsets=showOnsets, showPerfOnsets=showPerfOnsets, showRatios=showRatios, showFeatures=showFeatures, quiet=quiet)
 
   def score(self, barlevel=0, annotation=None):
     """Transcribe the symbol, save as MusicXML, convert to pdf using MuseScore and view using Evince. Remove the file afterwards."""

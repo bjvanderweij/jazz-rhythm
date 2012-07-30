@@ -1,7 +1,7 @@
 from jazzr.rhythm.symbol import *
 from jazzr.annotation import Annotation
 from jazzr.corpus import annotations
-from jazzr.models import treeconstraints, pcfg
+from jazzr.models import treeconstraints, pcfg, expression
 from jazzr.tools import latex
 import transcription
 import math
@@ -12,23 +12,28 @@ class Parser(object):
   shave_and_a_haircut2 = [0, 0.529862, 0.713465, 0.899274, 1.072124, 1.608282, 2.772783, 3.280167, 4.380727] 
   rhumba_clave = [0, 0.491439, 0.975992, 1.618332, 1.945464, 2.597757, 3.118297, 3.574721, 4.226787, 4.560222, 5.284089]
 
-  def __init__(self, model=None, beam=0.5, n=-1):
+  def __init__(self, model=None, beam=0.5, n=-1, corpus=False):
     self.beam = beam
     self.verbose= False
     self.model = model
     self.n = n
+    self.corpus=corpus
+
+  def shave(self, onsets):
+    N = self.list_to_onsets(onsets)
+    return Symbol.fromSymbols([Symbol.fromSymbols([Symbol.fromSymbols([N[0], Symbol.fromSymbols([N[1], N[2]])]), Symbol.fromSymbols([N[3], N[4]])]), Symbol.fromSymbols([Symbol.fromSymbols([Tie(), N[5]]), N[6]])]) 
 
   def test1(self):
     N = self.list_to_onsets(self.shave_and_a_haircut)
     parses = self.parse(N)[0, len(N)]
     S = Symbol.fromSymbols([Symbol.fromSymbols([Symbol.fromSymbols([N[0], Symbol.fromSymbols([N[1], N[2]])]), Symbol.fromSymbols([N[3], N[4]])]), Symbol.fromSymbols([Symbol.fromSymbols([Tie(), N[5]]), N[6]])]) 
-    return parses, S
+    return sorted(parses, key=lambda x: x.posterior, reverse=True), S
 
   def test2(self):
     N = self.list_to_onsets(self.shave_and_a_haircut2)
     parses = self.parse(N)[0, len(N)]
     S = Symbol.fromSymbols([Symbol.fromSymbols([Symbol.fromSymbols([N[0], Symbol.fromSymbols([N[1], N[2], N[3]])]), Symbol.fromSymbols([N[4], N[5]])]), Symbol.fromSymbols([Symbol.fromSymbols([Tie(), N[6]]), N[7]])]) 
-    return parses, S
+    return sorted(parses, key=lambda x: x.posterior, reverse=True), S
 
   def probability(self, H):
     """To be implemented by subclass."""
@@ -47,8 +52,8 @@ class Parser(object):
     elif len(S) == 2:
       result += [Symbol.fromSymbols(S, corpus=self.corpus)]
       # Triple division
-      if S[0].isOnset() and S[1].isOnset():
-        result += [Symbol.fromSymbols([Tie()] + S, corpus=self.corpus)]
+      #if S[0].isOnset() and S[1].isOnset():
+      #  result += [Symbol.fromSymbols([Tie()] + S, corpus=self.corpus)]
       if S[1].isSymbol() and len(S[1].children) == 2:
         # Only allow triple divisions at note level to parse the corpus efficiently:
         # If triple divisions into symbols were allowed, the children of S[0] need to be upgraded a level
@@ -144,7 +149,7 @@ class Parser(object):
 
   def parse_onsets(self, onsets):
     N = self.list_to_onsets(onsets)
-    return self.parse(N)[0, len(N)]
+    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
 
   def parse_annotation(self, a, begin=0, end=None):
     if end == None:
@@ -179,7 +184,7 @@ class Parser(object):
     for (x, i), (y, j) in zip(notes[0:-1], notes[1:]):
       N.append(Onset(lastonset, x, y, annotation=a, index=i))
       lastonset = x
-    return self.parse(N)[0, len(N)]
+    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
 
   # Parse a performance from the corpus
   def parse_corpus(self, a, begin=None, end=None):
@@ -194,13 +199,14 @@ class Parser(object):
         notes.append(a.perf_onset(i))
       counter += 1
     notes[-1] = 3*notes[-1]
+
     N = self.list_to_onsets(notes)
-    return self.parse(N)[0, len(N)]
+    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
 
 class StochasticParser(Parser):
 
-  def __init__(self):
-    corpus = annotations.corpus()
+  def __init__(self, collection='explicitswing'):
+    corpus = annotations.corpus(collection=collection)
     model = pcfg.train(corpus)
     self.allowed = treeconstraints.train(corpus)
     n = 15
@@ -208,6 +214,17 @@ class StochasticParser(Parser):
     # Standard deviation expressed in proportion of beatlength
     self.std = 0.1
     super(StochasticParser, self).__init__(beam=beam, model=model, n=n)
+
+  def observations_likelihood(self, obs):
+    p = 1.0
+    for o in obs:
+      p *= self.observation_likelihood(o)
+    return p
+
+  def observation_likelihood(self, obs):
+    (level, abs_dev, dev, ratio) = obs
+    #return self.likelihood(1.0, self.std, ratio) * self.likelihood(0, self.std, dev)
+    return self.likelihood(0.0, self.std, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -217,32 +234,26 @@ class StochasticParser(Parser):
     # Normalised likelihood
     return math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
 
-  def beats_likelihood(self, S, downbeat, length):
-    implied_beatLength = length / float(len(S.children))
-    std = self.std * implied_beatLength
-    #std = self.std * length
+  def beats_likelihood(self, S, downbeat, upbeat, length):
+    division = len(S.children)
+    obs = []
+
+    implied_beatLength = length / float(division)
     beatLength = implied_beatLength
     time = downbeat
+    if S.beats[0] != None:
+      time = S.beats[0]
     if S.hasLength():
-      #beatLength = S.beats[1] - S.beats[0]
-      beatLength = S.length / float(len(S.beats))
-      time = S.downbeat()
-
+      beatLength = S.beats[1] - S.beats[0]
+    
     p = 1.0
-    n = 0
     # Skip downbeat likelihood, but if it's a symbol, calculate it's likelihood
     if S.children[0].isSymbol():
       p, n = self.beats_likelihood(S.children[0], downbeat, beatLength)
-    elif S.children[0].isOnset():
-      n = 1
-      p = self.likelihood(downbeat, std, S.children[0].on)
-    elif S.children[0].isTie():
-      n = 1
-      p = self.likelihood(downbeat, std, time)
+
     time += implied_beatLength
     # Upbeat likelihoods
-    for child, beat in zip(S.children[1:], S.beats[1:]):
-    #for child, beat in zip(S.children, S.beats):
+    for child, beat in zip(S.children[1:], S.beats[1:], range(1, division)):
       if child.isSymbol():
         prob, count = self.beats_likelihood(child, time, beatLength)
         p *= prob
@@ -263,11 +274,17 @@ class StochasticParser(Parser):
     # If time is smaller than next, all is fine, if time is greater than next, it becomes increasingly less probable
     start = S.downbeat()
     (pos, (previous, on, next)) = S.features
-    if previous - start > 0.5 * S.length or\
-        (start + S.length) - next > 0.5 * S.length:
+    length = len(S.children) * (S.beats[1] - S.beats[0])
+    if previous - start > 0.5 * length or\
+        (start + length) - next > 0.5 * length:
       return 0.0, 1
-    p, n = self.beats_likelihood(S, S.downbeat(), S.length)
-    return p, n
+    
+    obs = expression.observations(S)
+    p = 1.0
+    for o in obs:
+      p *= self.observation_likelihood(o)
+
+    return p, len(obs)
     
   def transcribe(self, onsets, barlevel=0):
     N = self.list_to_onsets(onsets)
@@ -325,6 +342,8 @@ class SimpleParser(Parser):
         return 0.0, 1
       return 1.0, 1
 
+    if self.verbose > 1:
+      print "Check1"
     tolerance = self.tolerance
 
     # A hack to parse the corpus efficiently
@@ -350,7 +369,7 @@ class SimpleParser(Parser):
           return 0.0, 1
 
     (position, (previous, on, next)) = S.features
-    downbeat = on - position * S.length
+    downbeat = S.downbeat()
     time = downbeat
     if self.verbose > 1:
       print S.features

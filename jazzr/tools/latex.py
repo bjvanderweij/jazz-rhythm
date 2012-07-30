@@ -28,6 +28,8 @@ def latexify(S, depth=0, showOnsets=False, showPerfOnsets=False, showRatios=Fals
     if showFeatures:
       if S.hasLength():
         extras.append('{0:.2}'.format(S.length))
+        extras.append('{0}'.format(S.beats))
+        extras.append('{0}'.format(S.features))
     if showRatios:
       if S.hasDownbeat() and S.hasUpbeat() and bottomlevel(S.children[0]):
         l = S.upbeat - S.downbeat
