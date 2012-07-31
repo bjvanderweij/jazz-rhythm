@@ -68,7 +68,10 @@ def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None):
     if beat != None:
       obs.append(features(downbeat, nextDownbeat, beat, i, division, level))
     if child.isSymbol():
-      newobs = observations(child, downbeat=i/float(division) * length, nextDownbeat=nextDownbeat, level=level+1, parent=S)
+      b = downbeat + i/float(division) * length
+      if beat != None:
+        b = beat
+      newobs = observations(child, downbeat=b, nextDownbeat=nextDownbeat, level=level+1, parent=S)
       obs += newobs
   return obs
 
@@ -113,7 +116,10 @@ def perf_observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None)
     if beat != None:
       obs.append(features(downbeat, nextDownbeat, beat, i, division, level))
     if child.isSymbol():
-      newobs = perf_observations(child, downbeat=i/float(division) * length, nextDownbeat=nextDownbeat, level=level+1, parent=S)
+      b = downbeat + i/float(division) * length
+      if beat != None:
+        b = beat
+      newobs = perf_observations(child, downbeat=b, nextDownbeat=nextDownbeat, level=level+1, parent=S)
       obs += newobs
   return obs
 

@@ -1,7 +1,7 @@
 \section{Method}
 \label{sec:method}
 
-\subsection{Data and annotation}
+\subsection{Data preparation}
 
 Jazz and Latin standards. Scraped from the internet. Performances of varying quality. Exclusively monophonic melody tracks. Melody tracks were performed on midi instruments. They were assigned to be played with different instruments including piano, saxophone and trumpet. All the melodies are played assumed to be played by humans with the help of a metronome. The constraints to determine human performances where that the performance should have have a minimum variation in time differences between note onsets and a minimum variation in velocities with which the notes were played.
 
@@ -31,24 +31,35 @@ Corpora:
 \item Jazz corpus (my own)
 \end{itemize}
 
-\subsection{Definitions}
 
-We consider a rhythm to be a list of note onsets. We ignore note offsets, even though in many cases, note offsets are rhythmically timed as well, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets form a rhythm, we can assume that there is a set of units, or metrical durations that form are the atomic units that the onset times are build off. These metrical durations are mostly constrained to be duple or triple divisions of each other. Other divisions are allowed as well but are far less common. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
+\subsection{Parsing Rhythms}
 
-The task of finding rhythmic structure can now be defined as finding the appropriate atomic units and finding the location of the downbeats. When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
+We consider the observation of a rhythm to be a of note onset times. In our system, note offsets are ignored. Although note offsets are rhythmically timed as well in many cases, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets are perceived as a rhythm, we assume that the perceived rhythm is an underlying structure. This structure defines a set of units, or metrical durations that form are the atomic units of the rhythm. These units are constrained to be duple or triple divisions of each other. Other prime number divisions are allowed as well but are far less common in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
 
-\subsection{Parser}
+A list of note onsets performed by a human is a noisy representation of the underlying structure. Some of this noise is caused by imperfection in the performance, some of the noise is caused by conscious deviation from the metronomic beat, otherwise known as expression.
 
-A parser is presented here that forms hypotheses about the atomic units that make up a rhythm. The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. The parser uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
+The task of finding rhythmic structure can now be defined as finding the appropriate atomic units and finding the location of the downbeats. A structural representation of the rhythm should capture this information. Traditional staff notation is one possible structure that defines the location of downbeats and the atomic units that the onsets are build of. Instead of staff notation.
+
+Every node in the subdivision tree represents a metrical duration. There are two types of terminals: an onset and a filler unit. A filler unit can be either a tied note or a rest. Since we are only looking at note onsets it does not make sense to distinguish tied notes from rests. The filler units will be referred to as ties from now on.
+
+A node can be subdivided into any prime number of child nodes, although in this text we will assume that only duple and triple divisions are allowed. The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
+
+When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
+
+\subsubsection*{Parser}
+
+The goal rhythmic parsing is find a number of hypotheses about the underlying rhythmic structure of a list of note onsets. An hypothesis is formulated as a structural analysis, or subdivision tree. We assume that over a few notes, only a small number of hypotheses are likely. First, we present a parser that considers all possible hypotheses of a number of note onsets. After that, we present a method to select likely hypotheses and reject unlikely hypotheses. 
+
+The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. It uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
 
 \begin{align*}
 \label{eq:rules}
-D(\textrm{combine}(h_1, h_2)) &\rightarrow D(h_1) D(h_2)\\
-D(\textrm{combine}(h_1, h_2)) &\rightarrow D(h_1) D(h_2) D((h_3)\\
-D(\textrm{h}) &\rightarrow \textrm{On}_i\\
-D(\textrm{h}) &\rightarrow *
+D(\textsc{combine}([h_1, h_2])) &\rightarrow D(h_1) D(h_2)\\
+D(\textsc{combine}([h_1, h_2, h_3)) &\rightarrow D(h_1) D(h_2) D((h_3)\\
+D(h) &\rightarrow \textrm{On}_i\\
+D(h) &\rightarrow *
 \end{align*}
-where $D(\phi)$ is a metrical duration with features $\phi$, $*$ represents a filler duration (this is needed when notes are tied together or when the first note is not the first beat of a measure) [SHOW SOME EXAMPLES HERE], $\textrm{On}_i$ is an onset at index $i$, $h$ is an hypothesis about the rhythmic analysis of the corresponding metrical duration and $\textrm{combine}/2$ and $\textrm{combine}/3$ are functions that take hypotheses and combine them into a new hypothesis.
+where $D(\phi)$ is a metrical duration with features $\phi$, $*$ represents a filler duration (this is needed when notes are tied together or when the first note is not the first beat of a measure) [SHOW SOME EXAMPLES HERE], $\textrm{On}_i$ is an onset at index $i$, $h$ is a hypothesis about the rhythmic analysis of the corresponding metrical duration and $\textrm{combine}/2$ and $\textrm{combine}/3$ are functions that take hypotheses and combine them into a new hypothesis.
 
 The two constraints are:
 \begin{enumerate}
@@ -56,94 +67,48 @@ The two constraints are:
 \item Any set of two or three metrical durations is not allowed to combine if none of the recursively contains an onset.
 \end{enumerate}
 
-The parser works like any other stochastic CKY parser where symbols are added to the chart only if their probability is higher than a certain threshold.
-
-The performance of the parser is determined in the first place by how a onsets are translated into hypotheses and how hypotheses are combined and in the second place by how the probability of a certain hypothesis is determined. When the probability function would simply assign the probability 1.0 to each hypothesis, the parser would generate an infinite number of hypotheses. The following sections will introduce hypothesis generation and combination functions for inputs with metronomic timing.
-
-\subsection{Hypothesis generation and rejection}
-
-\subsection{Metronomic onset hypothesis generation}
-
-When we assume the onsets are metronomic, we can represent hypotheses in a compact and efficient format. Apart from metronomic onsets we need to make a few further assumptions: the parser can only come up with a valid analysis if we assume that (1) the time $t=0$ corresponds to the first beat of the time signature and that (2) there is an end marker which is placed at the $n$-th bar, where $n$ is the first power of two after the index of the last bar of the rhythm. For example, if we have a 3-bar rhythm, the end marker is placed at the first beat of the 4th bar.
-
-Let us define the parser input as rhythm $R$, consisting of a list of onset-times, the last of which is not an onset but an end-marker. 
-
-\begin{equation}
-R_{0,n} = [\textrm{On}_0, \textrm{On}_{1}, \cdots, \textrm{On}_n]
-\end{equation}
-
-Before we can parse this rhythm we convert the rhythm $R_{0,n}$ to input $I_{0,n-1}$ (excluding the end marker at $R_n$). This conversion converts each onset to 3-tuple:
-
-\begin{equation}
-I_i = (R_{i-1}, R_i, R_{i+1}),
-\end{equation}
-containing the previous onset, the current onset and the next onset. At $I_0$, the previous onset is assumed to be $0$, at $I_{n-1}$ the next onset is $R_n$, which is the end-marker. 
-
-An hypothesis is represented as a set of features associated with the corresponding duration symbol $D$. Each duration symbol will have at least two: the first onset in the symbol, $I_i$ and its position within the symbol. When a duration symbol contains more than one onset, a third feature is added that contains the length of the symbol that is implied by the onsets in the symbol.
-
-\subsection{Prior}
-\subsubsection*{PCFG}
-\subsubsection*{Hierarchical position}
-\subsection{Expression}
+This parser is only constrained by the number of onsets in the input. In order to make it efficient it needs some way of rejecting unlikely hypotheses. The following section will explain this process.
 
 
+\subsubsection{Hypothesis generation and rejection}
 
+[Rhythm, rhythmic analysis and hypothesis are used interchangeably here. Make some sense out of this]
 
-\subsection{Data preparation}
+When a performance is not metronomic we want to find a \textit{sensible} rhythmic structure. [Picture of too detailed versus too simple analyses a la cemgil 2000]
 
-
-\subsection{Chart Parsing/Statistical Longuet-Higgins}
-\label{sec:chart}
-
-A subdivision rhythmic analysis is useful because it allows us to calculate onset likelihoods given that we know where down- and upbeats are located at each level.
-
-Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
-
-
-
-
-
-
-
-\subsection{Expressive onset hypothesis generation}
-
-When onsets are not guaranteed to be metronomic we need a different way of representing hypotheses. It is particularly important where we predict future onsets to be given what we have already seen.
-
-For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given the two onsets.
-\subsection*{Probabilistic parsing}
-
-A probabilistic model of rhythm can be formulated in a Bayesian way. 
+The likelihood of a rhythm given a set of performed onsets is determined by two factors. One is how well the analysis matches the observed onset times and another is likely the rhythm itself is. In other words, we want to find the \textit{posterior} probability $P(A|N)$, where $A$ is a rhythm, and $N$ is a list of note onsets. We can formulate this as a generative model where
 
 \begin{equation}
 \label{eq:model}
-P(A|N) \propto P(N|A)P(A),
+P(A|N) \propto P(N|A)P(A).
 \end{equation}
 
-where $A$ is a rhythmic analysis and $N$ is a list of onset times. The goal of the analysis is to find the analysis that maximises the formula above.
+The posterior probability of a rhythm given a set of performed onsets is proportional to the probability that this rhythm generated the list of onsets, the \textit{likelihood} times the probability of the rhythm itself, the \textit{prior}.
 
-Equation \ref{eq:model} contains two factors: the likelihood of a note pattern given an analysis $P(N|A)$ and the prior probability of the note pattern $P(A)$. 
+Several authors have suggested that some rhythmic structures are more likely than others. \cite{cemgil2000rhythm} incorporated a notion of rhythmic complexity into their system for music transcription, where the likelihood of a rhythm is inversely proportional to its complexity. Temperley suggests a more thorough description of rhythm likelihood \citep{temperley2010modeling}. In \cite{temperley2009unified} he uses his hierarchical position model in a probabilistic music analysis system. [Explain somewhere why a PCFG captures Temperley's properties of common practice rhythm. If it even does...]. [Honing suggests a few priors somewhere else as well.]
 
-We would like to use our corpus to estimate both probabilities. The prior can be established using a simple PCFG. [Explain somewhere why a PCFG captures Temperley's properties of common practice rhythm.] The likelihood of an analysis is more complicated.
+Our hypotheses are represented as subdivision trees. This analysis suggests yet another way of characterising rhythm likelihood, commonly known as a probabilistic context-free grammar(PCFG). 
 
-Most models use a tempo curve and a normal distribution that penalises deviation from metronomic tempo. Since we have structural information about the rhythm, like where downbeats are located and since this structural information likely correlates with certain expressive properties of rhythm. We may be able to use this to our advantage. 
+We will use several priors to evaluate our model. [these priors should be described in detail either here or in the evaluation section]
 
-Many models use tempo curves to determine
+The likelihood should be a function that measures how well a hypothesis `fits' the observations. The simplest likelihood function is one that assigns zero probability to all hypotheses that do not exactly fit the observations. Such a likelihood would only allow metronomic performances. 
 
-Other authors have suggested balancing simplicity and accuracy. We can now elaborate simplicity as the degree to which a rhythmic structure is similar to what we have seen in a corpus and accuracy as the degree to which the onsets generated by the structure are similar to what we would expect.
+If we want to handle human performances we need to have tolerance for deviations from metronomic timing. In many models [citations], any deviation from metronomic timing is treated as additive noise. Deviations from metronomic timing are penalised using a normal distribution centred around the metronomic onset.
 
-Many models consider the expressive timing to be Gaussian noise relative to the tempo curve. Since we have structural information we can see if there is a correlation between structure and expressive timing. Often, in such models, the prior is measured as the complexity of the score. Our analysis allows us to determine the likelihood of the rhythmic structure itself. 
-
+In order to define how our model determines the likelihood of an analysis, we first need to define how a subdivision tree implies metronomic onsets. 
 
 
 \subsubsection{Algorithm}
 
+Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, any missing downbeats or upbeats are estimated. The second step is a top down process where an analysis is converted to a list of features.
 
+For the first step, we need to extend our hypothesis representation a little bit. 
 An hypothesis is represented as a tree node with a list of beats. The list of beats contains onsets or expected onsets of the downbeat of each of its children. When a duration node is a terminal node the list of beats simply contains the onsets that the node contains.
 
-As soon as a node governs two or more onsets, empty slots are filled in. An hypothesis containing two or more nodes always implies a downbeat. When these hypotheses are combined with other nodes, onsets or ties
-The hypothesis combination process works by filling in as follows. An hypothesis can be an onset, a tie or a combination of hypotheses. When an hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
+As soon as a node governs two or more onsets, empty slots are filled in. A hypothesis containing two or more nodes always implies a downbeat. When these hypotheses are combined with other nodes, onsets or ties
+The hypothesis combination process works by filling in as follows. A hypothesis can be an onset, a tie or a combination of hypotheses. When a hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
 
-The goal of the combination process is to get the best possible estimates of where the up and downbeats of an hypothesis are. 
+The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. 
 \begin{algorithm}
 \caption{Combine hypotheses}
 \label{alg:hypotheses}
@@ -222,7 +187,7 @@ The observations function is defined recursively. The basic intuition is that fo
 			\State \textbf{append} \Call{features}{downbeat, nextDownbeat, beat, $i, d$} \textbf{to} obs
 		\EndIf	
 		\If {childNodes[$i$] $\neq$ \textit{Null}}
-			\State \textbf{append} \Call{observations}{childNode[$i$], $i/d * l$, nextDownbeat} \textbf{to} obs
+			\State \textbf{append} \Call{observations}{childNode[$i$], $\mathrm{downbeat} + i/d * l$, nextDownbeat} \textbf{to} obs
 		\EndIf
 	\EndFor
 \EndFunction
@@ -241,23 +206,36 @@ The observations function is defined recursively. The basic intuition is that fo
 
 Calculating likelihood
 
-We can now calculate the likelihood of any hypothesis by taking the product of the observations that it implies. Optionally we can add an expression parameter that suggests the ratios to be slightly larger than one.
+We can now calculate the likelihood of any hypothesis by taking the product of the observations that it implies. Optionally we can add an expression parameter that suggests the ratios to be slightly larger than one. The (normalised) likelihood of a set of observations is
 
 \begin{equation}
 \label{eq:h_likelihood}
 \mathcal{L}(O|h, \mu, \sigma) \propto \prod_{i=0}^N \exp\left(-\frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
 \end{equation}
 
-Where $O$ is a set of down-/upbeat ratios. We expect the down-/upbeat ratios to be close to one and their logarithm close to zero. Therefore it makes sense to set $\mu$ to zero. However we may expect downbeats to be slightly stretched and we can set $\mu$ to reflect this.
+Where $O$ is a set of down-/upbeat ratios. We expect the down-/upbeat ratios to be close to one and their to be logarithm close to zero. Therefore it makes sense to set $\mu$ to zero. However we may expect downbeats to be slightly stretched and we can set $\mu$ to reflect this.
 
 Rejecting hypotheses
 
-An hypothesis is rejected if the per item likelihood is lower than a certain threshold. The per-observation likelihood is defined as
+A hypothesis is rejected if the per item likelihood is lower than a certain threshold. The per-observation likelihood is defined as
 
 \begin{equation}
 \label{eq:per_obs_likelihood}
-\mathcal{L}(O|h, \mu, \sigma) \mathrm{ per observation } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
+\mathcal{L}(O|h, \mu, \sigma) \mbox{ per observation } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
 \end{equation}
+
+\subsection{Extra constraints}
+
+Constraints of the corpusparser (a parser that only allows metronomic performances)
+
+Single note analysis constraints
+
+Constraint in adding ties
+
+
+Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
+
+For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given the two onsets.
 
 
 %Longuet-Higgins used a constant tolerance parameter to determine whether a beat should be subdivided or a rest should be generated. Increased computational power and availability of labelled data now allows us to makes these decisions probabilistic.

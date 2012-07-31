@@ -149,7 +149,9 @@ class Parser(object):
 
   def parse_onsets(self, onsets):
     N = self.list_to_onsets(onsets)
-    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    parses = sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    print '{0} parses.'.format(len(parses))
+    return parses
 
   def parse_annotation(self, a, begin=0, end=None):
     if end == None:
@@ -171,7 +173,7 @@ class Parser(object):
             print 'Warning, 16th note at position {0}'.format(i)
       counter += 1
     powers = [math.pow(2, x) for x in range(1, 10)]
-    bars = a.bar(notes[-1][0] - correction) + 1
+    bars = a.bar(notes[-1][0]) + 1
     print 'Correcting bar count from {0} to '.format(bars),
     for power in powers:
       if bars <= power:
@@ -184,7 +186,9 @@ class Parser(object):
     for (x, i), (y, j) in zip(notes[0:-1], notes[1:]):
       N.append(Onset(lastonset, x, y, annotation=a, index=i))
       lastonset = x
-    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    parses = sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    print '{0} parses.'.format(len(parses))
+    return parses
 
   # Parse a performance from the corpus
   def parse_corpus(self, a, begin=None, end=None):
@@ -195,13 +199,15 @@ class Parser(object):
     # Filter out onsets and end markers
     counter = 0
     for i in range(len(a)):
-      if a.type(i) in [a.NOTE, a.END] and counter >= begin and counter < end:
+      if a.type(i) in [a.NOTE, a.SWUNG, a.END] and counter >= begin and counter < end:
         notes.append(a.perf_onset(i))
       counter += 1
     notes[-1] = 3*notes[-1]
 
     N = self.list_to_onsets(notes)
-    return sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    parses = sorted(self.parse(N)[0, len(N)], key=lambda x: x.posterior, reverse=True)
+    print '{0} parses.'.format(len(parses))
+    return parses
 
 class StochasticParser(Parser):
 
@@ -213,6 +219,7 @@ class StochasticParser(Parser):
     beam = 0.8
     # Standard deviation expressed in proportion of beatlength
     self.std = 0.1
+    self.expected_logratio = 0.0
     super(StochasticParser, self).__init__(beam=beam, model=model, n=n)
 
   def observations_likelihood(self, obs):
@@ -224,7 +231,7 @@ class StochasticParser(Parser):
   def observation_likelihood(self, obs):
     (level, abs_dev, dev, ratio) = obs
     #return self.likelihood(1.0, self.std, ratio) * self.likelihood(0, self.std, dev)
-    return self.likelihood(0.0, self.std, math.log(ratio))
+    return self.likelihood(self.expected_ratio, self.std, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -300,7 +307,7 @@ class SimpleParser(Parser):
     self.tolerance = tolerance
     self.maxdepth = maxdepth
     self.verbose = False
-    super(SimpleParser, self).__init__(model=model, n=n)
+    super(SimpleParser, self).__init__(model=model, n=n, corpus=corpus)
 
   @staticmethod
   def corpusAndParser(n=15):
@@ -348,7 +355,7 @@ class SimpleParser(Parser):
 
     # A hack to parse the corpus efficiently
     if len(S.children) == 2 and self.corpus:
-      if abs(S.length * 2.0 - round(S.length * 2.0)) > 0.00001 and abs(S.length * 3.0 - round(S.length * 3.0)) > 0.00001:
+      if abs(S.length * 4.0 - round(S.length * 4.0)) > 0.00001 and abs(S.length * 3.0 - round(S.length * 3.0)) > 0.00001:
         return 0.0, 1
       #if S.onsets[0] != None:
       #  if abs(S.onsets[0].on - int(S.onsets[0].on)) > 0.00001:

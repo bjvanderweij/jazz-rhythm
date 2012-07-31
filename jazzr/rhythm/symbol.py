@@ -67,19 +67,23 @@ class Symbol(object):
 
     perf_complexpositions = []
     perf_positions = []
-    perf_onsets = [None for x in range(division)]
     perf_on = None
+
+    if corpus:
+      if len(Symbols) == 3 and Symbols[0].isTie() and Symbols[1].isTie():
+        if Symbols[2].annotation.type(Symbols[2].index) == Annotation.SWUNG and not Symbols[2].annotation.position(Symbols[2].index) - int(Symbols[2].annotation.position(Symbols[2].index)) == 0:
+          positions.append((0, int(Symbols[2].on)))
+          perf_positions.append((0, Symbols[2].annotation.perf_onset(Symbols[2].index) - 2/3.0 * 60000000/float(Symbols[2].annotation.bpm)))
 
     for S, pos in zip(Symbols, range(0, division)):
       if S.isOnset():
         positions.append((pos, S.on))
-        onsets[pos] = S.on
+        onsets[pos] = S
         if previous == None:
           previous = S.previous
         next = S.next
         if corpus:
-          perf_positions[pos] = S.annotation.perf_onset(S.index)
-          perf_onsets[pos] = S.annotation.perf_onset(S.index)
+          perf_positions.append((pos, S.annotation.perf_onset(S.index)))
 
       elif S.isSymbol():
         (complexpos, (p, onset, n)) = S.features
@@ -93,8 +97,8 @@ class Symbol(object):
           positions.append((pos, S.beats[0]))
           if S.onsets[0] != None:
             onsets[pos] = S.onsets[0]
-            if corpus:
-              perf_onsets[pos] = S.perf_onsets[0]
+          if corpus:
+            perf_positions.append((pos, S.perf_beats[0]))
         else:
           complexpositions.append((pos + complexpos, onset))
           if corpus:
@@ -107,6 +111,8 @@ class Symbol(object):
     length = None
     if len(positions) <= 1:
       positions += complexpositions
+      if corpus:
+        perf_positions += perf_complexpositions
     position, onset = positions[0]
     features = (position/float(division), (previous, onset, next))
 
@@ -119,7 +125,7 @@ class Symbol(object):
     perf_beats = None
     if corpus:
       position, perf_on = perf_positions[0]
-    if corpus:
+      perf_positions = sorted(perf_positions, key=lambda x:x[0])
       perf_beats = Symbol.fill(perf_positions, division)
 
     children = Symbols
