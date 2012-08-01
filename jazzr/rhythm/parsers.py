@@ -211,15 +211,13 @@ class Parser(object):
 
 class StochasticParser(Parser):
 
-  def __init__(self, collection='explicitswing'):
+  def __init__(self, collection='explicitswing', n=15, beam=0.8, std=0.1, expected_logratio=0.0):
     corpus = annotations.corpus(collection=collection)
     model = pcfg.train(corpus)
     self.allowed = treeconstraints.train(corpus)
-    n = 15
-    beam = 0.8
     # Standard deviation expressed in proportion of beatlength
-    self.std = 0.1
-    self.expected_logratio = 0.0
+    self.std = std
+    self.expected_logratio = expected_logratio
     super(StochasticParser, self).__init__(beam=beam, model=model, n=n)
 
   def observations_likelihood(self, obs):
@@ -229,9 +227,10 @@ class StochasticParser(Parser):
     return p
 
   def observation_likelihood(self, obs):
-    (level, abs_dev, dev, ratio) = obs
+    #(level, abs_dev, dev, ratio) = obs
+
     #return self.likelihood(1.0, self.std, ratio) * self.likelihood(0, self.std, dev)
-    return self.likelihood(self.expected_ratio, self.std, math.log(ratio))
+    return self.likelihood(self.expected_logratio, self.std, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -240,36 +239,6 @@ class StochasticParser(Parser):
     #return 1/(sigma * math.sqrt(2*math.pi)) * math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
     # Normalised likelihood
     return math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
-
-  def beats_likelihood(self, S, downbeat, upbeat, length):
-    division = len(S.children)
-    obs = []
-
-    implied_beatLength = length / float(division)
-    beatLength = implied_beatLength
-    time = downbeat
-    if S.beats[0] != None:
-      time = S.beats[0]
-    if S.hasLength():
-      beatLength = S.beats[1] - S.beats[0]
-    
-    p = 1.0
-    # Skip downbeat likelihood, but if it's a symbol, calculate it's likelihood
-    if S.children[0].isSymbol():
-      p, n = self.beats_likelihood(S.children[0], downbeat, beatLength)
-
-    time += implied_beatLength
-    # Upbeat likelihoods
-    for child, beat in zip(S.children[1:], S.beats[1:], range(1, division)):
-      if child.isSymbol():
-        prob, count = self.beats_likelihood(child, time, beatLength)
-        p *= prob
-        n += count
-      elif beat != None:
-        p *= self.likelihood(time, std, beat)
-        n += 1
-      time += implied_beatLength
-    return p, n
 
   def probability(self, S):
     if not S.hasLength():
@@ -282,8 +251,8 @@ class StochasticParser(Parser):
     start = S.downbeat()
     (pos, (previous, on, next)) = S.features
     length = len(S.children) * (S.beats[1] - S.beats[0])
-    if previous - start > 0.5 * length or\
-        (start + length) - next > 0.5 * length:
+    if previous - start > 0.1 * length or\
+        (start + length) - next > 0.1 * length:
       return 0.0, 1
     
     obs = expression.observations(S)

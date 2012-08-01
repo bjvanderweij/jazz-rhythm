@@ -1,36 +1,6 @@
 \section{Method}
 \label{sec:method}
 
-\subsection{Data preparation}
-
-Jazz and Latin standards. Scraped from the internet. Performances of varying quality. Exclusively monophonic melody tracks. Melody tracks were performed on midi instruments. They were assigned to be played with different instruments including piano, saxophone and trumpet. All the melodies are played assumed to be played by humans with the help of a metronome. The constraints to determine human performances where that the performance should have have a minimum variation in time differences between note onsets and a minimum variation in velocities with which the notes were played.
-
-Every note in the performance is annotated with its position, measured in quarter notes. Special elements are inserted for rests and grace notes. Grace notes are annotated assigned the same position as the notes they belongs to. Annotation was done using scores from various real books. Expression and deviation from these scores was made explicit in the annotations as much as possible; if three quarter notes are played as a triplet, they are annotated as a triplet. When the metrical positions of notes in the performance are unclear the annotations follow the score. Rests are inserted as notated in the score. The end of the annotations is marked by an end marker
-
-The metrical length of a note can be derived by subtracting its metrical position from the metrical position of the next element in the annotations. The onset time of a rest is can be derived by multiplying the local 
-
-\[A = \{a_0, a_1, \cdots, a_N\}\]
-\[N = \{n_0, n_1, \cdots, n_N\}\]
-\[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
-\[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]
-
-
-Possible models include:
-\begin{itemize}
-\item Temperley's unified probabilistic model for polyphonic music analysis
-\item Temperley's common-practice rhythm models
-\item Potential other models in the literature
-\item A CKY-like parsing algorithm 
-\item Any other approach that includes performance information
-\end{itemize}
-
-Corpora:
-\begin{itemize}
-\item Essen folk (Used in common-practice rhythm)
-\item Kostka-Payne (Used in UPMPMA
-\item Jazz corpus (my own)
-\end{itemize}
-
 
 \subsection{Parsing Rhythms}
 
@@ -74,9 +44,7 @@ This parser is only constrained by the number of onsets in the input. In order t
 
 [Rhythm, rhythmic analysis and hypothesis are used interchangeably here. Make some sense out of this]
 
-When a performance is not metronomic we want to find a \textit{sensible} rhythmic structure. [Picture of too detailed versus too simple analyses a la cemgil 2000]
-
-The likelihood of a rhythm given a set of performed onsets is determined by two factors. One is how well the analysis matches the observed onset times and another is likely the rhythm itself is. In other words, we want to find the \textit{posterior} probability $P(A|N)$, where $A$ is a rhythm, and $N$ is a list of note onsets. We can formulate this as a generative model where
+The likelihood of a rhythm given a set of performed onsets is determined by two factors. One is how well the analysis matches the observed onset times and another is likely the rhythm itself is. [Picture of too detailed versus too simple analyses a la cemgil 2000]. In other words, we want to find the \textit{posterior} probability $P(A|N)$, where $A$ is a rhythm, and $N$ is a list of note onsets. We can formulate this as a generative model where
 
 \begin{equation}
 \label{eq:model}
@@ -98,64 +66,57 @@ If we want to handle human performances we need to have tolerance for deviations
 In order to define how our model determines the likelihood of an analysis, we first need to define how a subdivision tree implies metronomic onsets. 
 
 
-\subsubsection{Algorithm}
+\subsubsection{Combination}
 
 Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, any missing downbeats or upbeats are estimated. The second step is a top down process where an analysis is converted to a list of features.
 
-For the first step, we need to extend our hypothesis representation a little bit. 
-An hypothesis is represented as a tree node with a list of beats. The list of beats contains onsets or expected onsets of the downbeat of each of its children. When a duration node is a terminal node the list of beats simply contains the onsets that the node contains.
+For the first step, we need to extend our hypothesis representation to include onset times and expected onset times of down- and upbeats. A hypothesis is no represented as a tree node containing a list of child nodes and a list containing the (expected) down- and upbeats. 
 
-As soon as a node governs two or more onsets, empty slots are filled in. A hypothesis containing two or more nodes always implies a downbeat. When these hypotheses are combined with other nodes, onsets or ties
-The hypothesis combination process works by filling in as follows. A hypothesis can be an onset, a tie or a combination of hypotheses. When a hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
+\begin{equation}
+h = (C, B)
+\end{equation}
+where $C$ is a list of child nodes, and $B$ is a list of a downbeat and zero or more upbeats. As soon as a hypothesis governs more than one onset, any ties are filled in to contain their estimated timing. A single onset is represented as $(\emptyset, [\textrm{on})$, where on is the onset time. A single tie is represented as $(\emptyset, [*])$. These hypotheses can be combined into the hypothesis $([(\emptyset, [*]), (\emptyset, [\textrm{on})], [*, \textrm{on}])$. The beats vector $B$ of this hypothesis still contains a tie since the hypothesis governs only one onset and no estimations of the timing of the tie can be made. Algorithm \ref{alg:combination} describes how hypotheses are combined and estimations of their down- and upbeats are made.
+
+When a hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
 
 The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. 
 \begin{algorithm}
 \caption{Combine hypotheses}
-\label{alg:hypotheses}
+\label{alg:combination}
 \begin{algorithmic}
 \Function{combine}{$H$}
-	\State $d \leftarrow$ length($H$)
-	\State onsets = []
-	\State complexonsets = []
+	\State $d \leftarrow$ \Call{length}{$H$}
+	\State onsets $\leftarrow \emptyset$
+	\State complexOnsets $\leftarrow \emptyset$
 	\For{$i \leftarrow 0,d$}
-		\If{isOnset($H[i]$)}
+		\State $(C, B) \leftarrow H[i]$
+		\If{$C = \emptyset$ \textbf{and} $B \neq [*]$}
 			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
-		\EndIf
-		\If{hasChildren(H[i])}
-			\State $d \leftarrow$ length($H[i]$.children)
-			\State $p$, complexOnset $\leftarrow H[i]$
-			\If{H[$i$].beats[0] $\neq$ \textit{Null}}
+		\Else
+			\If{$B[0] \neq *$}
 			\Comment{Check if the hypothesis suggests a downbeat}
-				\State \textbf{append} ($i, H[i$].beats[0]) \textbf{to} onsets
+				\State \textbf{append} $(i, B[0])$ \textbf{to} onsets
 			\Else
-				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexonsets
+				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H[i]$}
+				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
 			\EndIf
 		\EndIf
 	\EndFor
-	\If{length(onsets) <= 1}
+	\If{\Call{length}{onsets} $\leq 1$}
 		\State \textbf{append} complexOnsets \textbf{to} onsets
 	\EndIf
-	\State beats $\leftarrow$ \Call{fill}{onsets, $d$}
-	\State children = $H[:]$
-	\State $h \leftarrow$ children, (onsets$[0][0]/d$, onsets$[0][1]$), beats
-	\State \textbf{return} $h$
+	\State $B \leftarrow$ \Call{fill}{onsets, $d$}
+	\State $C \leftarrow H$
+	\State \textbf{return} $(C, B)$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}
-\caption{Fill beat matrix}
-\label{alg:hypotheses}
-\begin{algorithmic}
-\Function{fill}{beats}
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
+\textsc{complexPosition}($h$) is a function that extracts the complex position of the first onset in $h$. \textsc{fill}(onsets, $d$) is a function that fills a beats vector of length $d$ given the (position, onset) tuples in onsets.
 
-So a hypothesis is a tuple containing its children, a complex onset and its estimated beats.
-Every hypothesis also keeps track of the first onset before and after the hypothesis. This is used later to restrict adding ties to the hypothesis.
+Every hypothesis also keeps track of the first onset before and after the hypothesis. This is used later to restrict endlessly adding ties to the hypothesis.
 
-Getting observations
+\subsubsection{Observations}
 
 
 A rhythmic analysis containing two or more notes makes some sort of prediction about where other onsets are likely to appear. 
@@ -167,42 +128,44 @@ The observations function is defined recursively. The basic intuition is that fo
 \label{alg:observations}
 \begin{algorithmic}
 \Function{observations}{$h$, downbeat, nextDownbeat}
-	\State childNodes, beats $\leftarrow h$.children
-	\If {beats[0] $\neq$ \textit{Null}}
-		\State downbeat $\leftarrow$ beats[0]
+	\State $C, B \leftarrow h$
+	\If {$B[0] \neq *$}
+		\Comment{If this $h$ implies a downbeat, use it.}
+		\State downbeat $\leftarrow B[0]$
 	\EndIf
-	\State $d \leftarrow$ length(childNodes)
+	\State \textbf{append} nextDownbeat \textbf{to} $B$
+	\State $d \leftarrow$ \Call{length}{$C$}
+	\Comment{Division of this $h$.}
 	\State $l \leftarrow$ nextDownbeat - downbeat
-	\State obs $\leftarrow$ []
-	\If {hasChildren(childNodes[0])}
-		\State upbeat $\leftarrow l/d$
-		\If{beats[1] $\neq$ \textit{Null}}
-			\State upbeat $\leftarrow$ beats[1]
-		\EndIf
-		\State obs $\leftarrow$ \Call{observations}{childNodes[0], downbeat, upbeat}
-	\EndIf
-	
+	\Comment{The estimated length of this $h$.}
+	\State $O \leftarrow \emptyset$
+	\Comment{Observations.}
+
 	\For {$i \leftarrow 1,d$}
-		\If {beats[$i$] $\neq$ \textit{Null}}
-			\State \textbf{append} \Call{features}{downbeat, nextDownbeat, beat, $i, d$} \textbf{to} obs
+		\If {$B[i] \neq *$ \textbf{and} $i \neq 0$}
+			\State \textbf{append} \Call{$\Phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $O$
 		\EndIf	
-		\If {childNodes[$i$] $\neq$ \textit{Null}}
-			\State \textbf{append} \Call{observations}{childNode[$i$], $\mathrm{downbeat} + i/d * l$, nextDownbeat} \textbf{to} obs
+		\State $C', B' \leftarrow C[i]$
+		\If {$C' \neq \emptyset$}
+			\State upbeat $\leftarrow$ downbeat + $(i+1)/d * l$
+			\If{$B[i+1] \neq *$}
+				\State upbeat $\leftarrow B[i+1]$
+			\EndIf
+			\State \textbf{append} \Call{observations}{$(C', B')$, $\mathrm{downbeat} + i/d * l$, upbeat} \textbf{to} O
 		\EndIf
 	\EndFor
+	\State \textbf{return} O
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}
-\caption{Calculate the ratio of downbeat length and upbeat length. Other features could be calculated here.}
-\label{alg:features}
-\begin{algorithmic}
-\Function{features}{downbeat, nextDownbeat, beat}
-	\State \textbf{return} $\frac{((\mathrm{beat} - \mathrm{downbeat}) / i)}{((\mathrm{nextDownbeat} - \mathrm{beat}) / (d - i))}$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
+Any machine learning algorithm can be used to learn a mapping from features to ratio. This makes the model suitable for a rhythmic-structure-aware expressive timing model.
+
+
+\begin{equation}
+\Phi(\beta, \beta', b, i, d) = \frac{(b - \beta) / i}{(\beta' - b) / (d - i)},
+\end{equation}
+where $\beta$ is a downbeat, $\beta'$ is the next downbeat, $b$ is an onset, $i$ is the position of $b$, and $d$ is the number of beats between $\beta$ and $\beta'$ (the division).
 
 Calculating likelihood
 
@@ -224,27 +187,31 @@ A hypothesis is rejected if the per item likelihood is lower than a certain thre
 \mathcal{L}(O|h, \mu, \sigma) \mbox{ per observation } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
 \end{equation}
 
-\subsection{Extra constraints}
+%\subsection{Extra constraints}
 
-Constraints of the corpusparser (a parser that only allows metronomic performances)
+%Constraints of the corpusparser (a parser that only allows metronomic performances)
 
-Single note analysis constraints
+%Single note analysis constraints
 
-Constraint in adding ties
-
-
-Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
-
-For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given the two onsets.
+%Constraint in adding ties
 
 
-%Longuet-Higgins used a constant tolerance parameter to determine whether a beat should be subdivided or a rest should be generated. Increased computational power and availability of labelled data now allows us to makes these decisions probabilistic.
+%Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
 
-%\begin{align*}
-%&P(A \rightarrow B, C|O) = P(N|A \rightarrow B, C)P(A \rightarrow B, C)\\
-%&P(A \rightarrow b|O) = P(N_i|A \rightarrow b)P(A \rightarrow b)
-%\end{align*}
+%For this we extend the duration symbol with three optional features. Every symbol now has a vector of onsets or ties. The first item of this vector is defined to be the downbeat, the rest are upbeats. The interval of the downbeat and the first upbeat at level $l$ is the downbeat interval at level $l+1$. This notion is the basis of the model. As soon as a vector contains more than one onset, the vector is filled in with expected onsets given the two onsets.
 
-%where A, B, C are arbitrary non-terminal symbols, b is a terminal symbol and O is a set of observations. 
 
-%The priors are given by for example a simple PCFG-like model, below we will only discuss likelihoods. Consider a bottom up chart-parsing algorithm. Such an algorithm would for example consider the (possibility that the first note in the following pattern was generated by the rule $B/4 \rightarrow n$, which is, in this case, correct. 
+\subsection{Data Preparation}
+
+To evaluate the model, an annotated corpus of jazz performances was compiled
+
+Jazz and Latin standards. Scraped from the internet. Performances of varying quality. Exclusively monophonic melody tracks. Melody tracks were performed on midi instruments. They were assigned to be played with different instruments including piano, saxophone and trumpet. All the melodies are played assumed to be played by humans with the help of a metronome. The constraints to determine human performances where that the performance should have have a minimum variation in time differences between note onsets and a minimum variation in velocities with which the notes were played.
+
+Every note in the performance is annotated with its position, measured in quarter notes. Special elements are inserted for rests and grace notes. Grace notes are annotated assigned the same position as the notes they belongs to. Annotation was done using scores from various real books. Expression and deviation from these scores was made explicit in the annotations as much as possible; if three quarter notes are played as a triplet, they are annotated as a triplet. When the metrical positions of notes in the performance are unclear the annotations follow the score. Rests are inserted as notated in the score. The end of the annotations is marked by an end marker
+
+The metrical length of a note can be derived by subtracting its metrical position from the metrical position of the next element in the annotations. The onset time of a rest is can be derived by multiplying the local 
+
+\[A = \{a_0, a_1, \cdots, a_N\}\]
+\[N = \{n_0, n_1, \cdots, n_N\}\]
+\[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
+\[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]

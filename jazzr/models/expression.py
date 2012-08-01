@@ -1,4 +1,6 @@
 import math
+from jazzr.tools import latex
+from jazzr.annotation import Annotation
 
 def train(corpus):
   pass
@@ -14,7 +16,7 @@ def test2():
       print "Failed"
 
 def test(parse):
-  phi = perf_observations(parse)
+  phi = observations(parse)
   abs_devs = {}
   devs = {}
   ratios = {}
@@ -43,35 +45,52 @@ def std(list):
   std /= float(len(list))
   return std
 
-def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None):
+def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None, performance=False, verbose=False):
   division = len(S.children)
+  beats = S.beats[:]
+  if performance:
+    beats = S.perf_beats[:]
 
   if downbeat == None and nextDownbeat == None:
-    downbeat = S.beats[0]
-    nextDownbeat = downbeat + division * (S.beats[1] - S.beats[0])
+    if beats[1] == None or beats[0] == None: return []
+    downbeat = beats[0]
+    nextDownbeat = downbeat + division * (beats[1] - beats[0])
     #length = S.length
 
-  if S.beats[0] != None:
-    downbeat = S.beats[0]
-
+  beats.append(nextDownbeat)
+  if beats[0] != None:
+    downbeat = beats[0]
   length = nextDownbeat - downbeat
   obs = []
 
-  if S.children[0].isSymbol():
-    upbeat = downbeat + length / float(division)
-    if S.beats[1] != None:
-      upbeat = S.beats[1]
-    newobs = observations(S.children[0], downbeat=downbeat, nextDownbeat=upbeat, level=level+1, parent=S)
-    obs += newobs
-
-  for child, beat, onset, i in zip(S.children[1:], S.beats[1:], S.onsets[1:], range(1, division)):
-    if beat != None:
+  for child, beat, i in zip(S.children, beats, range(0, division)):
+    if beat != None and i != 0:
       obs.append(features(downbeat, nextDownbeat, beat, i, division, level))
+      if abs(math.log(obs[-1][-1])) > abs(math.log(2)) and verbose:
+        parentbeats = parent.beats
+        onsets = []
+        for onset in S.onsets:
+          if onset != None:
+            if performance:
+              onsets.append((onset.annotation.perf_onset(onset.index), onset.index, onset.on))
+            else:
+              onsets.append(onset.on)
+          else:
+            onsets.append(None)
+        if performance:
+          parentbeats = parent.perf_beats
+        print 'Ratio: {0}. Level {1}'.format(obs[-1][-1], level)
+        print 'Beat: {0}, parent beats: {1}, node beats: {2} node onsets: {3}'.format(beat, parentbeats, beats, onsets)
+        print 'Index: {0}, division: {1}, downbeat: {2}, nextDownbeat: {3}'.format(i, division, downbeat, nextDownbeat)
+        #latex.view_symbols([S, parent], showOnsets=True, showFeatures=True, scale=False)
     if child.isSymbol():
       b = downbeat + i/float(division) * length
       if beat != None:
         b = beat
-      newobs = observations(child, downbeat=b, nextDownbeat=nextDownbeat, level=level+1, parent=S)
+      upbeat = downbeat + length / float(division)
+      if beats[i+1] != None:
+        upbeat = beats[i+1]
+      newobs = observations(child, downbeat=b, nextDownbeat=upbeat, level=level+1, parent=S, performance=performance, verbose=verbose)
       obs += newobs
   return obs
 
@@ -89,39 +108,8 @@ def features(downbeat, nextDownbeat, onset, position, division, level):
     ratio = ((onset - downbeat) / float(position)) /\
         ((nextDownbeat - onset) / float(division - position))
     if ratio <= 0: print onset, downbeat, nextDownbeat
+  #return (level, abs_deviation, deviation, ratio)
   return (level, abs_deviation, deviation, ratio)
-
-def perf_observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None):
-  division = len(S.children)
-
-  if downbeat == None and nextDownbeat == None:
-    downbeat = S.perf_beats[0]
-    nextDownbeat = downbeat + division * (S.perf_beats[1] - S.perf_beats[0])
-    #length = S.length
-
-  if S.perf_beats[0] != None:
-    downbeat = S.perf_beats[0]
-
-  length = nextDownbeat - downbeat
-  obs = []
-
-  if S.children[0].isSymbol():
-    upbeat = downbeat + length / float(division)
-    if S.perf_beats[1] != None:
-      upbeat = S.perf_beats[1]
-    newobs = perf_observations(S.children[0], downbeat=downbeat, nextDownbeat=upbeat, level=level+1, parent=S)
-    obs += newobs
-
-  for child, beat, i in zip(S.children[1:], S.perf_beats[1:], range(1, division)):
-    if beat != None:
-      obs.append(features(downbeat, nextDownbeat, beat, i, division, level))
-    if child.isSymbol():
-      b = downbeat + i/float(division) * length
-      if beat != None:
-        b = beat
-      newobs = perf_observations(child, downbeat=b, nextDownbeat=nextDownbeat, level=level+1, parent=S)
-      obs += newobs
-  return obs
 
 def getLevels(obs):
   levels = {}
@@ -156,11 +144,23 @@ def getSigma(obs, p, mean, level=None):
   for r in logratios:
     Sum += math.pow(r-mean, 2)
   sigmaSquare = - Sum / (math.log(p) * 2.0 * N)
+  if sigmaSquare == 0.0:
+    return 0.0
   Sum = 0.0
   for r in logratios:
     Sum += math.log(math.exp(-math.pow(mean-r, 2)/(2*sigmaSquare)))
-
   return math.sqrt(sigmaSquare)
 
 
+def getMaxSigma(S, p, mean, level=None, performance=False):
+  obs = observations(S)
+  if performance:
+    obs = observations(S, performance=performance)
+  if obs == []:
+    return [0]
+  s = [getSigma(obs, p, mean, level=level)]
+  for child in S.children:
+    if child.isSymbol():
+      s += getMaxSigma(child, p, mean, level=level, performance=performance)
+  return [max(s)]
 
