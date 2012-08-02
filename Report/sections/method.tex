@@ -147,11 +147,15 @@ The observations function is defined recursively. The basic intuition is that fo
 		\EndIf	
 		\State $C', B' \leftarrow C[i]$
 		\If {$C' \neq \emptyset$}
-			\State upbeat $\leftarrow$ downbeat + $(i+1)/d * l$
-			\If{$B[i+1] \neq *$}
-				\State upbeat $\leftarrow B[i+1]$
+			\State $b_{\mathrm{down}} \leftarrow \mathrm{downbeat} + l * i/d$
+			\If {$B[i] \neq *$}
+				\State $b_{\mathrm{down}} \leftarrow B[i]$
 			\EndIf
-			\State \textbf{append} \Call{observations}{$(C', B')$, $\mathrm{downbeat} + i/d * l$, upbeat} \textbf{to} O
+			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
+			%\If{$B[i+1] \neq *$}
+			%	\State upbeat $\leftarrow B[i+1]$
+			%\EndIf
+			\State \textbf{append} \Call{observations}{$(C', B'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} O
 		\EndIf
 	\EndFor
 	\State \textbf{return} O
@@ -215,3 +219,13 @@ The metrical length of a note can be derived by subtracting its metrical positio
 \[N = \{n_0, n_1, \cdots, n_N\}\]
 \[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
 \[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]
+
+\subsection{Training}
+
+\subsubsection{Prior}
+
+PCFG
+
+\subsubsection{Expression model}
+
+$\mu$ and $\sigma$ for the bottom 4 levels?

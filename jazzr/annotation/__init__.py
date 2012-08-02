@@ -180,6 +180,16 @@ class Annotation:
     from jazzr.midi import representation
     return representation.Note(0, 0, pitch, 0).name()
 
+  def realbook(self, stdscr=None):
+    from jazzr.tools import rbsearch
+    from jazzr.corpus import midi
+    name = self.name.split('-')[0]
+    index = rbsearch.load_file()
+    hits = rbsearch.find(index, name.replace('_', ' '))
+    if len(hits) > 0:
+      (song, book) = rbsearch.choose_book(index, hits, stdscr=stdscr)
+      rbsearch.view(song, book)
+
   def transcribe(self, transpose=0):
     from music21 import stream, clef, tempo, meter, note, duration, metadata
     """Return a music21 score object, generated from the annotations"""

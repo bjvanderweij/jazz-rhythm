@@ -211,10 +211,14 @@ class Parser(object):
 
 class StochasticParser(Parser):
 
-  def __init__(self, collection='explicitswing', n=15, beam=0.8, std=0.1, expected_logratio=0.0):
-    corpus = annotations.corpus(collection=collection)
-    model = pcfg.train(corpus)
-    self.allowed = treeconstraints.train(corpus)
+  def __init__(self, collection='explicitswing', n=15, beam=0.8, std=0.1, expected_logratio=0.0, model=None, allowed=None):
+    if model == None:
+      corpus = annotations.corpus(collection=collection)
+      model = pcfg.train(corpus)
+      self.allowed = treeconstraints.train(corpus)
+    else:
+      self.model = model
+      self.allowed = allowed
     # Standard deviation expressed in proportion of beatlength
     self.std = std
     self.expected_logratio = expected_logratio
@@ -227,7 +231,7 @@ class StochasticParser(Parser):
     return p
 
   def observation_likelihood(self, obs):
-    #(level, abs_dev, dev, ratio) = obs
+    (level, abs_dev, dev, ratio) = obs
 
     #return self.likelihood(1.0, self.std, ratio) * self.likelihood(0, self.std, dev)
     return self.likelihood(self.expected_logratio, self.std, math.log(ratio))

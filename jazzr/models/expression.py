@@ -3,7 +3,13 @@ from jazzr.tools import latex
 from jazzr.annotation import Annotation
 
 def train(corpus):
-  pass
+  for annotation, parse in corpus:
+    print annotation.name
+    obs = observations(parse, performance=True)
+    levels = getLevels(obs)
+    for (level, ) in sorted(levels):
+      logratios = getLogRatios(obs, level)
+      print 'Level {0}. Mu = {1}, sigma = {2}'.format(level, mu(logratios), std(logratios))
 
 def test2():
   from jazzr.corpus import annotations
@@ -55,7 +61,6 @@ def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None, perf
     if beats[1] == None or beats[0] == None: return []
     downbeat = beats[0]
     nextDownbeat = downbeat + division * (beats[1] - beats[0])
-    #length = S.length
 
   beats.append(nextDownbeat)
   if beats[0] != None:
@@ -79,17 +84,18 @@ def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None, perf
             onsets.append(None)
         if performance:
           parentbeats = parent.perf_beats
+        print '_________________________________________________________________________'
         print 'Ratio: {0}. Level {1}'.format(obs[-1][-1], level)
         print 'Beat: {0}, parent beats: {1}, node beats: {2} node onsets: {3}'.format(beat, parentbeats, beats, onsets)
         print 'Index: {0}, division: {1}, downbeat: {2}, nextDownbeat: {3}'.format(i, division, downbeat, nextDownbeat)
         #latex.view_symbols([S, parent], showOnsets=True, showFeatures=True, scale=False)
     if child.isSymbol():
-      b = downbeat + i/float(division) * length
+      b = downbeat + length * i/float(division)
       if beat != None:
         b = beat
-      upbeat = downbeat + length / float(division)
-      if beats[i+1] != None:
-        upbeat = beats[i+1]
+      upbeat = b + length * 1 / float(division)
+      #if beats[i+1] != None:
+      #  upbeat = beats[i+1]
       newobs = observations(child, downbeat=b, nextDownbeat=upbeat, level=level+1, parent=S, performance=performance, verbose=verbose)
       obs += newobs
   return obs
