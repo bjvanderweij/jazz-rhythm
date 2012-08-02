@@ -79,7 +79,9 @@ where $C$ is a list of child nodes, and $B$ is a list of a downbeat and zero or 
 
 When a hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
 
-The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. 
+[This explanation needs to be better and needs to contain examples]
+The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. The algorithm can be found in algorithm \ref{alg:combination}. The algorithm works roughly as follows. The input is a list $H$ containing two or three hypotheses. These will be the child nodes of the hypothesis that the combine function is building. The algorithm iterates through the list of hypotheses. If a hypothesis is an onset, the position of the onset and the absolute onset are added to \textit{onsets}. The position is a number between 0 and 2 or 0 and 3, depending on the number of hypotheses in $H$. If a hypothesis is a complex onset, its complex position, determined by the function \textsc{complexPostion}, and absolute onset are added to \textit{complexOnsets}. If a hypothesis suggests a downbeat, this downbeat and its position are added to \textit{onsets}.
+
 \begin{algorithm}
 \caption{Combine hypotheses}
 \label{alg:combination}
@@ -112,9 +114,9 @@ The goal of the combination process is to get the best possible estimates of whe
 \end{algorithmic}
 \end{algorithm}
 
-\textsc{complexPosition}($h$) is a function that extracts the complex position of the first onset in $h$. \textsc{fill}(onsets, $d$) is a function that fills a beats vector of length $d$ given the (position, onset) tuples in onsets.
+Once the algorithm has iterated thought $H$, the list of down- and upbeats is constructed by the \textsc{fill} function. We assume that an interval based on one or more complex positions is less reliable than an interval based on intervals between downbeats. Only if \textit{onsets} contains less than two onsets, \textit{complexOnsets} is added to it. When the combined length of \textit{onsets} and \textit{complexOnsets} is 1, this hypothesis governs only one onset and the list of beats will only contain that onset and one or more ties. If the combined \textit{onsets} and \textit{complexOnsets} contains more than one onset, the \textsc{fill} function estimates the other onsets based on these onsets.
 
-Every hypothesis also keeps track of the first onset before and after the hypothesis. This is used later to restrict endlessly adding ties to the hypothesis.
+In a practical implementation, every hypothesis should also keep track of the first onset before and after the hypothesis. This can be used later to restrict endlessly adding ties to the hypothesis. [More explanation]
 
 \subsubsection{Observations}
 

@@ -1,11 +1,11 @@
 from jazzr.rhythm.parsers import *
 from jazzr.models import *
-import random
+import random, pickle
 
-def evaluate(folds = 5, n=15, measures=2):
+def evaluate(nfolds = 5, n=15, measures=2):
   corpus = annotations.corpus('explicitswing')
 
-  folds = getFolds(corpus, folds=folds)
+  folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
   for trainset, testset in folds:
@@ -33,9 +33,21 @@ def evaluate(folds = 5, n=15, measures=2):
         print precision, recall
       else:
         print 'Some test didn\'t return any results'
-  f = open('results/std={0}_beam={1}_n={2}_folds={3}_measures={4}'.format(std, beam, n, folds, measures, 'wb')
+  f = open('results/std={0}_beam={1}_n={2}_folds={3}_measures={4}'.format(std, beam, n, nfolds, measures), 'wb')
   pickle.dump(results, f)
   return results
+
+def measure(results):
+  precision = 0.0
+  recall = 0.0
+  n = 0
+  for parse, label in results:
+    p, r = downbeat_detection(parses[0], label)
+    precision += p
+    recall += r
+    n += 1
+  return precision/float(n), recall/float(n), (precision+recall)/float(precision*recall)
+
 
 def getTests(testset, measures=2):
   tests = []
@@ -49,7 +61,7 @@ def getTests(testset, measures=2):
         if bar == None:
           bar = test.bar(test.position(i))
         else:
-          if test.bar(test.position(i)) >= bar + measures:
+          if test.bar(test.position(i)) > bar + measures:
             break
     tests.append(onsets)
     labels.append(label)
