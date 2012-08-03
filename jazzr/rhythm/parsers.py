@@ -3,7 +3,6 @@ from jazzr.annotation import Annotation
 from jazzr.corpus import annotations
 from jazzr.models import treeconstraints, pcfg, expression
 from jazzr.tools import latex
-import transcription
 import math
 
 class Parser(object):
@@ -211,30 +210,30 @@ class Parser(object):
 
 class StochasticParser(Parser):
 
-  def __init__(self, collection='explicitswing', n=15, beam=0.8, std=0.1, expected_logratio=0.0, model=None, allowed=None):
-    if model == None:
-      corpus = annotations.corpus(collection=collection)
-      model = pcfg.train(corpus)
-      self.allowed = treeconstraints.train(corpus)
-    else:
-      self.model = model
-      self.allowed = allowed
-    # Standard deviation expressed in proportion of beatlength
-    self.std = std
-    self.expected_logratio = expected_logratio
-    super(StochasticParser, self).__init__(beam=beam, model=model, n=n)
+  def __init__(self, corpus, n=15, expressionModel=None):
+    self.allowed = treeconstraints.train(corpus)
+    self.expressionModel = expressionModel
+    if expressionModel == None:
+      self.expressionModel = expression.train(corpus)
+    rhythmModel = pcfg.train(corpus)
+    super(StochasticParser, self).__init__(model=rhythmModel, n=n)
+    self.setBeam(corpus)
 
-  def observations_likelihood(self, obs):
-    p = 1.0
-    for o in obs:
-      p *= self.observation_likelihood(o)
-    return p
+  def setBeam(self, corpus):
+    beam = 1.0
+    for a, parse in corpus:
+      logp, n = self.probability(parse, log=True, performance=True)
+      beam = min(beam, math.exp(logp/float(n)))
+    print "Setting beam to {0}".format(beam)
+    self.beam = beam
 
-  def observation_likelihood(self, obs):
+  def observation_likelihood(self, obs, depth):
     (level, abs_dev, dev, ratio) = obs
-
-    #return self.likelihood(1.0, self.std, ratio) * self.likelihood(0, self.std, dev)
-    return self.likelihood(self.expected_logratio, self.std, math.log(ratio))
+    mu, sigma = self.expressionModel[(depth-level,)]
+    # This only happens where depth-level > 7
+    if sigma < 0.001:
+      sigma = 0.001
+    return self.likelihood(mu, sigma, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -244,7 +243,7 @@ class StochasticParser(Parser):
     # Normalised likelihood
     return math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
 
-  def probability(self, S):
+  def probability(self, S, log=False, performance=False):
     if not S.hasLength():
       if not S.tree() in self.allowed:
         return 0.0, 1
@@ -259,10 +258,15 @@ class StochasticParser(Parser):
         (start + length) - next > 0.1 * length:
       return 0.0, 1
     
-    obs = expression.observations(S)
-    p = 1.0
-    for o in obs:
-      p *= self.observation_likelihood(o)
+    obs = expression.observations(S, performance=performance)
+    if log:
+      p = 0.0
+      for o in obs:
+        p += math.log(self.observation_likelihood(o, S.depth))
+    else:
+      p = 1.0
+      for o in obs:
+        p *= self.observation_likelihood(o, S.depth)
 
     return p, len(obs)
     

@@ -2,42 +2,28 @@ import math
 from jazzr.tools import latex
 from jazzr.annotation import Annotation
 
+def additive_noise(std):
+  model = {}
+  for level in range(1, 10):
+    model[(level,)] = (0.0, std)
+  return model
+
+
 def train(corpus):
+  perdepth = {}
   for annotation, parse in corpus:
-    print annotation.name
+    #print annotation.name
     obs = observations(parse, performance=True)
     levels = getLevels(obs)
     for (level, ) in sorted(levels):
       logratios = getLogRatios(obs, level)
-      print 'Level {0}. Mu = {1}, sigma = {2}'.format(level, mu(logratios), std(logratios))
-
-def test2():
-  from jazzr.corpus import annotations
-  corpus = annotations.corpus('explicitswing')
-  for song, parse in corpus:
-    print 'Name: {0}. Length {1}.'.format(song.name, len(song))
-    try:
-      test(parse)
-    except:
-      print "Failed"
-
-def test(parse):
-  phi = observations(parse)
-  abs_devs = {}
-  devs = {}
-  ratios = {}
-  logratios = {}
-  for (level, abs_dev, dev, ratio) in phi:
-    abs_devs[(level, )] = abs_devs.get((level, ), []) + [abs_dev]
-    devs[(level, )] = devs.get((level, ), []) + [dev]
-    ratios[(level, )] = ratios.get((level, ), []) + [ratio]
-    if ratio < 0:
-      print "warning, ratio smaller than zero"
-      ratio = abs(ratio)
-    logratios[(level, )] = logratios.get((level, ), []) + [math.log(ratio)]
-  for level in sorted(ratios.keys()):
-    print '\tLevel {0}.\n\tAbs dev: mu={1}, s={2}.\n\tDev: mu={3}, s={4}.\n\tRatio: mu={5}.'.format(\
-        level, mu(abs_devs[level]), std(abs_devs[level]), mu(devs[level]), std(devs[level]), math.exp(mu(logratios[level])))
+      depth = parse.depth-level
+      perdepth[(depth, )] = perdepth.get((depth, ), []) + logratios
+      #print 'Level {0}. Mu = {1}, sigma = {2}'.format(level, mu(logratios), std(logratios))
+  model = {}
+  for depth, phi in perdepth.iteritems():
+    model[depth] = (mu(perdepth[depth]), std(perdepth[depth]))
+  return model
 
 def mu(list):
   return sum(list)/float(len(list))
@@ -51,52 +37,72 @@ def std(list):
   std /= float(len(list))
   return std
 
-def observations(S, downbeat=None, nextDownbeat=None, level=0, parent=None, performance=False, verbose=False):
+def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, level=0, parent=None, performance=False, verbose=False):
   division = len(S.children)
   beats = S.beats[:]
+  onsets = []
+  for s in S.onsets:
+    if s != None:
+     onsets.append(s.on)
+    else:
+      onsets.append(None)
   if performance:
     beats = S.perf_beats[:]
+    onsets = []
+    for s in S.onsets:
+      if s != None:
+        onsets.append(s.annotation.perf_onset(s.index))
+      else:
+        onsets.append(None)
 
-  if downbeat == None and nextDownbeat == None:
+  if downbeat == None and est_nextDownbeat == None:
     if beats[1] == None or beats[0] == None: return []
     downbeat = beats[0]
-    nextDownbeat = downbeat + division * (beats[1] - beats[0])
+    est_nextDownbeat = downbeat + division * (beats[1] - beats[0])
 
-  beats.append(nextDownbeat)
   if beats[0] != None:
     downbeat = beats[0]
+
+  onsets.append(nextDownbeat)
+
+  if nextDownbeat == None:
+    nextDownbeat = est_nextDownbeat
+
   length = nextDownbeat - downbeat
   obs = []
 
   for child, beat, i in zip(S.children, beats, range(0, division)):
-    if beat != None and i != 0:
-      obs.append(features(downbeat, nextDownbeat, beat, i, division, level))
+    #if beat != None and i != 0:
+    if S.onsets[i] != None and beat != None and i != 0:
+      obs.append(features(downbeat, nextDownbeat, onsets[i], i, division, level))
       if abs(math.log(obs[-1][-1])) > abs(math.log(2)) and verbose:
         parentbeats = parent.beats
-        onsets = []
+        temp_onsets = []
         for onset in S.onsets:
           if onset != None:
             if performance:
-              onsets.append((onset.annotation.perf_onset(onset.index), onset.index, onset.on))
+              temp_onsets.append((onset.annotation.perf_onset(onset.index), onset.index, onset.on))
             else:
-              onsets.append(onset.on)
+              temp_onsets.append(onset.on)
           else:
-            onsets.append(None)
+            temp_onsets.append(None)
+        onsets.append(onsets[-1])
         if performance:
           parentbeats = parent.perf_beats
         print '_________________________________________________________________________'
         print 'Ratio: {0}. Level {1}'.format(obs[-1][-1], level)
-        print 'Beat: {0}, parent beats: {1}, node beats: {2} node onsets: {3}'.format(beat, parentbeats, beats, onsets)
+        print 'Beat: {0}, parent beats: {1}, node beats: {2} node onsets: {3}'.format(beat, parentbeats, beats, temp_onsets)
         print 'Index: {0}, division: {1}, downbeat: {2}, nextDownbeat: {3}'.format(i, division, downbeat, nextDownbeat)
         #latex.view_symbols([S, parent], showOnsets=True, showFeatures=True, scale=False)
     if child.isSymbol():
       b = downbeat + length * i/float(division)
       if beat != None:
         b = beat
-      upbeat = b + length * 1 / float(division)
-      #if beats[i+1] != None:
-      #  upbeat = beats[i+1]
-      newobs = observations(child, downbeat=b, nextDownbeat=upbeat, level=level+1, parent=S, performance=performance, verbose=verbose)
+      est_upbeat = b + length / float(division)
+      upbeat = onsets[i+1]
+      if verbose > 1:
+        print "Calling observations at level {0}. Beat {1}. Downbeat: {2}, est_upbeat: {3}, upbeat: {4}.".format(level, i, b, est_upbeat, upbeat)
+      newobs = observations(child, downbeat=b, est_nextDownbeat=est_upbeat, nextDownbeat=upbeat, level=level+1, parent=S, performance=performance, verbose=verbose)
       obs += newobs
   return obs
 

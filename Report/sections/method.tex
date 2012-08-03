@@ -4,7 +4,7 @@
 
 \subsection{Parsing Rhythms}
 
-We consider the observation of a rhythm to be a of note onset times. In our system, note offsets are ignored. Although note offsets are rhythmically timed as well in many cases, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets are perceived as a rhythm, we assume that the perceived rhythm is an underlying structure. This structure defines a set of units, or metrical durations that form are the atomic units of the rhythm. These units are constrained to be duple or triple divisions of each other. Other prime number divisions are allowed as well but are far less common in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
+We consider the observation of a rhythm to be a list of note onset times. In our system, note offsets are ignored. Although note offsets are rhythmically timed as well in many cases, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets are perceived as a rhythm, we assume that the perceived rhythm is an underlying structure. This structure defines a set of units, or metrical durations that form are the atomic units of the rhythm. These units are constrained to be duple or triple divisions of each other. Other prime number divisions are allowed as well but are far less common in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
 
 A list of note onsets performed by a human is a noisy representation of the underlying structure. Some of this noise is caused by imperfection in the performance, some of the noise is caused by conscious deviation from the metronomic beat, otherwise known as expression.
 
@@ -68,16 +68,19 @@ In order to define how our model determines the likelihood of an analysis, we fi
 
 \subsubsection{Combination}
 
-Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, any missing downbeats or upbeats are estimated. The second step is a top down process where an analysis is converted to a list of features.
+Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, the onset of downbeats containing ties are filled in. The second step is a top-down process where downbeat intervals are used to predict the location of upbeats. Since every downbeat except the first one is an upbeat at a higher level in our analysis, this process estimates the onsets of every onset in a piece.
 
-For the first step, we need to extend our hypothesis representation to include onset times and expected onset times of down- and upbeats. A hypothesis is no represented as a tree node containing a list of child nodes and a list containing the (expected) down- and upbeats. 
+For the first step, we need to extend our hypothesis representation to include onset times and the (estimated) downbeat onset. This is represented as a 3-tuple
 
 \begin{equation}
-h = (C, B)
+h = (C, N, b_d)
 \end{equation}
-where $C$ is a list of child nodes, and $B$ is a list of a downbeat and zero or more upbeats. As soon as a hypothesis governs more than one onset, any ties are filled in to contain their estimated timing. A single onset is represented as $(\emptyset, [\textrm{on})$, where on is the onset time. A single tie is represented as $(\emptyset, [*])$. These hypotheses can be combined into the hypothesis $([(\emptyset, [*]), (\emptyset, [\textrm{on})], [*, \textrm{on}])$. The beats vector $B$ of this hypothesis still contains a tie since the hypothesis governs only one onset and no estimations of the timing of the tie can be made. Algorithm \ref{alg:combination} describes how hypotheses are combined and estimations of their down- and upbeats are made.
 
-When a hypothesis governs only one onset and one or more tie, the hypothesis is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
+where $b_d$ is the downbeat, $N$ a list of onsets and $C$ is a list of child nodes. These child nodes are hypotheses themselves. A hypothesis thus defines a tree structure with onsets or ties as leaf nodes. A hypothesis is said to \textit{govern} a set of onsets if the hypothesis recursively contains these onsets. The number of children of a hypothesis defines its subdivision. In theory, a hypothesis can contain any prime number of child nodes, however in the explanation below we will limit this to the most frequent subdivisions of two and three.
+
+A single onset is represented as $(\emptyset, [\textrm{on}], \textrm{on})$, where on is the onset time. A single tie is represented as $(\emptyset, [*], *)$.  Combining these hypotheses yields $([(\emptyset, [\textrm{on}], \textrm{on}), (\emptyset, [*], *)], [*, on], *)$. Generally, combining hypotheses can be described in the following manner: put the first element of the onset list $N$ of every subhypothesis in $N$ and, if the first element of the new $N$ is a tie, try to estimate the onset of the downbeat. If that is not possible or if the first element of $N$ is not a tie, set $b_d$ to the first element of $N$. Algorithm \ref{alg:combination} describes this process in detail.
+
+When a hypothesis governs only one onset, the downbeat can not be estimated. Any hypothesis that does not contain an absolute or estimated downbeat is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
 
 [This explanation needs to be better and needs to contain examples]
 The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. The algorithm can be found in algorithm \ref{alg:combination}. The algorithm works roughly as follows. The input is a list $H$ containing two or three hypotheses. These will be the child nodes of the hypothesis that the combine function is building. The algorithm iterates through the list of hypotheses. If a hypothesis is an onset, the position of the onset and the absolute onset are added to \textit{onsets}. The position is a number between 0 and 2 or 0 and 3, depending on the number of hypotheses in $H$. If a hypothesis is a complex onset, its complex position, determined by the function \textsc{complexPostion}, and absolute onset are added to \textit{complexOnsets}. If a hypothesis suggests a downbeat, this downbeat and its position are added to \textit{onsets}.
@@ -88,16 +91,19 @@ The goal of the combination process is to get the best possible estimates of whe
 \begin{algorithmic}
 \Function{combine}{$H$}
 	\State $d \leftarrow$ \Call{length}{$H$}
+	\Comment{Division}
 	\State onsets $\leftarrow \emptyset$
 	\State complexOnsets $\leftarrow \emptyset$
+	\State $N \leftarrow \emptyset$
+	\State $C \leftarrow H$
 	\For{$i \leftarrow 0,d$}
-		\State $(C, B) \leftarrow H[i]$
-		\If{$C = \emptyset$ \textbf{and} $B \neq [*]$}
+		\State $(C', N', b_d') \leftarrow H[i]$
+		\If{$C = \emptyset$ \textbf{and} $N \neq [*]$}
 			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
 		\Else
-			\If{$B[0] \neq *$}
+			\If{$b_d' \neq *$}
 			\Comment{Check if the hypothesis suggests a downbeat}
-				\State \textbf{append} $(i, B[0])$ \textbf{to} onsets
+				\State \textbf{append} $(i, b_d')$ \textbf{to} onsets
 			\Else
 				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H[i]$}
 				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
@@ -107,33 +113,37 @@ The goal of the combination process is to get the best possible estimates of whe
 	\If{\Call{length}{onsets} $\leq 1$}
 		\State \textbf{append} complexOnsets \textbf{to} onsets
 	\EndIf
-	\State $B \leftarrow$ \Call{fill}{onsets, $d$}
-	\State $C \leftarrow H$
-	\State \textbf{return} $(C, B)$
+	\State $b_d \leftarrow N[0]$
+	\If{$b_d = *$}
+		\State $b_d \leftarrow$ \Call{downbeat}{onsets, $d$}
+	\EndIf
+	\State \textbf{return} $(C, N)$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-Once the algorithm has iterated thought $H$, the list of down- and upbeats is constructed by the \textsc{fill} function. We assume that an interval based on one or more complex positions is less reliable than an interval based on intervals between downbeats. Only if \textit{onsets} contains less than two onsets, \textit{complexOnsets} is added to it. When the combined length of \textit{onsets} and \textit{complexOnsets} is 1, this hypothesis governs only one onset and the list of beats will only contain that onset and one or more ties. If the combined \textit{onsets} and \textit{complexOnsets} contains more than one onset, the \textsc{fill} function estimates the other onsets based on these onsets.
+Once the algorithm has iterated thought $H$, the algorithm checks whether there is an onset on the downbeat. If there is not, the \textsc{downbeat} function attempts to estimate the downbeat from the list of onsets. We assume that an interval based on one or more complex positions is less reliable than an interval based on intervals between downbeats. Only if \textit{onsets} contains less than two onsets, \textit{complexOnsets} is added to it. When the combined length of \textit{onsets} and \textit{complexOnsets} is 1, this hypothesis governs only one onset and the list of beats will only contain that onset and one or more ties. If the combined \textit{onsets} and \textit{complexOnsets} contains more than one onset, the \textsc{downbeat} function estimates downbeat from these onsets
 
 In a practical implementation, every hypothesis should also keep track of the first onset before and after the hypothesis. This can be used later to restrict endlessly adding ties to the hypothesis. [More explanation]
 
 \subsubsection{Observations}
 
+The combination process combines hypotheses and makes estimations about the down- and upbeats of every hypothesis. The observations function uses this information to transform a hypothesis into a list of features that define how likely a hypothesis is given the absolute onsets that it governs. The observations function should clearly discriminate between unlikely interpretations and likely interpretations of an onset pattern. [Example of likely and unlikely hypotheses here].
 
-A rhythmic analysis containing two or more notes makes some sort of prediction about where other onsets are likely to appear. 
-
-The observations function is defined recursively. The basic intuition is that for every duration symbol, the likelihood of the upbeats is calculated given the downbeats of the level above. 
+The observation function is a top-down recursive function. It calculates the expected onset of every down- and upbeat of every hypothesis in the tree. The main assumption of the function is that the expected onsets of the upbeats at level some are derived from the downbeat interval at the level above. 
 
 \begin{algorithm}
 \caption{Generate observations}
 \label{alg:observations}
 \begin{algorithmic}
-\Function{observations}{$h$, downbeat, nextDownbeat}
-	\State $C, B \leftarrow h$
-	\If {$B[0] \neq *$}
+\Function{observations}{$h$, downbeat, nextDownbeat, estimatedDownbeat}
+	\State $C, N, d_b \leftarrow h$
+	\If {$d_b \neq *$}
 		\Comment{If this $h$ implies a downbeat, use it.}
 		\State downbeat $\leftarrow B[0]$
+	\EndIf
+	\If {nextDownbeat $ = *$}
+		\State nextDownbeat $\leftarrow$ estimatedDownbeat
 	\EndIf
 	\State \textbf{append} nextDownbeat \textbf{to} $B$
 	\State $d \leftarrow$ \Call{length}{$C$}
@@ -164,6 +174,8 @@ The observations function is defined recursively. The basic intuition is that fo
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+
+Given an expected and observed onset
 
 Any machine learning algorithm can be used to learn a mapping from features to ratio. This makes the model suitable for a rhythmic-structure-aware expressive timing model.
 

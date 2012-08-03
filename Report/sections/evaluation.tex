@@ -8,3 +8,14 @@
 
 Can we generalise temperley's prior?
 
+% How do we score parses? 
+% How many downbeats did it get right
+
+The parser will be evaluated using $n$-fold cross-validation. The most likely parse returned by the parser will be compared to the labelled data. A parse that consiten
+
+We want to know whether a parse got the downbeats right and whether it got the time signature right
+
+If the downbeat is wrong, the upbeat is more likely to be wrong as well (although it may still get the upbeat correct). Getting the downbeats right is the first priority. Level does not matter for downbeats since $(\bullet *)$ does not happen. Level \textit{is} important for upbeats. The second priority is whether is governed by the upbeat slot of the downbeat. The third priority is whether the upbeat is on the right level and with the right division.
+
+Another measurement would be whether time signature is right, however only 4/4 time signatures are allowed for now.
+

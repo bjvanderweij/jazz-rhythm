@@ -9,6 +9,7 @@ ENDED = 2
 
 def run(stdscr):
   onsets = []
+  parses = None
   mode = BEGIN
   while True:
     stdscr.clear()
@@ -32,6 +33,10 @@ def run(stdscr):
       elif mode == STARTED:
         diff = datetime.now() - start
         onsets.append(diff.total_seconds())
+    if c == ord('r'):
+      mode = BEGIN
+      onsets = []
+      parses = None
     if c == ord('q'):
       if mode == BEGIN or mode == ENDED:
         break
@@ -39,5 +44,23 @@ def run(stdscr):
         diff = datetime.now() - start
         onsets.append(diff.total_seconds())
         mode = ENDED
-
+    if c == ord('p') and mode == ENDED:
+      if parses == None:
+        cgui.alert(stdscr, 'Parsing', block=False)
+        parser = StochasticParser(annotations.corpus('explicitswing'))
+        parses = parser.parse_onsets(onsets)
+      if len(parses) > 0:
+        choice = cgui.menu(stdscr, '{0} parses'.format(len(parses)), ['View analysis', 'View score', 'View all'])
+        if choice == -1: continue
+        elif choice == 0:
+          parse = parses[cgui.menu(stdscr, 'parse?', ['Prior: {0}, likelihood {1}, posterior {2}. Depth {3}'.format(p.prior, p.likelihood, p.posterior, p.depth) for p in parses])]
+          parse.view()
+        elif choice == 1:
+          barlevel = cgui.prompt(stdscr, 'Barlevel?')
+          parse = parses[cgui.menu(stdscrt, 'parse?', ['Prior: {0}, likelihood {1}, posterior {2}. Depth {3}'.format(p.prior, p.likelihood, p.posterior, p.depth) for p in parses])]
+          parse.score(barlevel=int(barlevel))
+        elif choice == 2:
+          latex.view_symbols(parses, scale=False)
+      else:
+        cgui.alert(stdscr, 'No parses')
 curses.wrapper(run)

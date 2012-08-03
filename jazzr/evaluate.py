@@ -1,23 +1,23 @@
 from jazzr.rhythm.parsers import *
 from jazzr.models import *
-import random, pickle
+import random, pickle, datetime
 
-def evaluate(nfolds = 5, n=15, measures=2):
-  corpus = annotations.corpus('explicitswing')
-
+def evaluate(corpus, nfolds=10, n=20, measures=2, noise=False):
   folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
+  allowed = treeconstraints.train(corpus)
   for trainset, testset in folds:
     print 'Fold {0}'.format(i)
     i += 1
-    alpha = 0.0
-    std = 0.15
-    beam = 0.01    
-    #std, alpha, beam = expression.train(trainset)
-    model = pcfg.train(trainset)
-    allowed = treeconstraints.train(trainset)
-    parser = StochasticParser(n=n, std=std, expected_logratio=alpha, model=model, allowed=allowed, beam=beam)
+    
+    # Train a parser
+    if noise:
+      parser = StochasticParser(trainset, n=n, expressionModel=expression.additive_noise(0.1))
+    else:
+      parser = StochasticParser(trainset, n=n, expressionModel=expression.additive_noise(0.1))
+      parser.beam = 0.01
+    parser.allowed = allowed
     # Get the first few bars from a piece
     tests, labels = getTests(testset, measures=measures)
     annot = [x[0] for x in testset]
@@ -29,24 +29,30 @@ def evaluate(nfolds = 5, n=15, measures=2):
       parses = parser.parse_onsets(test)
       if len(parses) > 0:
         results.append((parses[0], label))
-        precision, recall = downbeat_detection(parses[0], label)  
-        print precision, recall
-      else:
-        print 'Some test didn\'t return any results'
-  f = open('results/std={0}_beam={1}_n={2}_folds={3}_measures={4}'.format(std, beam, n, nfolds, measures), 'wb')
+        precision, recall = measure(results[-1:])
+        print 'Precision {0} recall {1}.'.format(precision, recall)
+        precision, recall = measure(results)
+        print 'Averages: precision {0} recall {1}.'.format(precision, recall)
+        
+  time = str(datetime.datetime.now())
+  f = open('results/results_{0}_measures={1}_n={2}_folds={3}'.format(time, measures, n, nfolds), 'wb')
   pickle.dump(results, f)
   return results
 
 def measure(results):
-  precision = 0.0
-  recall = 0.0
-  n = 0
+  tp = fp = tn = fn = 0.0
   for parse, label in results:
-    p, r = downbeat_detection(parses[0], label)
-    precision += p
-    recall += r
-    n += 1
-  return precision/float(n), recall/float(n), (precision+recall)/float(precision*recall)
+    tpx, fpx, tnx, fnx = downbeat_detection(parse, label)
+    tp += tpx
+    fp += fpx
+    tn += tnx
+    fn += fnx
+  precision = recall = 0
+  if tp + fp != 0:
+    precision = tp/float(tp + fp)
+  if tp + fn != 0:
+    recall = tp/float(tp + fn)
+  return precision, recall
 
 
 def getTests(testset, measures=2):
@@ -109,7 +115,7 @@ def downbeat_detection(parse, correctparse):
     precision = tp/float(tp + fp)
   if tp + fn != 0:
     recall = tp/float(tp + fn)
-  return precision, recall
+  return tp, fp, tn, fn
 
 def getFolds(corpus, folds=5):
   n = len(corpus)

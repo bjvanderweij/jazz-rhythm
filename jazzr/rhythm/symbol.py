@@ -1,8 +1,7 @@
-from jazzr.tools import latex
+from jazzr.tools import latex, transcription
 from jazzr.midi import representation
 from jazzr.annotation import Annotation
 import math
-import transcription
 
 class Symbol(object):
 
