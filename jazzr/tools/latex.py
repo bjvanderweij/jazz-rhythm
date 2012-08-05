@@ -37,7 +37,7 @@ def latexify(S, depth=0, showOnsets=False, showPerfOnsets=False, showRatios=Fals
         upbl = l - dbl
         extras.append('{0:.2}'.format(dbl/float(upbl)))
         print 'begin: {0:.2} length: {1:.2}, down {2:.2} up {3:.2}, dbl:{4:.2} upbl:{5:.2}'.format(S.downbeat * c, l * c, S.children[0].downbeat * c, S.children[0].upbeat *c, dbl *c, upbl *c)
-    res += '[ .{{$\\frac{{1}}{{{0}}}$({1})}} '.format(int(math.pow(2, depth)), ','.join(extras))
+    res += '[ .{{$\\frac{{1}}{{{0}}}${1}}} '.format(int(math.pow(2, depth)), ','.join(extras))
     for child in S.children:
       res += latexify(child, depth=depth+1, showOnsets=showOnsets, showRatios=showRatios, showFeatures=showFeatures)
     res += '] '

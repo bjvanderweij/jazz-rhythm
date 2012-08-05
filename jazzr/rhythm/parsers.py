@@ -215,6 +215,7 @@ class StochasticParser(Parser):
     self.expressionModel = expressionModel
     if expressionModel == None:
       self.expressionModel = expression.train(corpus)
+    print self.expressionModel
     rhythmModel = pcfg.train(corpus)
     super(StochasticParser, self).__init__(model=rhythmModel, n=n)
     self.setBeam(corpus)
@@ -222,7 +223,7 @@ class StochasticParser(Parser):
   def setBeam(self, corpus):
     beam = 1.0
     for a, parse in corpus:
-      logp, n = self.probability(parse, log=True, performance=True)
+      logp, n = self.probability(parse, log=True, performance=True, name=a.name)
       beam = min(beam, math.exp(logp/float(n)))
     print "Setting beam to {0}".format(beam)
     self.beam = beam
@@ -231,8 +232,8 @@ class StochasticParser(Parser):
     (level, abs_dev, dev, ratio) = obs
     mu, sigma = self.expressionModel[(depth-level,)]
     # This only happens where depth-level > 7
-    if sigma < 0.001:
-      sigma = 0.001
+    if sigma < 0.01:
+      sigma = 0.01
     return self.likelihood(mu, sigma, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
@@ -243,7 +244,7 @@ class StochasticParser(Parser):
     # Normalised likelihood
     return math.exp(-math.pow((mu-x), 2) / float(2*sigma*sigma))
 
-  def probability(self, S, log=False, performance=False):
+  def probability(self, S, log=False, performance=False, name=None):
     if not S.hasLength():
       if not S.tree() in self.allowed:
         return 0.0, 1
@@ -262,7 +263,11 @@ class StochasticParser(Parser):
     if log:
       p = 0.0
       for o in obs:
-        p += math.log(self.observation_likelihood(o, S.depth))
+        if self.observation_likelihood(o, S.depth) == 0:
+          print o, name, S.depth-o[0], self.expressionModel[(S.depth-o[0], )]
+          p += math.log(1.0)
+        else:
+          p += math.log(self.observation_likelihood(o, S.depth))
     else:
       p = 1.0
       for o in obs:

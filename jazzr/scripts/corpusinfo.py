@@ -21,7 +21,7 @@ for annotation, parse in corpus:
   if not name in songs:
     songs.append(name)
   for i in range(len(annotation)):
-    if annotation.type(i) == annotation.NOTE:
+    if annotation.type(i) in [annotation.NOTE, annotation.SWUNG]:
       notes += 1
     elif annotation.type(i) == annotation.END:
       end_markers += 1

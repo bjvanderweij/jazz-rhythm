@@ -16,9 +16,9 @@ A node can be subdivided into any prime number of child nodes, although in this 
 
 When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
 
-\subsubsection*{Parser}
+\subsubsection{Parser}
 
-The goal rhythmic parsing is find a number of hypotheses about the underlying rhythmic structure of a list of note onsets. An hypothesis is formulated as a structural analysis, or subdivision tree. We assume that over a few notes, only a small number of hypotheses are likely. First, we present a parser that considers all possible hypotheses of a number of note onsets. After that, we present a method to select likely hypotheses and reject unlikely hypotheses. 
+The goal of rhythmic parsing is to find a number of hypotheses about the underlying rhythmic structure of a list of note onsets. An hypothesis is formulated as a structural analysis, or subdivision tree. We assume that over a few notes, only a small number of hypotheses are likely. First, we present a parser that considers all possible hypotheses of a number of note onsets. After that, we present a method to select likely hypotheses and reject unlikely hypotheses. 
 
 The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. It uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
 
@@ -40,7 +40,7 @@ The two constraints are:
 This parser is only constrained by the number of onsets in the input. In order to make it efficient it needs some way of rejecting unlikely hypotheses. The following section will explain this process.
 
 
-\subsubsection{Hypothesis generation and rejection}
+\subsection{Hypothesis generation and rejection}
 
 [Rhythm, rhythmic analysis and hypothesis are used interchangeably here. Make some sense out of this]
 
@@ -128,24 +128,28 @@ In a practical implementation, every hypothesis should also keep track of the fi
 
 \subsubsection{Observations}
 
-The combination process combines hypotheses and makes estimations about the down- and upbeats of every hypothesis. The observations function uses this information to transform a hypothesis into a list of features that define how likely a hypothesis is given the absolute onsets that it governs. The observations function should clearly discriminate between unlikely interpretations and likely interpretations of an onset pattern. [Example of likely and unlikely hypotheses here].
+The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. The observations function uses this information to transform a hypothesis into a list of features that define how likely a hypothesis is given the absolute onsets that it governs. The observations function should clearly discriminate between unlikely interpretations and likely interpretations of an onset pattern. [Example of likely and unlikely hypotheses here].
 
 The observation function is a top-down recursive function. It calculates the expected onset of every down- and upbeat of every hypothesis in the tree. The main assumption of the function is that the expected onsets of the upbeats at level some are derived from the downbeat interval at the level above. 
 
+For a hypothesis $h = (C, N, b_d)$, the algorithm is initialised as follows: $\textsc{observations}(h, b_d, *, \textsc{length}(C) \times (N[1] - b_d))$, where $\textsc{length}(C) \times (N[1] - b_d)$ is the division times the length interval of the downbeat and the first upbeat.
 \begin{algorithm}
 \caption{Generate observations}
 \label{alg:observations}
 \begin{algorithmic}
 \Function{observations}{$h$, downbeat, nextDownbeat, estimatedDownbeat}
+	\If {downbeat $ = *$}
+		\State \textbf{return} $\emptyset$
+	\EndIf
 	\State $C, N, d_b \leftarrow h$
-	\If {$d_b \neq *$}
+	\If {$b_d \neq *$}
 		\Comment{If this $h$ implies a downbeat, use it.}
-		\State downbeat $\leftarrow B[0]$
+		\State downbeat $\leftarrow d_b$
 	\EndIf
 	\If {nextDownbeat $ = *$}
 		\State nextDownbeat $\leftarrow$ estimatedDownbeat
 	\EndIf
-	\State \textbf{append} nextDownbeat \textbf{to} $B$
+	\State \textbf{append} nextDownbeat \textbf{to} $N$
 	\State $d \leftarrow$ \Call{length}{$C$}
 	\Comment{Division of this $h$.}
 	\State $l \leftarrow$ nextDownbeat - downbeat
@@ -154,13 +158,13 @@ The observation function is a top-down recursive function. It calculates the exp
 	\Comment{Observations.}
 
 	\For {$i \leftarrow 1,d$}
-		\If {$B[i] \neq *$ \textbf{and} $i \neq 0$}
+		\If {$N[i] \neq *$ \textbf{and} $i \neq 0$}
 			\State \textbf{append} \Call{$\Phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $O$
 		\EndIf	
-		\State $C', B' \leftarrow C[i]$
+		\State $C', N', b_d' \leftarrow C[i]$
 		\If {$C' \neq \emptyset$}
-			\State $b_{\mathrm{down}} \leftarrow \mathrm{downbeat} + l * i/d$
-			\If {$B[i] \neq *$}
+			\State $b_{\mathrm{down}'} \leftarrow \mathrm{downbeat} + l * i/d$
+			\If {$N'[i] \neq *$}
 				\State $b_{\mathrm{down}} \leftarrow B[i]$
 			\EndIf
 			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
@@ -205,7 +209,6 @@ A hypothesis is rejected if the per item likelihood is lower than a certain thre
 \mathcal{L}(O|h, \mu, \sigma) \mbox{ per observation } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(O_i))^2}{2\sigma^2}\right)
 \end{equation}
 
-%\subsection{Extra constraints}
 
 %Constraints of the corpusparser (a parser that only allows metronomic performances)
 
@@ -221,18 +224,45 @@ A hypothesis is rejected if the per item likelihood is lower than a certain thre
 
 \subsection{Data Preparation}
 
-To evaluate the model, an annotated corpus of jazz performances was compiled
+The parser's likelihood function takes two parameters: an expected logarithmic down-/upbeat ratio and its standard deviation. To estimate these values, a corpus of amateur jazz performances was prepared.
 
-Jazz and Latin standards. Scraped from the internet. Performances of varying quality. Exclusively monophonic melody tracks. Melody tracks were performed on midi instruments. They were assigned to be played with different instruments including piano, saxophone and trumpet. All the melodies are played assumed to be played by humans with the help of a metronome. The constraints to determine human performances where that the performance should have have a minimum variation in time differences between note onsets and a minimum variation in velocities with which the notes were played.
+The corpus contains Jazz and Latin standards that were scraped off the the web [Cite Mark GW?]. The performances are generally of good quality and are played in a relatively constant tempo. In its original form, the corpus was a set of multi-track MIDI files containing both tracks played by a human performer and tracks generated by a computer in metronomic time.
 
-Every note in the performance is annotated with its position, measured in quarter notes. Special elements are inserted for rests and grace notes. Grace notes are annotated assigned the same position as the notes they belongs to. Annotation was done using scores from various real books. Expression and deviation from these scores was made explicit in the annotations as much as possible; if three quarter notes are played as a triplet, they are annotated as a triplet. When the metrical positions of notes in the performance are unclear the annotations follow the score. Rests are inserted as notated in the score. The end of the annotations is marked by an end marker
+MIDI files represent music as a list of note-on and note-off events, corresponding to key presses and key releases. Every event has the parameters pitch, velocity and delta-time. Delta-time specifies the time between this events and the last one, pitch is the pitch of the key that was pressed, velocity is the velocity with which the key was pressed or released.
 
-The metrical length of a note can be derived by subtracting its metrical position from the metrical position of the next element in the annotations. The onset time of a rest is can be derived by multiplying the local 
+For our purposes we want to have monophonic melody tracks played by a human performer. To get these tracks, every file in the corpus was split into separate tracks. Monophonic tracks played by humans were filtered out automatically. This was done by assuming that tracks played by humans contained a lot of variation in onset velocity and in inter-onset intervals due to imperfect timing. From this subset of performed tracks, tracks containing melodies where selected by hand. 
 
-\[A = \{a_0, a_1, \cdots, a_N\}\]
-\[N = \{n_0, n_1, \cdots, n_N\}\]
-\[a_i = (\mathrm{Beat}_i, \mathrm{Pointer}_i, \mathrm{Type}_i)\]
-\[n_i = (\mathrm{On}_i, \mathrm{Off}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i)\]
+After the filtering process, [N-CORPUS] tracks were left containing melodies of [N-STANDARDS] different standards. These MIDI files where converted to note lists of the following format
+
+\begin{align*}
+N &= \{n_0, n_1, \cdots, n_N\},\\
+n_i &= (\mathrm{On}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i),
+\end{align*}
+where $N$ is a note list containing notes $n_0$ to $n_N$. A very simple annotation format was chosen: every note in the note list was annotated with its metrical position, measured in quarter notes. 
+
+Most of the corpus was played in swing, were it is common to play upbeat eighth notes as slightly delayed as in figure [SWUNG NOTES EXAMPLE]. These notes were annotated as in figure [SWUNG NOTES EXAMPLE]. 
+
+Although we now have metrical onsets, we still do not have the subdivision trees for the corpus. A simple parser with a flat prior and likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. The subdivision trees 
+
+
+\begin{figure}
+\centering
+\subfloat[Rhythm notation]{
+\centering
+\includegraphics[scale=0.3]{img/aint_misbehavin}
+}
+\\
+\subfloat[Annotation]{
+\centering
+\includegraphics[scale=0.3]{img/aint_misbehavin_swung}
+}
+\\
+\subfloat[Parsetree]{
+\centering
+\Tree 
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
+}
+\end{figure}
 
 \subsection{Training}
 

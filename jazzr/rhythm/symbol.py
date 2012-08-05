@@ -173,6 +173,9 @@ class Symbol(object):
     return representation.MidiFile('transcription.mid')
     os.system('rm transcription.mid')
 
+  def latex(self, showOnsets=False, showPerfOnsets=False, showRatios=False, showFeatures=False):
+    return latex.latexify(self, showOnsets=showOnsets, showPerfOnsets=showPerfOnsets, showRatios=showRatios)
+
   def view(self, scale=False, showOnsets=False, showPerfOnsets=False, showRatios=False, showFeatures=False, quiet=True):
     """Generate a LaTeX tree using qtree.sty, convert to pdf with pdflatex and view using Evince. Remove the files afterwards."""
     latex.view_symbols([self], scale=scale, showOnsets=showOnsets, showPerfOnsets=showPerfOnsets, showRatios=showRatios, showFeatures=showFeatures, quiet=quiet)
@@ -180,6 +183,9 @@ class Symbol(object):
   def score(self, barlevel=0, annotation=None):
     """Transcribe the symbol, save as MusicXML, convert to pdf using MuseScore and view using Evince. Remove the file afterwards."""
     transcription.view_pdf(self, barlevel=barlevel, annotation=annotation)
+
+  def musescore(self, barlevel=0, annotation=None, filename='transcription'):
+    transcription.musescore(self, barlevel=barlevel, annotation=annotation)
 
   def __str__(self):
     types = ['Onset', 'Tie', 'Symbol']

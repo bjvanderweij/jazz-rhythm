@@ -226,7 +226,7 @@ def loadAnnotations(collection='explicitswing'):
         corpus += load(collection, '{0}-{1}-{2}'.format(song, version, track))
   return corpus
 
-def corpus(collection='annotations'):
+def corpus(collection='explicitswing'):
   corpus = []
   for song in songs(collection=collection): 
     for version in versions(song, collection=collection):
