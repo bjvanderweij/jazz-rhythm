@@ -4,32 +4,61 @@
 
 \subsection{Parsing Rhythms}
 
-We consider the observation of a rhythm to be a list of note onset times. In our system, note offsets are ignored. Although note offsets are rhythmically timed as well in many cases, note onsets seem to be the most important property of rhythms and also the property that rhythms played by any instruments have in common (it is hard for example to define the note offsets of a drum line). When note onsets are perceived as a rhythm, we assume that the perceived rhythm is an underlying structure. This structure defines a set of units, or metrical durations that form are the atomic units of the rhythm. These units are constrained to be duple or triple divisions of each other. Other prime number divisions are allowed as well but are far less common in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the downbeat. The other unit(s) are called upbeat(s).
+We assume that we can represent the performance $P$, of a rhythm as series of note onset times. 
+\begin{equation}
+P = [\mathrm{On}_0, \mathrm{On}_1, \cdots, \mathrm{On}_n]
+\end{equation}
+where $\mathrm{On}_i$ is a note onset. For humans, this information is usually enough to correctly identify the rhythmic structure. Other features of the perception, like pitch and note offsets are useful as well, but in many cases, note onsets are sufficient. Note onsets are also the property that rhythms played by any instruments have in common. When a rhythm is performed on a drum for example, pitch and note offsets are practically absent.
 
-A list of note onsets performed by a human is a noisy representation of the underlying structure. Some of this noise is caused by imperfection in the performance, some of the noise is caused by conscious deviation from the metronomic beat, otherwise known as expression.
+We will consider the perceived \textit{rhythm} to be the underlying structure of a performance and the performance a noisy representation of the underlying rhythm. In Western music tradition, a rhythm can be described as a series of subdivision of some metrical unit. The most common subdivisions are duple and triple divisions. Other prime number divisions are allowed as well but are far less common in at least in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the \textit{downbeat}. The other unit(s) are called \textit{upbeat}(s).
 
-The task of finding rhythmic structure can now be defined as finding the appropriate atomic units and finding the location of the downbeats. A structural representation of the rhythm should capture this information. Traditional staff notation is one possible structure that defines the location of downbeats and the atomic units that the onsets are build of. Instead of staff notation.
+A quarter note in a 4/4 time signature for example, is a whole note divided two twice. The first beat of a 4/4 bar is the downbeat at the half note level and every level below. The third beat of the bar is an upbeat at the half note level, since its the second half of a whole note divided by two, but a downbeat at the quarter note level and below. Many authors have used the notion of a metrical grid, introduced by Lerdahl and Jackendoff in [REFERENCE], to represent this structure. Another popular representation of rhythmic structure is staff notation. Here we will use a different kind of representation which we will refer to as \textit{subdivision trees}. We will argue that this is a more general representation of rhythm than staff notation or metrical grids. [No timesignatures, irrelevance of tempo curves]
 
-Every node in the subdivision tree represents a metrical duration. There are two types of terminals: an onset and a filler unit. A filler unit can be either a tied note or a rest. Since we are only looking at note onsets it does not make sense to distinguish tied notes from rests. The filler units will be referred to as ties from now on.
+Every node in the subdivision tree represents a metrical duration. Any node can be subdivided into any prime number of subnodes. A node is considered to be non-terminal if it is subdivided and terminal if it is not. There are two types of terminal nodes: an onset and a filler unit. A filler unit can be either a tied note or a rest. Since we are only looking at note onsets it does not make sense to distinguish tied notes from rests. The filler units will be referred to as ties from now on.
 
-A node can be subdivided into any prime number of child nodes, although in this text we will assume that only duple and triple divisions are allowed. The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
+The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
 
-When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
+An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of the time signature. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Transcription A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
+
+\begin{figure}
+\centering
+\subfloat[]{
+\label{fig:subdivision:a}
+\centering
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] ] 
+}
+
+\subfloat[]{
+\label{fig:subdivision:b}
+\centering
+\begin{tabular}{| l  >{\centering\arraybackslash}m{2in} |}
+\hline 
+A & \includegraphics[scale=0.3]{img/subdivision_score1}\\
+B & \includegraphics[scale=0.3]{img/subdivision_score2}\\
+C & \includegraphics[scale=0.3]{img/subdivision_score3}\\
+\hline
+\end{tabular}
+}
+\caption{Analysis of a musical clich\'e.}
+\label{fig:subdivision}
+\end{figure}
+
+%When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
 
 \subsubsection{Parser}
 
-The goal of rhythmic parsing is to find a number of hypotheses about the underlying rhythmic structure of a list of note onsets. An hypothesis is formulated as a structural analysis, or subdivision tree. We assume that over a few notes, only a small number of hypotheses are likely. First, we present a parser that considers all possible hypotheses of a number of note onsets. After that, we present a method to select likely hypotheses and reject unlikely hypotheses. 
+The goal of rhythmic parsing is to find generate hypotheses about possible rhythmic structures $R$ underlying a performance $P$. A hypothesis is formulated as a structural analysis, or subdivision tree. We assume that over a few notes, only a small number of hypotheses are likely. First, we present a parser that considers all possible hypotheses of a number of note onsets. After that, we present a method to select likely hypotheses and reject unlikely hypotheses. 
 
-The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. It uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. 
-
+The parser is essentially a stochastic CKY parser that combines hypotheses about note onsets. It uses a small set of rules and two constraints that restrict it to form only valid rhythmic structures. In this text we will restrict the parser to only the most common subdivisions, namely duple and tuple divisions. This results in the following context-free grammar
 \begin{align*}
 \label{eq:rules}
-D(\textsc{combine}([h_1, h_2])) &\rightarrow D(h_1) D(h_2)\\
-D(\textsc{combine}([h_1, h_2, h_3)) &\rightarrow D(h_1) D(h_2) D((h_3)\\
-D(h) &\rightarrow \textrm{On}_i\\
-D(h) &\rightarrow *
+R(\textsc{combine}([h_1, h_2])) &\rightarrow R(h_1) D(h_2)\\
+R(\textsc{combine}([h_1, h_2, h_3)) &\rightarrow R(h_1) R(h_2) R((h_3)\\
+R(h) &\rightarrow \textrm{On}_i\\
+R(h) &\rightarrow *
 \end{align*}
-where $D(\phi)$ is a metrical duration with features $\phi$, $*$ represents a filler duration (this is needed when notes are tied together or when the first note is not the first beat of a measure) [SHOW SOME EXAMPLES HERE], $\textrm{On}_i$ is an onset at index $i$, $h$ is a hypothesis about the rhythmic analysis of the corresponding metrical duration and $\textrm{combine}/2$ and $\textrm{combine}/3$ are functions that take hypotheses and combine them into a new hypothesis.
+where $R(\phi)$ is a metrical duration with features $\phi$, $*$ represents a filler duration (this is needed when notes are tied together or when the first note is not the first beat of a measure) [SHOW SOME EXAMPLES HERE], $\textrm{On}_i$ is an onset at index $i$, $h$ is a hypothesis about the rhythmic analysis of the corresponding metrical duration and $\textrm{combine}/2$ and $\textrm{combine}/3$ are functions that take hypotheses and combine them into a new hypothesis.
 
 The two constraints are:
 \begin{enumerate}
@@ -67,9 +96,9 @@ If we want to handle human performances we need to have tolerance for deviations
 In order to define how our model determines the likelihood of an analysis, we first need to define how a subdivision tree implies metronomic onsets. 
 
 
-\subsubsection{Combination}
+\subsubsection{Hypothesis representation and combination}
 
-Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, the onset of downbeats containing ties are filled in. The second step is a top-down process where downbeat intervals are used to predict the location of upbeats. Since every downbeat except the first one is an upbeat at a higher level in our analysis, this process estimates the onsets of every onset in a piece.
+Finding the onsets implied by an hypothesis is done in two steps. The first step is a bottom up process where as soon as enough onsets are available, the onset of downbeats containing ties are filled in. The second step is a top-down process where downbeat intervals are used to predict the onset of upbeats. Predicting only upbeat onsets will effectively generate predictions about every onset in the rhythm since every downbeat, except the first one, is an upbeat at a higher level.
 
 For the first step, we need to extend our hypothesis representation to include onset times and the (estimated) downbeat onset. This is represented as a 3-tuple
 
@@ -79,9 +108,29 @@ h = (C, N, b_d)
 
 where $b_d$ is the downbeat, $N$ a list of onsets and $C$ is a list of child nodes. These child nodes are hypotheses themselves. A hypothesis thus defines a tree structure with onsets or ties as leaf nodes. A hypothesis is said to \textit{govern} a set of onsets if the hypothesis recursively contains these onsets. The number of children of a hypothesis defines its subdivision. In theory, a hypothesis can contain any prime number of child nodes, however in the explanation below we will limit this to the most frequent subdivisions of two and three.
 
-A single onset is represented as $(\emptyset, [\textrm{on}], \textrm{on})$, where on is the onset time. A single tie is represented as $(\emptyset, [*], *)$.  Combining these hypotheses yields $([(\emptyset, [\textrm{on}], \textrm{on}), (\emptyset, [*], *)], [*, on], *)$. Generally, combining hypotheses can be described in the following manner: put the first element of the onset list $N$ of every subhypothesis in $N$ and, if the first element of the new $N$ is a tie, try to estimate the onset of the downbeat. If that is not possible or if the first element of $N$ is not a tie, set $b_d$ to the first element of $N$. Algorithm \ref{alg:combination} describes this process in detail.
+A single onset is represented as $(\emptyset, [\textrm{on}], \textrm{on})$, where on is the onset time. A single tie is represented as $(\emptyset, [*], *)$.  Combining these hypotheses yields $([(\emptyset, [\textrm{on}], \textrm{on}), (\emptyset, [*], *)], [*, on], *)$. Generally, combining hypotheses can be described in the following manner: put the first element of the onset list $N$ of every sub-hypothesis in $N$ and, if the first element of the new $N$ is a tie, try to estimate the onset of the downbeat. If that is not possible or if the first element of $N$ is not a tie, set $b_d$ to the first element of $N$. Algorithm \ref{alg:combination} describes this process in detail.
 
-When a hypothesis governs only one onset, the downbeat can not be estimated. Any hypothesis that does not contain an absolute or estimated downbeat is treated as a \textit{complex onset}. The hypothesis $(*$ $\bullet)$ for example is treated as an onset at relative position $0.5$, the hypothesis $(*$ $(*$ $\bullet))$ is treated as an onset with relative position 0.75.
+Downbeats cannot be estimated when a hypothesis governs only a single onset. Any such hypothesis is treated as a \textit{complex onset}. The hypothesis in figure \ref{fig:complexonsets:a} for example is treated as an onset at relative position $0.5$, the hypothesis in figure \ref{fig:complexonsets:b} is treated as an onset with relative position $0.75$.
+
+\begin{figure}
+\centering
+\subfloat[complex onset: $0.5$]{
+\label{fig:complexonsets:a}
+\parbox{4cm}{\centering
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
+}
+}
+\subfloat[complex onset: $0.75$]{
+\label{fig:complexonsets:b}
+\parbox{4cm}{\centering
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] ] 
+}
+}
+\caption{Complex onsets (single-onset analyses).}
+\label{fig:singlenotes}
+\end{figure}
 
 [This explanation needs to be better and needs to contain examples]
 The goal of the combination process is to get the best possible estimates of where the up and downbeats of a hypothesis are. The algorithm can be found in algorithm \ref{alg:combination}. The algorithm works roughly as follows. The input is a list $H$ containing two or three hypotheses. These will be the child nodes of the hypothesis that the combine function is building. The algorithm iterates through the list of hypotheses. If a hypothesis is an onset, the position of the onset and the absolute onset are added to \textit{onsets}. The position is a number between 0 and 2 or 0 and 3, depending on the number of hypotheses in $H$. If a hypothesis is a complex onset, its complex position, determined by the function \textsc{complexPostion}, and absolute onset are added to \textit{complexOnsets}. If a hypothesis suggests a downbeat, this downbeat and its position are added to \textit{onsets}.
@@ -92,19 +141,15 @@ The goal of the combination process is to get the best possible estimates of whe
 \begin{algorithmic}
 \Function{combine}{$H$}
 	\State $d \leftarrow$ \Call{length}{$H$}
-	\Comment{Division}
 	\State onsets $\leftarrow \emptyset$
 	\State complexOnsets $\leftarrow \emptyset$
-	\State $N \leftarrow \emptyset$
-	\State $C \leftarrow H$
 	\For{$i \leftarrow 0,d$}
-		\State $(C', N', b_d') \leftarrow H[i]$
-		\If{$C = \emptyset$ \textbf{and} $N \neq [*]$}
+		\State $(C, B) \leftarrow H[i]$
+		\If{$C = \emptyset$ \textbf{and} $B \neq [*]$}
 			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
 		\Else
-			\If{$b_d' \neq *$}
-			\Comment{Check if the hypothesis suggests a downbeat}
-				\State \textbf{append} $(i, b_d')$ \textbf{to} onsets
+			\If{$B[0] \neq *$}
+				\State \textbf{append} $(i, B[0])$ \textbf{to} onsets
 			\Else
 				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H[i]$}
 				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
@@ -114,11 +159,9 @@ The goal of the combination process is to get the best possible estimates of whe
 	\If{\Call{length}{onsets} $\leq 1$}
 		\State \textbf{append} complexOnsets \textbf{to} onsets
 	\EndIf
-	\State $b_d \leftarrow N[0]$
-	\If{$b_d = *$}
-		\State $b_d \leftarrow$ \Call{downbeat}{onsets, $d$}
-	\EndIf
-	\State \textbf{return} $(C, N)$
+	\State $B \leftarrow$ \Call{fill}{onsets, $d$}
+	\State $C \leftarrow H$
+	\State \textbf{return} $(C, B)$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
@@ -138,19 +181,13 @@ For a hypothesis $h = (C, N, b_d)$, the algorithm is initialised as follows: $\t
 \caption{Generate observations}
 \label{alg:observations}
 \begin{algorithmic}
-\Function{observations}{$h$, downbeat, nextDownbeat, estimatedDownbeat}
-	\If {downbeat $ = *$}
-		\State \textbf{return} $\emptyset$
-	\EndIf
-	\State $C, N, d_b \leftarrow h$
-	\If {$b_d \neq *$}
+\Function{observations}{$h$, downbeat, nextDownbeat}
+	\State $C, B \leftarrow h$
+	\If {$B[0] \neq *$}
 		\Comment{If this $h$ implies a downbeat, use it.}
-		\State downbeat $\leftarrow d_b$
+		\State downbeat $\leftarrow B[0]$
 	\EndIf
-	\If {nextDownbeat $ = *$}
-		\State nextDownbeat $\leftarrow$ estimatedDownbeat
-	\EndIf
-	\State \textbf{append} nextDownbeat \textbf{to} $N$
+	\State \textbf{append} nextDownbeat \textbf{to} $B$
 	\State $d \leftarrow$ \Call{length}{$C$}
 	\Comment{Division of this $h$.}
 	\State $l \leftarrow$ nextDownbeat - downbeat
@@ -159,19 +196,16 @@ For a hypothesis $h = (C, N, b_d)$, the algorithm is initialised as follows: $\t
 	\Comment{Observations.}
 
 	\For {$i \leftarrow 1,d$}
-		\If {$N[i] \neq *$ \textbf{and} $i \neq 0$}
+		\If {$B[i] \neq *$ \textbf{and} $i \neq 0$}
 			\State \textbf{append} \Call{$\Phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $O$
 		\EndIf	
-		\State $C', N', b_d' \leftarrow C[i]$
+		\State $C', B' \leftarrow C[i]$
 		\If {$C' \neq \emptyset$}
-			\State $b_{\mathrm{down}'} \leftarrow \mathrm{downbeat} + l * i/d$
-			\If {$N'[i] \neq *$}
+			\State $b_{\mathrm{down}} \leftarrow \mathrm{downbeat} + l * i/d$
+			\If {$B[i] \neq *$}
 				\State $b_{\mathrm{down}} \leftarrow B[i]$
 			\EndIf
 			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
-			%\If{$B[i+1] \neq *$}
-			%	\State upbeat $\leftarrow B[i+1]$
-			%\EndIf
 			\State \textbf{append} \Call{observations}{$(C', B'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} O
 		\EndIf
 	\EndFor
@@ -182,15 +216,12 @@ For a hypothesis $h = (C, N, b_d)$, the algorithm is initialised as follows: $\t
 
 Given an expected and observed onset
 
-Any machine learning algorithm can be used to learn a mapping from features to ratio. This makes the model suitable for a rhythmic-structure-aware expressive timing model.
-
-
 \begin{equation}
 \Phi(\beta, \beta', b, i, d) = \frac{(b - \beta) / i}{(\beta' - b) / (d - i)},
 \end{equation}
 where $\beta$ is a downbeat, $\beta'$ is the next downbeat, $b$ is an onset, $i$ is the position of $b$, and $d$ is the number of beats between $\beta$ and $\beta'$ (the division).
 
-Calculating likelihood
+\subsubsection*{Observation likelihood}
 
 We can now calculate the likelihood of any hypothesis by taking the product of the observations that it implies. Optionally we can add an expression parameter that suggests the ratios to be slightly larger than one. The (normalised) likelihood of a set of observations is
 
@@ -239,7 +270,7 @@ After the filtering process, [N-CORPUS] tracks were left containing melodies of 
 N &= \{n_0, n_1, \cdots, n_N\},\\
 n_i &= (\mathrm{On}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i),
 \end{align*}
-where $N$ is a note list containing notes $n_0$ to $n_N$. A very simple annotation format was chosen: every note in the note list was annotated with its metrical position, measured in quarter notes. 
+where $N$ is a note list containing notes $n_0$ to $n_N$, $\mathrm{On}_i$, $\mathrm{Pitch}_i$ and $\mathrm{Velocity}_i$ is the onset time in micro seconds, pitch and velocity of the $i^{\mathrm{th}}$ note. A very simple annotation format was chosen: every note in the note list was annotated with its metrical position, measured in quarter notes. 
 
 Most of the corpus was played in swing, were it is common to play upbeat eighth notes as slightly delayed so that they fall on the third note of a eigth note triple, in terms of subdivision, the third beat of a quarter note divided by three. The example in figure \ref{fig:swing:a} shows a rhythm with some upbeat eighth notes. When performed in swing, the performance is usually closer to figure \ref{fig:swing:b}.
 
@@ -268,6 +299,8 @@ Although we now have metrical onsets, we still do not have the subdivision trees
 }
 \caption{Annotation of swung notes.}
 \end{figure}
+
+
 
 \subsection{Training}
 

@@ -103,7 +103,7 @@ def parsepath(path):
   return parsename(os.path.basename(path))
 
 def exists(collection, name):
-  return getPath(collection) != None
+  return os.path.exists(getPath(collection))
 
 def save_parse(collection, name, part, parse):
   path = getPath(collection)

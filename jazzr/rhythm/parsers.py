@@ -231,11 +231,15 @@ class StochasticParser(Parser):
 
   def observation_likelihood(self, obs, depth):
     (level, abs_dev, dev, ratio) = obs
-    if not (depth-level, ) in self.expressionModel:
-      highest = sorted(self.expressionModel.keys())[-1]
-      mu, sigma = self.expressionModel[highest]
-    else:
-      mu, sigma = self.expressionModel[(depth-level,)]
+    l = depth-level
+    if l > 3:
+      l = 3
+    mu, sigma = self.expressionModel[(l,)]
+    #if not (depth-level, ) in self.expressionModel:
+    #  highest = sorted(self.expressionModel.keys())[-1]
+    #  mu, sigma = self.expressionModel[highest]
+    #else:
+    #  mu, sigma = self.expressionModel[(depth-level,)]
     #if sigma < 0.01:
     #  sigma = 0.01
     return self.likelihood(mu, sigma, math.log(ratio))
@@ -268,7 +272,7 @@ class StochasticParser(Parser):
       p = 0.0
       for o in obs:
         if self.observation_likelihood(o, S.depth) == 0:
-          print o, name, S.depth-o[0], self.expressionModel[(S.depth-o[0], )]
+        #  print o, name, S.depth-o[0], self.expressionModel[(S.depth-o[0], )]
           p += math.log(1.0)
         else:
           p += math.log(self.observation_likelihood(o, S.depth))

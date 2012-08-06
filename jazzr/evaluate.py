@@ -10,7 +10,7 @@ def load():
     f = open('results/{0}'.format(files[choice]), 'rb')
     return pickle.load(f)
 
-def evaluate(corpus, nfolds=10, n=20, measures=2, noise=False):
+def evaluate(corpus, nfolds=10, n=15, measures=4, noise=False):
   folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
@@ -44,24 +44,27 @@ def evaluate(corpus, nfolds=10, n=20, measures=2, noise=False):
         print 'Averages: precision {0} recall {1}.'.format(precision, recall)
         
   time = str(datetime.datetime.now())
+  type = 'expression'
+  if noise:
+    type = 'additive_noise'
   f = open('results/results_{0}_measures={1}_n={2}_folds={3}'.format(time, measures, n, nfolds), 'wb')
   pickle.dump(results, f)
   return results
 
 def measure(results):
-  tp = fp = tn = fn = 0.0
-  for parse, label in results:
-    tpx, fpx, tnx, fnx = downbeat_detection(parse, label)
-    tp += tpx
-    fp += fpx
-    tn += tnx
-    fn += fnx
-  precision = recall = 0
-  if tp + fp != 0:
-    precision = tp/float(tp + fp)
-  if tp + fn != 0:
-    recall = tp/float(tp + fn)
-  return precision, recall
+  recallScore = 0
+  precisionScore = 0
+  nRecall = 0
+  nPrecision = 0
+  for i in range(len(results)):
+    parse, label = parseAndLabel(results, i)
+    n, score = getPrecisionScore(parse, label)
+    precisionScore += score
+    nPrecision += n
+    n, score = getRecallScore(parse, label)
+    recallScore += score
+    nRecall += n
+  return precisionScore/float(nPrecision), recallScore/float(nRecall)
 
 def precision(parse, label):
   tp, fp, tnl, fn = downbeat_detection(parse, label)
@@ -86,12 +89,12 @@ def getTests(testset, measures=2):
     bar = None
     for i in range(len(test)):
       if test.type(i) in [Annotation.NOTE, Annotation.END, Annotation.SWUNG]:
-        onsets.append(test.perf_onset(i))
         if bar == None:
           bar = test.bar(test.position(i))
         else:
           if test.bar(test.position(i)) >= bar + measures:
             break
+        onsets.append(test.perf_onset(i))
     tests.append(onsets)
     labels.append(label)
   return tests, labels
@@ -109,6 +112,68 @@ def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
   elif S.isTie() and ties:
     treelist.append((TIE, beat, level, division))
   return treelist
+
+      
+
+
+def getFolds(corpus, folds=5):
+  n = len(corpus)
+  results = []
+  for i in range(folds):
+    trainset = []
+    testset = []
+    n_test = int(n/float(folds))
+    for j in range(n_test):
+      index = int(random.random() * (n-j))
+      testset += [corpus[index]]
+      del corpus[index]
+    trainset = corpus
+    results.append((trainset, testset))
+    corpus = trainset + testset
+  return results
+
+def parseAndLabel(results, i):
+  p = results[i][0]
+  notes = getOnsets(p)
+  return p, getSubTree(notes, results[i][1])
+
+def compare(results, i, scale=False):
+  p, l = parseAndLabel(results, i)
+  latex.view_symbols([p, l], scale=scale)
+
+def getSubTree(notes, parse):
+  if parse.isSymbol():
+    childContains = False
+    for child in parse.children:
+      if contains(notes, getOnsets(child, performance=True)):
+        childContains = True
+        res = getSubTree(notes, child)
+        if res != None:
+          return res
+      if not childContains:
+        return parse
+  return None
+
+def getOnsets(S, performance=False):
+  notes = []
+  if S.isSymbol():
+    for child in S.children:
+      notes += getOnsets(child, performance=performance)
+  elif S.isOnset():
+    if performance:
+      return [S.annotation.perf_onset(S.index)]
+    else:
+      return [S.on]
+  return notes
+
+def contains(small, big):
+  for i in xrange(len(big)-len(small)+1):
+    for j in xrange(len(small)):
+      if big[i+j] != small[j]:
+        break
+      else:
+        return i, i+len(small)
+  return False
 
 def downbeat_detection(parse, correctparse):
   results = symbol_to_list(parse)
@@ -140,52 +205,67 @@ def downbeat_detection(parse, correctparse):
     recall = tp/float(tp + fn)
   return tp, fp, tn, fn
 
-def getFolds(corpus, folds=5):
-  n = len(corpus)
-  results = []
-  for i in range(folds):
-    trainset = []
-    testset = []
-    n_test = int(n/float(folds))
-    for j in range(n_test):
-      index = int(random.random() * (n-j))
-      testset += [corpus[index]]
-      del corpus[index]
-    trainset = corpus
-    results.append((trainset, testset))
-    corpus = trainset + testset
-  return results
-
-def getSubTree(notes, parse):
-  if parse.isSymbol():
-    childContains = False
-    for child in parse.children:
-      if contains(notes, getNotes(child, performance=True)):
-        childContains = True
-        res = getSubTree(notes, child)
-        if res != None:
-          return res
-      if not childContains:
-        return parse
-  return None
-
-def getNotes(S, performance=False):
-  notes = []
-  if S.isSymbol():
-    for child in S.children:
-      notes += getNotes(child, performance=performance)
-  elif S.isOnset():
-    if performance:
-      return [S.annotation.perf_onset(S.index)]
+def getPrecisionScore(parse, label, a_perf=False, b_perf=True, verbose=False):
+  if verbose:
+    if label == None:
+      label = Tie()
+    latex.view_symbols([parse, label], scale=False)
+  score = 0
+  n = 0
+  # If this is a symbol than this symbol is one fact claimed by the parse
+  # it's correct if the onsets each of its children governs is the same as for the parse
+  division = len(parse.children)
+  i = 0
+  while i < division:
+    n += 1
+    if label == None:
+      if parse.children[i].isSymbol():
+        newN, newScore = getPrecisionScore(parse.children[i], None, a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+        n += newN
+        score += newScore
+      i += 1
+      continue
+    if label.children == None:
+      if parse.children[i].isSymbol():
+        newN, newScore = getPrecisionScore(parse.children[i], None, a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+        n += newN
+        score += newScore
+      i += 1
+      continue
+    if i >= len(label.children):
+      if parse.children[i].isSymbol():
+        newN, newScore = getPrecisionScore(parse.children[i], None, a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+        n += newN
+        score += newScore
+      i += 1
+      continue
+    # Parse claims a division into x and y, see if label does so too
+    if getOnsets(parse.children[i], performance=a_perf) == getOnsets(label.children[i], performance=b_perf): 
+      score += 1
+      if parse.children[i].isSymbol():
+        newN, newScore = getPrecisionScore(parse.children[i], label.children[i], a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+        n += newN
+        score += newScore
     else:
-      return [S.on]
-  return notes
-
-def contains(small, big):
-  for i in xrange(len(big)-len(small)+1):
-    for j in xrange(len(small)):
-      if big[i+j] != small[j]:
-        break
+      # Only do this at top level?
+      #if contains(getOnsets(label, performance=b_perf), getOnsets(parse.children[i], performance=a_perf)):
+      #  if parse.children[i].isSymbol():
+      #    newN, newScore = getPrecisionScore(parse.children[i], label, a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+      #    n += newN
+      #    score += newScore
+      if contains(getOnsets(label.children[i], performance=b_perf), getOnsets(parse.children[i], performance=a_perf)):
+        if parse.children[i].isSymbol():
+          newN, newScore = getPrecisionScore(parse.children[i], label.children[i], a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+          n += newN
+          score += newScore
       else:
-        return i, i+len(small)
-  return False
+        if parse.children[i].isSymbol():
+          newN, newScore = getPrecisionScore(parse.children[i], None, a_perf=a_perf, b_perf=b_perf, verbose=verbose)
+          n += newN
+          score += newScore
+    i += 1
+  return n, score
+
+def getRecallScore(parse, label, verbose=False):
+  return getPrecisionScore(label, parse, a_perf=True, b_perf=False, verbose=verbose)
+
