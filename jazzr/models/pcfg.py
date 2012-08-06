@@ -2,6 +2,12 @@ from jazzr.corpus import annotations
 from jazzr.tools import commandline
 import os, math, pickle, re, random
 
+
+def flat_prior():
+  model = train(annotations.corpus())
+  for key in model:
+    model[key] = 1/float(len(model.keys()))
+
 def train(corpus):
   counts = {}
   N = 0

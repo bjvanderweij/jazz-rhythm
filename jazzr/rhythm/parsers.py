@@ -11,12 +11,13 @@ class Parser(object):
   shave_and_a_haircut2 = [0, 0.529862, 0.713465, 0.899274, 1.072124, 1.608282, 2.772783, 3.280167, 4.380727] 
   rhumba_clave = [0, 0.491439, 0.975992, 1.618332, 1.945464, 2.597757, 3.118297, 3.574721, 4.226787, 4.560222, 5.284089]
 
-  def __init__(self, model=None, beam=0.5, n=-1, corpus=False):
+  def __init__(self, model=None, beam=0.5, n=-1, corpus=False, tieThreshold=0.1):
     self.beam = beam
     self.verbose= False
     self.model = model
     self.n = n
     self.corpus=corpus
+    self.tieThreshold = tieThreshold
 
   def shave(self, onsets):
     N = self.list_to_onsets(onsets)
@@ -230,10 +231,13 @@ class StochasticParser(Parser):
 
   def observation_likelihood(self, obs, depth):
     (level, abs_dev, dev, ratio) = obs
-    mu, sigma = self.expressionModel[(depth-level,)]
-    # This only happens where depth-level > 7
-    if sigma < 0.01:
-      sigma = 0.01
+    if not (depth-level, ) in self.expressionModel:
+      highest = sorted(self.expressionModel.keys())[-1]
+      mu, sigma = self.expressionModel[highest]
+    else:
+      mu, sigma = self.expressionModel[(depth-level,)]
+    #if sigma < 0.01:
+    #  sigma = 0.01
     return self.likelihood(mu, sigma, math.log(ratio))
 
   def likelihood(self, mu, sigma, x):
@@ -255,8 +259,8 @@ class StochasticParser(Parser):
     start = S.downbeat()
     (pos, (previous, on, next)) = S.features
     length = len(S.children) * (S.beats[1] - S.beats[0])
-    if previous - start > 0.1 * length or\
-        (start + length) - next > 0.1 * length:
+    if previous - start > self.tieThreshold * length or\
+        (start + length) - next > self.tieThreshold * length:
       return 0.0, 1
     
     obs = expression.observations(S, performance=performance)
@@ -271,6 +275,10 @@ class StochasticParser(Parser):
     else:
       p = 1.0
       for o in obs:
+        #if not (S.depth-o[0], ) in self.expressionModel:
+        #  print S.beats
+        #  S.view()
+        #  exit(0)
         p *= self.observation_likelihood(o, S.depth)
 
     return p, len(obs)

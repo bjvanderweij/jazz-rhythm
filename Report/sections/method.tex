@@ -41,6 +41,7 @@ This parser is only constrained by the number of onsets in the input. In order t
 
 
 \subsection{Hypothesis generation and rejection}
+\label{sec:rejection}
 
 [Rhythm, rhythmic analysis and hypothesis are used interchangeably here. Make some sense out of this]
 
@@ -240,36 +241,94 @@ n_i &= (\mathrm{On}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i),
 \end{align*}
 where $N$ is a note list containing notes $n_0$ to $n_N$. A very simple annotation format was chosen: every note in the note list was annotated with its metrical position, measured in quarter notes. 
 
-Most of the corpus was played in swing, were it is common to play upbeat eighth notes as slightly delayed as in figure [SWUNG NOTES EXAMPLE]. These notes were annotated as in figure [SWUNG NOTES EXAMPLE]. 
+Most of the corpus was played in swing, were it is common to play upbeat eighth notes as slightly delayed so that they fall on the third note of a eigth note triple, in terms of subdivision, the third beat of a quarter note divided by three. The example in figure \ref{fig:swing:a} shows a rhythm with some upbeat eighth notes. When performed in swing, the performance is usually closer to figure \ref{fig:swing:b}.
 
-Although we now have metrical onsets, we still do not have the subdivision trees for the corpus. A simple parser with a flat prior and likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. The subdivision trees 
+Although we now have metrical onsets, we still do not have the subdivision trees for the corpus. A simple parser with a flat prior and likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. A subdivision tree for the swing example is shown in figure \ref{fig:swing:c}.
 
 
 \begin{figure}
 \centering
 \subfloat[Rhythm notation]{
+\label{fig:swing:a}
 \centering
 \includegraphics[scale=0.3]{img/aint_misbehavin}
 }
 \\
 \subfloat[Annotation]{
+\label{fig:swing:b}
 \centering
 \includegraphics[scale=0.3]{img/aint_misbehavin_swung}
 }
 \\
 \subfloat[Parsetree]{
+\label{fig:swing:c}
 \centering
 \Tree 
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
 }
+\caption{Annotation of swung notes.}
 \end{figure}
 
 \subsection{Training}
 
 \subsubsection{Prior}
 
-PCFG
+The prior should be an indication of how likely a rhythmic analysis is a priori. If the likelihood would be the only indication of the quality of an analysis, the analysis would become too detailed like in figure \ref{fig:detailed}. A prior is needed to prefer sensible analyses and reject over complicated ones. In addition to that, without a prior, the model would have no way of determining the phase (the location of the downbeats). [give example of equally likely analyses with different phases but more unlikely priors]
+
+The prior used in this study is simply a probabilistic context-free grammar (PCFG). Usually, a PCFG assigns probabilities to the expanding of a non-terminal symbol to other non-terminal symbols. In our case, probabilities of non-terminal symbols to terminal symbols are included as well since there are only two terminal symbols.
+
+The only non-terminal symbol in our grammar is a hypothesis that has child nodes. There are two terminal symbols: an onset and a tie. Since there is only one non-terminal in the grammar, the probability that a hypothesis $h$ expands to child nodes $C$ is given by
+
+\begin{equation}
+P((C, N, b_d) \rightarrow C) = P((C, N, b_d)) = \frac{\mathrm{count}((C, N, b_d))}{N},
+\end{equation}
+where N is the total number of non-terminal symbols.
 
 \subsubsection{Expression model}
 
 $\mu$ and $\sigma$ for the bottom 4 levels?
+
+
+\subsection{Parser optimisations}
+
+To make the parser computationally tractable, a few optimisations were needed. It was already mentioned that the parser uses a beam parameter to reject unlikely hypotheses. In addition to that a few extra measures had to be taken.
+
+First of all, the \textsc{observations} function returns no observations for hypotheses containing a single onset (complex onsets). Their probability is always one and theoretically ties could be added endlessly. To restrict this the parser maintains a small list of allowed single note analyses. This list is compiled by taking all single-note analyses found in the labelled corpus.
+
+Second of all, the corpus contains only 4/4 time signatures, therefore triple divisions are allowed only at note level. All allowed triple divisions are shown in figure \ref{fig:triples}. 
+
+\begin{figure}
+$\bullet$
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] 
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] ] 
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ] 
+\caption{Some single note analyses.}
+\label{fig:singlenotes}
+\end{figure}
+
+\begin{figure}
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] 
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ]
+\Tree 
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] [ .$\bullet$ ] ]
+\caption{Allowed triple divisions.}
+\label{fig:triples}
+\end{figure}
+
+Third of all, the parser may at some point generate a large number of hypotheses due to ambiguities in the input. We do not need to keep track of all those hypotheses because the prior is able to select the most likely ones. The parser therefore only includes the best-$n$ hypotheses in every cell, where hypotheses are ranked by their posterior probability.
+% Beam
+% Triple divisions
+% Best-n
+% Max depth
+%
+
+\subsection{Overview}
+
+% Chart parsing, beam, prior, likelihood, 

@@ -1,6 +1,14 @@
 from jazzr.rhythm.parsers import *
 from jazzr.models import *
-import random, pickle, datetime
+from jazzr.tools import commandline
+import random, pickle, datetime, os
+
+def load():
+  files = sorted(os.listdir('results'))
+  choice = commandline.menu('Choose', files)
+  if choice != -1:
+    f = open('results/{0}'.format(files[choice]), 'rb')
+    return pickle.load(f)
 
 def evaluate(corpus, nfolds=10, n=20, measures=2, noise=False):
   folds = getFolds(corpus, folds=nfolds)
@@ -14,9 +22,10 @@ def evaluate(corpus, nfolds=10, n=20, measures=2, noise=False):
     # Train a parser
     if noise:
       parser = StochasticParser(trainset, n=n, expressionModel=expression.additive_noise(0.1))
+      #parser.beam = 0.01
     else:
-      parser = StochasticParser(trainset, n=n, expressionModel=expression.additive_noise(0.1))
-      parser.beam = 0.01
+      parser = StochasticParser(trainset, n=n, expressionModel=expression.train(trainset))
+      #parser.beam = 0.01
     parser.allowed = allowed
     # Get the first few bars from a piece
     tests, labels = getTests(testset, measures=measures)
@@ -54,6 +63,20 @@ def measure(results):
     recall = tp/float(tp + fn)
   return precision, recall
 
+def precision(parse, label):
+  tp, fp, tnl, fn = downbeat_detection(parse, label)
+  precision = 0
+  if tp + fp != 0:
+    precision = tp/float(tp + fp)
+  return precision
+
+def recall(parse, label):
+  tp, fp, tn, fn = downbeat_detection(parse, label)
+  recall = 0
+  if tp + fn != 0:
+    recall = tp/float(tp + fn)
+  return recall
+  
 
 def getTests(testset, measures=2):
   tests = []
@@ -67,7 +90,7 @@ def getTests(testset, measures=2):
         if bar == None:
           bar = test.bar(test.position(i))
         else:
-          if test.bar(test.position(i)) > bar + measures:
+          if test.bar(test.position(i)) >= bar + measures:
             break
     tests.append(onsets)
     labels.append(label)
@@ -76,15 +99,15 @@ def getTests(testset, measures=2):
 ONSET = 0
 TIE = 1
 
-def symbol_to_list(S, level=0, beat=0, ties=False):
+def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
   treelist = []
   if S.isSymbol():
     for child, beat in zip(S.children, range(len(S.children))):
-      treelist += symbol_to_list(child, level=level+1, beat=beat, ties=ties)
+      treelist += symbol_to_list(child, level=level+1, beat=beat, ties=ties, division=division+[len(S.children)])
   elif S.isOnset():
-    treelist.append((ONSET, beat, level))
+    treelist.append((ONSET, beat, level, division))
   elif S.isTie() and ties:
-    treelist.append((TIE, beat, level))
+    treelist.append((TIE, beat, level, division))
   return treelist
 
 def downbeat_detection(parse, correctparse):
@@ -98,8 +121,8 @@ def downbeat_detection(parse, correctparse):
   #for i in range(len(results)):
   #  print results[i], labels[i]
   for i in range(len(results)):
-    type, beat, level = results[i]
-    ltype, lbeat, llevel = labels[i]
+    type, beat, level, division = results[i]
+    ltype, lbeat, llevel, division = labels[i]
     if type == ONSET and beat == 0:
       if beat == lbeat:
         tp += 1
@@ -132,3 +155,37 @@ def getFolds(corpus, folds=5):
     results.append((trainset, testset))
     corpus = trainset + testset
   return results
+
+def getSubTree(notes, parse):
+  if parse.isSymbol():
+    childContains = False
+    for child in parse.children:
+      if contains(notes, getNotes(child, performance=True)):
+        childContains = True
+        res = getSubTree(notes, child)
+        if res != None:
+          return res
+      if not childContains:
+        return parse
+  return None
+
+def getNotes(S, performance=False):
+  notes = []
+  if S.isSymbol():
+    for child in S.children:
+      notes += getNotes(child, performance=performance)
+  elif S.isOnset():
+    if performance:
+      return [S.annotation.perf_onset(S.index)]
+    else:
+      return [S.on]
+  return notes
+
+def contains(small, big):
+  for i in xrange(len(big)-len(small)+1):
+    for j in xrange(len(small)):
+      if big[i+j] != small[j]:
+        break
+      else:
+        return i, i+len(small)
+  return False
