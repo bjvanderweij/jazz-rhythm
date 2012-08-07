@@ -268,6 +268,14 @@ class StochasticParser(Parser):
       return 0.0, 1
     
     obs = expression.observations(S, performance=performance)
+    if len(obs) == 0:
+      if S.beats[0] == 0 and S.beats[1] == 0:
+        print S.beats
+        print expression.observations(S.children[1])
+        expression.observations(S.children[1], verbose=2)
+        S.view(showOnsets=True, showFeatures=True)
+        exit(0)
+      return 1.0, 1
     if log:
       p = 0.0
       for o in obs:

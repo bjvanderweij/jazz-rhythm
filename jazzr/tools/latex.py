@@ -27,7 +27,7 @@ def latexify(S, depth=0, showOnsets=False, showPerfOnsets=False, showRatios=Fals
     extras = []
     if showFeatures:
       if S.hasLength():
-        extras.append('{0:.2}'.format(S.length))
+        extras.append('{0:.2}'.format(float(S.length)))
         extras.append('{0}'.format(S.beats))
         extras.append('{0}'.format(S.features))
     if showRatios:

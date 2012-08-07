@@ -47,7 +47,7 @@ def evaluate(corpus, nfolds=10, n=15, measures=4, noise=False):
   type = 'expression'
   if noise:
     type = 'additive_noise'
-  f = open('results/results_{0}_measures={1}_n={2}_folds={3}'.format(time, measures, n, nfolds), 'wb')
+  f = open('results/{4}_{0}_measures={1}_n={2}_folds={3}'.format(time, measures, n, nfolds, type), 'wb')
   pickle.dump(results, f)
   return results
 
