@@ -109,8 +109,30 @@ The precision and recall of the parser are measured as follows: The precision is
 To measure these quantities, a ranking function will be presented that compares a gold standard tree $R$ to a parser output $R^*$. The ranking function will first produce two lists of claims made by  both $R$ and $R*$. 
  This  will do a top-down depth-first search through both trees and compare each split proposed by the parse to the gold standard. A split is said to be correct when the each of the child nodes in the parser output govern the same onsets as each of the child nodes in the gold-standard.
 
+
+\begin{algorithm}
+\caption{An algorithm that converts a rhythmic analysis $R$ to a list of claims $c$. The algorithm is initialised as $\textsc{claims}(R, \emptyset)$.}
+\label{alg:claims}
+\begin{algorithmic}
+\Function{claims}{$R, D$}
+	\State $c \leftarrow \emptyset$
+	\If{$R \neq \emptyset$}
+		\State$d \leftarrow $ \Call{length}{$R$}
+		\For{$i \leftarrow 0, d$}
+			\State \textbf{append} \Call{claims}{$R[i]$} \textbf{to} D
+		\EndFor
+	\ElsIf{\Call{isOnset}{$R$}}
+		\State onsetclaims $\leftarrow \emptyset$
+		\For{$(d, b) \leftarrow D$}
+		\EndFor
+	\EndIf
+	\State \textbf{return} c
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
 \begin{verbatim}
 This python code will be converted to pseudo code.
+
 def claims(R, D=[]):
   c = []
   if R.isSymbol():
@@ -141,7 +163,7 @@ def rank(claims, claims_star):
   return R, N
 \end{verbatim}
 
-This ranking function correctly penalises too detailed or too simple analyses as in figure \ref{fig:precision_error} and \ref{fig:recall_error}. However, a phase error can cause an extra level to be added or removed from the tree. This happens in figure \ref{fig:phase_error:b} and \ref{fig:phase_error:c} for example, where a phase error caused an extra level to be added at the top of the tree, relative to the gold-standard in figure \ref{fig:phase_error:a}. 
+%This ranking function correctly penalises too detailed or too simple analyses as in figure \ref{fig:precision_error} and \ref{fig:recall_error}. However, a phase error can cause an extra level to be added or removed from the tree. This happens in figure \ref{fig:phase_error:b} and \ref{fig:phase_error:c} for example, where a phase error caused an extra level to be added at the top of the tree, relative to the gold-standard in figure \ref{fig:phase_error:a}. 
 % Precision and recall 
 
 % Definition of evaluation

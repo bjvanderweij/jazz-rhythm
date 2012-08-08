@@ -7,7 +7,6 @@
 \usepackage{subfig}
 \usepackage{epstopdf}
 \usepackage{amsmath}
-\usepackage{fullpage}
 \usepackage{qtree}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
@@ -25,11 +24,13 @@
 % Example of swung notes
 % Phase shifted rhythm for illustrating importance of prior
 
+\input{sections/abstract}
 
 \begin{document}
-\maketitle
+
 
 \begin{preliminary}
+\maketitle
 %% Acknowledgements
 \begin{acknowledgements}
 
@@ -57,14 +58,16 @@
 
 %\input{sections/abstract}
 %\input{sections/introduction}
-%\input{sections/relatedwork}
+\input{sections/relatedwork}
 %\input{sections/motivation}
-\input{sections/method}
-\input{sections/evaluation}
+\include{sections/method}
+\include{sections/evaluation}
 %\input{sections/results}
-\input{sections/discussion}
+\include{sections/discussion}
 %\input{sections/conclusion}
 %\input{sections/futurework}
+\appendix
+\include{sections/appendix}
 
 \bibliographystyle{plainnat}
 \bibliography{refs}

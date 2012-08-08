@@ -195,6 +195,10 @@ class Symbol(object):
     else:
       return '[{0}]'.format(types[self.type])
 
+  def fromString():
+    # To be implemented
+    pass
+
 class Onset(Symbol):
 
   def __init__(self, previous, on, next, annotation=None, index=None):

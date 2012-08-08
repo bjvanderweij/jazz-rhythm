@@ -1,6 +1,17 @@
-\section{Related Work}
+\chapter{Related Work}
 \label{sec:relatedwork}
 
 \begin{itemize}
 \item Rhythm quantisation, rhythm models
 \end{itemize}
+
+
+Several authors have suggested that some rhythmic structures are more likely than others. \cite{cemgil2000rhythm} incorporated a notion of rhythmic complexity into their system for music transcription, where the likelihood of a rhythm is inversely proportional to its complexity. Temperley suggests a more thorough description of rhythm likelihood \citep{temperley2010modeling}. In \cite{temperley2009unified} he uses his hierarchical position model in a probabilistic music analysis system. [Explain somewhere why a PCFG captures Temperley's properties of common practice rhythm. If it even does...]. [Honing suggests a few priors somewhere else as well.]
+
+Our hypotheses are represented as subdivision trees. This analysis suggests yet another way of characterising rhythm likelihood, commonly known as a probabilistic context-free grammar(PCFG). 
+
+We will use several priors to evaluate our model. [these priors should be described in detail either here or in the evaluation section]
+
+The likelihood should be a function that measures how well a hypothesis `fits' the observations. The simplest likelihood function is one that assigns zero probability to all hypotheses that do not exactly fit the observations. Such a likelihood would only allow metronomic performances. 
+
+If we want to handle human performances we need to have tolerance for deviations from metronomic timing. In many models [citations], any deviation from metronomic timing is treated as additive noise. Deviations from metronomic timing are penalised using a normal distribution centred around the metronomic onset.
