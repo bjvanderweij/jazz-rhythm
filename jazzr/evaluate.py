@@ -56,12 +56,15 @@ def measure(results):
   precisionScore = 0
   nRecall = 0
   nPrecision = 0
+
   for i in range(len(results)):
     parse, label = parseAndLabel(results, i)
-    n, score = getPrecisionScore(parse, label)
+    score, n = rank(claims(parse), claims(label))
+  #  n, score = getPrecisionScore(parse, label)
     precisionScore += score
     nPrecision += n
-    n, score = getRecallScore(parse, label)
+    score, n = rank(claims(label), claims(parse))
+  #  n, score = getRecallScore(parse, label)
     recallScore += score
     nRecall += n
   return precisionScore/float(nPrecision), recallScore/float(nRecall)
@@ -112,6 +115,38 @@ def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
   elif S.isTie() and ties:
     treelist.append((TIE, beat, level, division))
   return treelist
+
+def claims(S, D=[]):
+  c = []
+  if S.isSymbol():
+    d = len(S.children)
+    for i in range(d):
+      c += claims(S.children[i], D=D + [(d, i)])
+  if S.isOnset():
+    timesig = [d[0] for d in D]
+    onsetclaims = []
+    for i in range(len(timesig)):
+      onsetclaims.append((timesig[i], D[i][1]))
+    c.append(tuple(onsetclaims))
+  return c
+
+def rank(claims, claims_star, verbose=False):
+  R = 0
+  N = 0
+  for c, c_star in zip(claims, claims_star):
+    for i in range(len(c)):
+      N += 2
+      if i < len(c_star):
+        d, b = c[i]
+        d_star, b_star = c_star[i]
+        if d == d_star:
+          R += 1
+        if b == b_star:
+          R += 1
+  return R, N
+
+
+    
 
       
 

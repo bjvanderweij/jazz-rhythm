@@ -1,0 +1,82 @@
+begin{algorithm}
+\caption{Combine hypotheses}
+\label{alg:combination}
+\begin{algorithmic}
+\Function{combine}{$H$}
+	\State $d \leftarrow$ \Call{length}{$H$}
+	\Comment{Division}
+	\State onsets $\leftarrow \emptyset$
+	\State complexOnsets $\leftarrow \emptyset$
+	\State $N \leftarrow \emptyset$
+	\State $C \leftarrow H$
+	\For{$i \leftarrow 0,d$}
+		\State $(C', N', b_d') \leftarrow H[i]$
+		\If{$C = \emptyset$ \textbf{and} $N \neq [*]$}
+			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
+		\Else
+			\If{$b_d' \neq *$}
+			\Comment{Check if the hypothesis suggests a downbeat}
+				\State \textbf{append} $(i, b_d')$ \textbf{to} onsets
+			\Else
+				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H[i]$}
+				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
+			\EndIf
+		\EndIf
+	\EndFor
+	\If{\Call{length}{onsets} $\leq 1$}
+		\State \textbf{append} complexOnsets \textbf{to} onsets
+	\EndIf
+	\State $b_d \leftarrow N[0]$
+	\If{$b_d = *$}
+		\State $b_d \leftarrow$ \Call{downbeat}{onsets, $d$}
+	\EndIf
+	\State \textbf{return} $(C, N)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Generate observations}
+\label{alg:observations}
+\begin{algorithmic}
+\Function{observations}{$h$, downbeat, nextDownbeat, estimatedDownbeat}
+	\If {downbeat $ = *$}
+		\State \textbf{return} $\emptyset$
+	\EndIf
+	\State $C, N, d_b \leftarrow h$
+	\If {$b_d \neq *$}
+		\Comment{If this $h$ implies a downbeat, use it.}
+		\State downbeat $\leftarrow d_b$
+	\EndIf
+	\If {nextDownbeat $ = *$}
+		\State nextDownbeat $\leftarrow$ estimatedDownbeat
+	\EndIf
+	\State \textbf{append} nextDownbeat \textbf{to} $N$
+	\State $d \leftarrow$ \Call{length}{$C$}
+	\Comment{Division of this $h$.}
+	\State $l \leftarrow$ nextDownbeat - downbeat
+	\Comment{The estimated length of this $h$.}
+	\State $O \leftarrow \emptyset$
+	\Comment{Observations.}
+
+	\For {$i \leftarrow 1,d$}
+		\If {$N[i] \neq *$ \textbf{and} $i \neq 0$}
+			\State \textbf{append} \Call{$\Phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $O$
+		\EndIf	
+		\State $C', N', b_d' \leftarrow C[i]$
+		\If {$C' \neq \emptyset$}
+			\State $b_{\mathrm{down}'} \leftarrow \mathrm{downbeat} + l * i/d$
+			\If {$N'[i] \neq *$}
+				\State $b_{\mathrm{down}} \leftarrow B[i]$
+			\EndIf
+			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
+			%\If{$B[i+1] \neq *$}
+			%	\State upbeat $\leftarrow B[i+1]$
+			%\EndIf
+			\State \textbf{append} \Call{observations}{$(C', B'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} O
+		\EndIf
+	\EndFor
+	\State \textbf{return} O
+\EndFunction
+\end{algorithmic}
+\end{algorithm}

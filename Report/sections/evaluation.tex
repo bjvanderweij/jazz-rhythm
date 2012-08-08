@@ -1,4 +1,4 @@
-\section{Evaluation}
+\chapter{Evaluation}
 \label{sec:evaluation}
 
 %N-fold cross-validation with flat prior, complexity, depth, pcfg or temperley's prior
@@ -6,33 +6,149 @@
 
 
 
-We will use n-fold cross-validation to evaluate the parser. To assess the quality of a parse we need some way of measuring how much information about the rhythmic structure was detected correctly by the parser.  Consider a performance with a gold-standard analysis given in figure \ref{fig:eval:a}. The analysis in figure \ref{fig:eval:b} is incorrect, however the parser still correctly identified the relative durations of the units and the quarter notes as downbeats relative to the eighth notes, the only thing that went wrong here is that the first quarter note is identified as an upbeat at the half note level. The analysis in figure \ref{fig:eval:c} also correctly identified the relative durations, but failed to identify the quarter notes as downbeats relative to the eighth note level. While both analysis \ref{fig:eval:b} and \ref{fig:eval:c} are incorrect, analysis \ref{fig:eval:b} more closely resembles the properties of the gold-standard than analysis \ref{fig:eval:c}. This suggests that one criterion of the evaluation should be the extend to which the parser correctly identifies downbeats.  [Show analyses here as well, makes it clearer]
+We will use n-fold cross-validation to evaluate the parser. Small slices of performances will be used to test the parser, since the parser is too slow to analyse complete performances, some of which containing more than a hundred onsets.  The parser produces a ranked list of analyses. The most likely analysis is assumed to be the output of the parser. A parser output $R$ will be evaluated against a gold standard parse $R^*$ from the corpus by a ranking function. This section will first discuss some of the errors that the evaluation is sensitive to. Next, the ranking function will be discussed in detail. Finally, the generation of test and training sets will be discussed.
+
+To assess the quality of a parser output we will look at how many properties of the gold-standard rhythm were analysed correctly and how many properties of the parse occur in the gold standard rhythm. The subdivision trees capture two essential properties of rhythm: the location of the down- and upbeats, which we shall occasionally refer to as the \textit{phase}, and the subdivision pattern, called the time signature in staff notation. The evaluation measure should somehow measure the extend to which the parser output is consistent with the gold standard in terms of subdivision and down- and upbeat locations. 
+
+A parser output may be consistent with the gold standard in only some properties. In figure \ref{fig:div_error} for example, the parser correctly identified the downbeat but incorrectly assumed a triple division. It is also possible that the parser output identifies the divisions correctly but incorrectly identifies the phase, examples of these kind of errors are shown in figure \ref{fig:phase_error}. Note that a phase error at the deepest level is more severe than a phase error at a higher level. If the phase is incorrect at the deepest level, every downbeat will be identified as an upbeat and vice-versa. If the phase is incorrect at a higher level, the down- and upbeats at the lowest level are still correct. This can be understood intuitively as well: a phase error at the lowest level is more sever since it makes the entire rhythm syncopated, a phase error at for example the half note level would make the rhythm less severely syncopated.
+
+Notably, figure \ref{fig:phase_error} introduces rests in the parse trees. Rests are needed to indicate that the last note is a quarter note and not a whole note. The parser introduced in section \ref{sec:method} does not handle rests and this issue is discussed further in section \ref{sec:discussion}.
 \begin{figure}
 \centering
-\subfloat[]{
-\label{fig:eval:a}
-\includegraphics[scale=0.3]{img/eval1}
+\subfloat[Gold-standard.]{
+\parbox[3cm]{0.5\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] ]
 }
-\\
-\subfloat[]{
-\label{fig:eval:b}
-\includegraphics[scale=0.3]{img/eval2}
 }
-\\
-\subfloat[]{
-\label{fig:eval:c}
-\includegraphics[scale=0.3]{img/eval3}
+\subfloat[Parser output.]{
+\parbox[3cm]{0.5\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] 
 }
-\\
-\subfloat[]{
-\label{fig:eval:d}
-\includegraphics[scale=0.3]{img/eval4}
 }
+\caption{An example incorrect division detection.}
+\label{fig:div_error}
 \end{figure}
 
-Another criterion is illustrated by figure \ref{fig:eval:d}, where most of the downbeats were identified correctly but the division of the fourth beat of the measure was identified incorrectly. 
 
-The evaluation that is proposed here incorporates these criteria. Performance is measured in two scores: the precision and recall. The precision is the proportion of subdivisions out of all subdivisions in the output that were correct. The recall the proportion of subdivisions out of all subdivision in the gold-standard parse that the parser produced as well.
+\begin{figure}
+\subfloat[Gold-standard.]{
+\parbox{0.33\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
+}
+}
+\centering
+\subfloat[]{
+\parbox{0.33\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] ]
+}
+}
+\subfloat[]{
+\parbox{0.33\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
+}
+}
+\caption{An example too detailed analyses (resulting in a lower precision)}
+\label{fig:precision_error}
+\end{figure}
 
+\begin{figure}
+\subfloat[]{
+\parbox{0.33\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
+}
+}
+\subfloat[Gold-standard.]{
+\parbox{0.33\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] ]
+}
+}
+\centering
+\caption{An example of too simple analyses (resulting in a lower recall).}
+\label{fig:recall_error}
+\end{figure}
+
+
+
+\begin{figure}
+\subfloat[Gold-standard.]{
+\label{fig:phase_error:a}
+\parbox{0.2\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
+}
+}
+\centering
+\subfloat[Phase error at the half note level]{
+\label{fig:phase_error:b}
+\parbox{0.4\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
+}
+}
+\subfloat[Lowest level phase error (most severe).]{
+\label{fig:phase_error:c}
+\parbox{0.4\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .Rest ] ] [ .Rest ] ] ]
+}
+}
+\caption{An example incorrect phase detection. See section \ref{sec:discussion} for why there are rests in this subdivision tree.}
+\label{fig:phase_error}
+\end{figure}
+
+
+The precision and recall of the parser are measured as follows: The precision is the amount of subdivisions and down- and upbeats in the parser output that are correct with respect to the gold standard, divided by the total number of subdivisions and down- and upbeats in the parser output. The recall is the amount of subdivisions and down- and upbeats in the gold-standard that are correctly identified by the parser output, divided by the total amount of subdivisions and down- and upbeats in the gold-standard.
+
+To measure these quantities, a ranking function will be presented that compares a gold standard tree $R$ to a parser output $R^*$. The ranking function will first produce two lists of claims made by  both $R$ and $R*$. 
+ This  will do a top-down depth-first search through both trees and compare each split proposed by the parse to the gold standard. A split is said to be correct when the each of the child nodes in the parser output govern the same onsets as each of the child nodes in the gold-standard.
+
+\begin{verbatim}
+This python code will be converted to pseudo code.
+def claims(R, D=[]):
+  c = []
+  if R.isSymbol():
+    d = len(R.children)
+    for i in range(d):
+      c += claims(R.children[i], D=D + [(d, i)])
+  if R.isOnset():
+    timesig = [d[0] for d in D]
+    onsetclaims = []
+    for i in range(len(timesig)):
+      onsetclaims.append((timesig[i], D[i][1]))
+    c.append(tuple(onsetclaims))
+  return c
+
+def rank(claims, claims_star):
+  R = 0
+  N = 0
+  for c, c_star in zip(claims, claims_star):
+    for i in range(len(c)):
+      N += 2
+      if i < len(c_star):
+        d, b = c[i]
+        d_star, b_star = c_star[i]
+        if d == d_star:
+          R += 1
+        if b == b_star:
+          R += 1
+  return R, N
+\end{verbatim}
+
+This ranking function correctly penalises too detailed or too simple analyses as in figure \ref{fig:precision_error} and \ref{fig:recall_error}. However, a phase error can cause an extra level to be added or removed from the tree. This happens in figure \ref{fig:phase_error:b} and \ref{fig:phase_error:c} for example, where a phase error caused an extra level to be added at the top of the tree, relative to the gold-standard in figure \ref{fig:phase_error:a}. 
+% Precision and recall 
+
+% Definition of evaluation
+
+
+% Training and testsets
+
+% Corpus and training and test set sizes (first 4 bars)
 
 
