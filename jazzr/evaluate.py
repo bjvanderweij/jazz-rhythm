@@ -3,6 +3,9 @@ from jazzr.models import *
 from jazzr.tools import commandline
 import random, pickle, datetime, os
 
+ONSET = 0
+TIE = 1
+
 def load():
   files = sorted(os.listdir('results'))
   choice = commandline.menu('Choose', files)
@@ -60,13 +63,23 @@ def measure(results):
   for i in range(len(results)):
     parse, label = parseAndLabel(results, i)
     score, n = rank(claims(parse), claims(label))
-  #  n, score = getPrecisionScore(parse, label)
-    precisionScore += score
-    nPrecision += n
+    p1 = (score/float(n), score, n)
+    score, n = rank(claims(parse, [(2, 0)]), claims(label))
+    p2 = (score/float(n), score, n)
+    score, n = rank(claims(parse), claims(label, [(2, 0)]))
+    p3 = (score/float(n), score, n)
+    precisionScore += max([p1, p2, p3], key=lambda x:x[0])[1]
+    nPrecision += max([p1, p2, p3], key=lambda x:x[0])[2]
+
     score, n = rank(claims(label), claims(parse))
+    r1 = (score/float(n), score, n)
+    score, n = rank(claims(label, [(2, 0)]), claims(parse))
+    r2 = (score/float(n), score, n)
+    score, n = rank(claims(label), claims(parse, [(2, 0)]))
+    r3 = (score/float(n), score, n)
   #  n, score = getRecallScore(parse, label)
-    recallScore += score
-    nRecall += n
+    recallScore += max([r1, r2, r3], key=lambda x:x[0])[1]
+    nRecall += max([r1, r2, r3], key=lambda x:x[0])[2]
   return precisionScore/float(nPrecision), recallScore/float(nRecall)
 
 def precision(parse, label):
@@ -88,22 +101,23 @@ def getTests(testset, measures=2):
   tests = []
   labels = []
   for test, label in testset:
-    onsets = []
-    bar = None
-    for i in range(len(test)):
-      if test.type(i) in [Annotation.NOTE, Annotation.END, Annotation.SWUNG]:
-        if bar == None:
-          bar = test.bar(test.position(i))
-        else:
-          if test.bar(test.position(i)) >= bar + measures:
-            break
-        onsets.append(test.perf_onset(i))
+    onsets = getNBars(test, measures)
     tests.append(onsets)
     labels.append(label)
   return tests, labels
 
-ONSET = 0
-TIE = 1
+def getNBars(annot, measures):
+  onsets = []
+  bar = None
+  for i in range(len(annot)):
+    if annot.type(i) in [Annotation.NOTE, Annotation.END, Annotation.SWUNG]:
+      if bar == None:
+        bar = annot.bar(annot.position(i))
+      else:
+        if annot.bar(annot.position(i)) >= bar + measures:
+          break
+      onsets.append(annot.perf_onset(i))
+  return onsets
 
 def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
   treelist = []
@@ -116,40 +130,35 @@ def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
     treelist.append((TIE, beat, level, division))
   return treelist
 
-def claims(S, D=[]):
+def claims(S, D=[], verbose=False):
   c = []
   if S.isSymbol():
     d = len(S.children)
     for i in range(d):
       c += claims(S.children[i], D=D + [(d, i)])
   if S.isOnset():
-    timesig = [d[0] for d in D]
+#    timesig = [d[0] for d in D]
     onsetclaims = []
-    for i in range(len(timesig)):
-      onsetclaims.append((timesig[i], D[i][1]))
+    for i in range(len(D)):
+      onsetclaims.append(D[i])
+#    for i in range(len(timesig), 0, -1):
+#      onsetclaims.append((timesig[0:i], D[i-1][1]))
     c.append(tuple(onsetclaims))
   return c
 
 def rank(claims, claims_star, verbose=False):
   R = 0
   N = 0
+  counted = []
   for c, c_star in zip(claims, claims_star):
     for i in range(len(c)):
-      N += 2
+      if c[0:i+1] in counted: continue
+      N += 1
+      counted.append(c[0:i+1])
       if i < len(c_star):
-        d, b = c[i]
-        d_star, b_star = c_star[i]
-        if d == d_star:
-          R += 1
-        if b == b_star:
+        if c[i] == c_star[i]:
           R += 1
   return R, N
-
-
-    
-
-      
-
 
 def getFolds(corpus, folds=5):
   n = len(corpus)
@@ -304,3 +313,15 @@ def getPrecisionScore(parse, label, a_perf=False, b_perf=True, verbose=False):
 def getRecallScore(parse, label, verbose=False):
   return getPrecisionScore(label, parse, a_perf=True, b_perf=False, verbose=verbose)
 
+
+from jazzr.rhythm.symbol import *
+on = Onset(0, 0, 0)
+s = Symbol.fromSymbols([on, on])
+t = Symbol.fromSymbols([Tie(), on])
+v = Symbol.fromSymbols([on, Tie()])
+A = Symbol.fromSymbols([s, s])
+B = Symbol.fromSymbols([s, Symbol.fromSymbols([t, on])])
+C = Symbol.fromSymbols([Symbol.fromSymbols([t, s]), Symbol.fromSymbols([v, Tie()])])
+a = Symbol.fromSymbols([Tie(), s])
+b = Symbol.fromSymbols([s, Tie()])
+D = Symbol.fromSymbols([a, b])

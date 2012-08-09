@@ -98,10 +98,10 @@ The following sections will deal with the representation of hypotheses about ons
 \label{sec:hypothesis_representation}
 
 \begin{figure}
-\label{fig:smalltree}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
 \caption{A rhythmic analysis, which can be represented as the nested list $((\bullet, \bullet), *)$.}
+\label{fig:smalltree}
 \end{figure}
 
 While a subdivision tree specifies a rhythmic structure, it does not keep track of the onsets associated with the structure. In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. Therefore we will introduce a distinction between a rhythmic analysis $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$. 
@@ -138,7 +138,7 @@ A hypothesis is said to \textit{govern} a set of onsets if the hypothesis recurs
 }
 }
 \caption{Complex onsets (single-onset analyses).}
-\label{fig:singlenotes}
+\label{fig:complexonsets}
 \end{figure}
 
 The goal of the \textsc{combine} function is to get the best possible estimates of where the up and downbeats of a hypothesis are. The algorithm works roughly as follows. The input is a list $H$ containing two or three hypotheses. These will be the child nodes of the hypothesis that the combine function is building. The algorithm iterates through the list of hypotheses. If a hypothesis is an onset, the position of the onset and the absolute onset are added to \textit{onsets}. The position is a number between 0 and 2 or 0 and 3, depending on the number of hypotheses in $H$. If a hypothesis is a complex onset, its complex position, determined by the function \textsc{complexPostion}, and absolute onset are added to \textit{complexOnsets}. If a hypothesis suggests a downbeat, this downbeat and its position are added to \textit{onsets}.
@@ -152,14 +152,17 @@ The goal of the \textsc{combine} function is to get the best possible estimates 
 	\State onsets $\leftarrow \emptyset$
 	\State complexOnsets $\leftarrow \emptyset$
 	\For{$i \leftarrow 0,d$}
-		\State $(C, B) \leftarrow H[i]$
-		\If{$C = \emptyset$ \textbf{and} $B \neq [*]$}
-			\State \textbf{append} ($i, H[i]$) \textbf{to} onsets
+		\State $(H', B', O') \leftarrow H[i]$
+		\If{$H' = \emptyset$ \textbf{and} $B \neq [*]$}
+			\State \textbf{append} ($i, H'[i]$) \textbf{to} onsets
 		\Else
-			\If{$B[0] \neq *$}
-				\State \textbf{append} $(i, B[0])$ \textbf{to} onsets
+			\If{$B'[0] \neq *$}
+				\State \textbf{append} $(i, B'[0])$ \textbf{to} onsets
+			\If{$O'[0] \neq *$}
+				\State \textbf{append} $(i, O'[0])$ \textbf{to} $O$
+			\EndIf
 			\Else
-				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H[i]$}
+				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H'[i]$}
 				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
 			\EndIf
 		\EndIf
@@ -168,8 +171,7 @@ The goal of the \textsc{combine} function is to get the best possible estimates 
 		\State \textbf{append} complexOnsets \textbf{to} onsets
 	\EndIf
 	\State $B \leftarrow$ \Call{fill}{onsets, $d$}
-	\State $C \leftarrow H$
-	\State \textbf{return} $(C, B)$
+	\State \textbf{return} $(H, B, O)$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
@@ -181,7 +183,9 @@ In a practical implementation, every hypothesis should also keep track of the fi
 \subsection{Generating observations}
 \label{sec:observations}
 
-The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. The observations function uses this information to transform a hypothesis into a list of features that define how likely a hypothesis is given the absolute onsets that it governs. The observations function should clearly discriminate between unlikely interpretations and likely interpretations of an onset pattern. [Example of likely and unlikely hypotheses here].
+The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. This information is used by the \textsc{observations} function, which estimates how much observed onsets deviate from the onsets implied by the rhythmic structure. The \textsc{observations} function takes a hypothesis $h$ as input and transforms it to a list of observations with feature vectors. Here, we define an observation to be the logarithmic ratio of the observed upbeat and downbeat length. In a metronomic performance, we expect a down- and upbeats to be of the same length and their logarithmic ratio to be zero. In our model, we will try to estimate learn a mapping between between a feature vector and a logarithmic down-/upbeat ratio.
+
+Given a downbeat interval, an onset and its relative
 
 The observation function is a top-down recursive function. It calculates the expected onset of every down- and upbeat of every hypothesis in the tree. The main assumption of the function is that the expected onsets of the upbeats at level some are derived from the downbeat interval at the level above. 
 
@@ -191,34 +195,31 @@ For a hypothesis $h = (C, N, b_d)$, the algorithm is initialised as follows: $\t
 \label{alg:observations}
 \begin{algorithmic}
 \Function{observations}{$h$, downbeat, nextDownbeat}
-	\State $C, B \leftarrow h$
+	\State $H, B, O \leftarrow h$
 	\If {$B[0] \neq *$}
-		\Comment{If this $h$ implies a downbeat, use it.}
 		\State downbeat $\leftarrow B[0]$
 	\EndIf
-	\State \textbf{append} nextDownbeat \textbf{to} $B$
+	\State \textbf{append} * \textbf{to} $O$
 	\State $d \leftarrow$ \Call{length}{$C$}
-	\Comment{Division of this $h$.}
 	\State $l \leftarrow$ nextDownbeat - downbeat
-	\Comment{The estimated length of this $h$.}
-	\State $O \leftarrow \emptyset$
-	\Comment{Observations.}
+	\State $\Phi \leftarrow \emptyset$
 
 	\For {$i \leftarrow 1,d$}
 		\If {$B[i] \neq *$ \textbf{and} $i \neq 0$}
-			\State \textbf{append} \Call{$\Phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $O$
+			\State \textbf{append} \Call{$\phi$}{downbeat, nextDownbeat, $B[i]$, $i$, $d$} \textbf{to} $\Phi$
 		\EndIf	
-		\State $C', B' \leftarrow C[i]$
-		\If {$C' \neq \emptyset$}
+		\State $H', B', O' \leftarrow H[i]$
+		\If {$H' \neq \emptyset$}
 			\State $b_{\mathrm{down}} \leftarrow \mathrm{downbeat} + l * i/d$
 			\If {$B[i] \neq *$}
 				\State $b_{\mathrm{down}} \leftarrow B[i]$
 			\EndIf
 			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
-			\State \textbf{append} \Call{observations}{$(C', B'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} O
+			\State $b_{\mathrm{up}} \leftarrow O[i+1]$
+			\State \textbf{append} \Call{observations}{$(H', B', O'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} O
 		\EndIf
 	\EndFor
-	\State \textbf{return} O
+	\State \textbf{return} $\Phi$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
@@ -322,6 +323,48 @@ Although we now have metrical onsets, we still do not have the subdivision trees
 \caption{Annotation of swung notes.}
 \end{figure}
 
+The result of this process for Thelonious Monk's standard Blue Monk is shown in table \ref{tab:annotation}.
+
+\begin{table}
+\caption{A performance $P$, its metrical onsets, its rhythmic analysis and a score generated from this analysis.}
+\label{tab:annotation}
+\begin{tabular}{|l|}
+\hline
+
+\parbox{\linewidth}{
+The performance onsets in milliseconds.
+}\\
+
+$P = [32, 348, 504, 836, 1940, 2240, 2420, 2728]$\\
+
+\hline
+
+\parbox{\linewidth}{
+Metrical onsets in quarter notes. Triple divisions are rounded to two digits.
+}\\
+
+$ A = [0.0, 0.66, 1.0, 1.66, 4.0, 4.66, 5.0, 5.66]$\\
+
+\hline
+
+\parbox{\linewidth}{
+Rhythmic analysis generated by a simple parser and selected by hand.
+}\\
+
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .$*$ ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .$*$ ] ] ]
+\\
+
+\hline
+
+\parbox{\linewidth}{
+Score generated from the subdivision tree combined with pitch information. The bar duration was set to level 1/2 of the subdivision tree.}\\
+
+\includegraphics[scale=0.4]{img/blue_monk}\\
+
+\hline
+\end{tabular}
+\end{table}
 
 
 \section{Training}
@@ -353,7 +396,7 @@ $\bullet$
 [ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] ] 
 \Tree
 [ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ] 
-\caption{Some single note analyses.}
+\caption{Some of the allowed single-note analyses.}
 \label{fig:singlenotes}
 \end{figure}
 

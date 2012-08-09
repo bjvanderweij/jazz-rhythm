@@ -6,7 +6,7 @@
 
 
 
-We will use n-fold cross-validation to evaluate the parser. Small slices of performances will be used to test the parser, since the parser is too slow to analyse complete performances, some of which containing more than a hundred onsets.  The parser produces a ranked list of analyses. The most likely analysis is assumed to be the output of the parser. A parser output $R$ will be evaluated against a gold standard parse $R^*$ from the corpus by a ranking function. This section will first discuss some of the errors that the evaluation is sensitive to. Next, the ranking function will be discussed in detail. Finally, the generation of test and training sets will be discussed.
+We will use n-fold cross-validation to evaluate the parser. Small slices of performances will be used to test the parser, since the parser is too slow to analyse complete performances, some of which containing more than a hundred onsets.  The parser produces a ranked hypotheses. The most rhythmic analysis $R$ suggested by the likely hypothesis $h$ of the parser is assumed to be the output of the parser. A parser output $R$ will be evaluated against a gold standard parse $R^*$ from the corpus by a ranking function. This section will first discuss some of the errors that the evaluation is sensitive to. Next, the ranking function will be discussed in detail. Finally, the generation of test and training sets will be discussed.
 
 To assess the quality of a parser output we will look at how many properties of the gold-standard rhythm were analysed correctly and how many properties of the parse occur in the gold standard rhythm. The subdivision trees capture two essential properties of rhythm: the location of the down- and upbeats, which we shall occasionally refer to as the \textit{phase}, and the subdivision pattern, called the time signature in staff notation. The evaluation measure should somehow measure the extend to which the parser output is consistent with the gold standard in terms of subdivision and down- and upbeat locations. 
 
@@ -27,13 +27,14 @@ Notably, figure \ref{fig:phase_error} introduces rests in the parse trees. Rests
 [ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] 
 }
 }
-\caption{An example incorrect division detection.}
+\caption{An example of incorrect division detection.}
 \label{fig:div_error}
 \end{figure}
 
 
 \begin{figure}
 \subfloat[Gold-standard.]{
+\label{fig:precision_error:a}
 \parbox{0.33\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
@@ -42,17 +43,19 @@ Notably, figure \ref{fig:phase_error} introduces rests in the parse trees. Rests
 \centering
 \subfloat[]{
 \parbox{0.33\linewidth}{
+\label{fig:precision_error:b}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] ]
 }
 }
 \subfloat[]{
+\label{fig:precision_error:c}
 \parbox{0.33\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
 }
 }
-\caption{An example too detailed analyses (resulting in a lower precision)}
+\caption{An example of too detailed analyses (resulting in a lower precision)}
 \label{fig:precision_error}
 \end{figure}
 
@@ -87,14 +90,14 @@ Notably, figure \ref{fig:phase_error} introduces rests in the parse trees. Rests
 \centering
 \subfloat[Phase error at the half note level]{
 \label{fig:phase_error:b}
-\parbox{0.4\linewidth}{
+\parbox{0.3\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
 }
 }
 \subfloat[Lowest level phase error (most severe).]{
 \label{fig:phase_error:c}
-\parbox{0.4\linewidth}{
+\parbox{0.5\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .Rest ] ] [ .Rest ] ] ]
 }
@@ -103,70 +106,69 @@ Notably, figure \ref{fig:phase_error} introduces rests in the parse trees. Rests
 \label{fig:phase_error}
 \end{figure}
 
+\section{Assessing parser performance}
 
 The precision and recall of the parser are measured as follows: The precision is the amount of subdivisions and down- and upbeats in the parser output that are correct with respect to the gold standard, divided by the total number of subdivisions and down- and upbeats in the parser output. The recall is the amount of subdivisions and down- and upbeats in the gold-standard that are correctly identified by the parser output, divided by the total amount of subdivisions and down- and upbeats in the gold-standard.
 
-To measure these quantities, a ranking function will be presented that compares a gold standard tree $R$ to a parser output $R^*$. The ranking function will first produce two lists of claims made by  both $R$ and $R*$. 
- This  will do a top-down depth-first search through both trees and compare each split proposed by the parse to the gold standard. A split is said to be correct when the each of the child nodes in the parser output govern the same onsets as each of the child nodes in the gold-standard.
+To measure these quantities, every onset governed by $R$ and $R^*$ is converted to a list of claims that this onset makes about the structure. For example, the first quarter note of a 4/4 measure is claims to be a downbeat at the half note level and a downbeat at the quarter note level (see for example figure \ref{fig:phase_error:a}). The second quarter note claims to be governed by a downbeat at the half note level and to be an upbeat at the quarter note level. The third onset claims to be an upbeat at the half note level and a downbeat at the quarter note level. 
+
+This evaluation penalises phase errors at the lower levels more severe than phase errors at higher levels. Given the gold standard in figure \ref{fig:phase_error:a}, consider the following hypothetical errors in the parser output: Should the phase be wrong at the quarter note level (figure \ref{fig:phase_error:b}), a downbeat at the quarter note level becomes  an upbeat, however, the downbeat would still be governed by the downbeat at the half note level. Should the phase be wrong at the half note level (figure, \ref{fig:phase_error:c}), the down- and upbeats at the quarter note level are still correct.
+
+There are two issues with the evaluation as it has been presented above. First, figure \ref{fig:phase_error} shows that a phase error can lead to another level to be added to the tree. Second, since every onset lists all claims it implies at higher levels, the evaluation will give a disproportionate reward for getting divisions right at high levels.
+
+The latter issue is remedied by keeping a list of parser decisions that have been accounted for. If the first onset in figure \ref{fig:phase_error:a} claims a downbeat at the half note level and a downbeat at the quarter note level, both of these claims are added to a list of claims. The second onset claims an upbeat at the quarter note level and a downbeat at the half note level. Since the downbeat at the half note level is already the list of claims it will be counted again.
+
+[Attention, references first paragraph]
+To reiterate the first paragraph of this section more concretely, we define the evaluation function \textsc{score}($R, R'$) which counts the number of claims that are shared by $R$ and $R'$ and divides that by the total number of claims in $R$. The precision is defined as the number of claims in $R$ that appear in the claims of $R^*$ as well, divided by the total number of claims in $R$, so:
+\begin{equation}
+\label{eq:precision}
+\mathrm{precision} = \textsc{score}(R, R^*).
+\end{equation}
+Similarly, the recall is defined as:
+\begin{equation}
+\label{eq:recall}
+\mathrm{recall} = \textsc{score}(R^*, R).
+\end{equation}
+
+Consider the example in figure \ref{fig:precision_error}. The current evaluation assigns a precision of $\frac{6}{7}$ and a recall of $\frac{6}{6}$ to the parse in figure \ref{fig:precision_error:a}. This implies that a total of $6$ claims are made by the gold-standard. These are: the four down- and upbeats at the quarter note level and one downbeat and one upbeat at the half note level. The parse in figure \ref{fig:precision_error:b} makes the same claims but also claims an upbeat at the eighth note level, which is incorrect.
+
+We have not addressed the first issue yet. That is, we are not sure if the top level of $R$ corresponds to the top level of $R^*$. Either of those levels may have been added as a result of a different phase in $R$ and $R^*$. The only solution seems to be to consider three scenarios, illustrated by figure \ref{fig:phase_levels}: (1) No extra levels have been added and the levels in $R$ are consistent with the levels in $R^*$. (2) Let $R^*$ be figure \ref{fig:phase_levels:a} and $R$ be figure \ref{fig:phase_levels:c}, then a phase error resulted in an extra level in $R$. (3) Let $R^*$ be figure \ref{fig:phase_levels:c} and $R$ be figure \ref{fig:phase_error:a}, then a phase error resulted in one level less in $R$. 
 
 
-\begin{algorithm}
-\caption{An algorithm that converts a rhythmic analysis $R$ to a list of claims $c$. The algorithm is initialised as $\textsc{claims}(R, \emptyset)$.}
-\label{alg:claims}
-\begin{algorithmic}
-\Function{claims}{$R, D$}
-	\State $c \leftarrow \emptyset$
-	\If{$R \neq \emptyset$}
-		\State$d \leftarrow $ \Call{length}{$R$}
-		\For{$i \leftarrow 0, d$}
-			\State \textbf{append} \Call{claims}{$R[i]$} \textbf{to} D
-		\EndFor
-	\ElsIf{\Call{isOnset}{$R$}}
-		\State onsetclaims $\leftarrow \emptyset$
-		\For{$(d, b) \leftarrow D$}
-		\EndFor
-	\EndIf
-	\State \textbf{return} c
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-\begin{verbatim}
-This python code will be converted to pseudo code.
+\begin{figure}
+\subfloat[]{
+\label{fig:phase_levels:a}
+\parbox{0.3\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] ] 
+}
+}
+\subfloat[]{
+\label{fig:phase_levels:b}
+\parbox{0.3\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
+}
+}
+\subfloat[]{
+\label{fig:phase_levels:c}
+\parbox{0.3\linewidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$*$ ] ] ]
+}
+}
+\caption{Extra levels added by phase errors}
+\label{fig:phase_levels}
+\end{figure}
 
-def claims(R, D=[]):
-  c = []
-  if R.isSymbol():
-    d = len(R.children)
-    for i in range(d):
-      c += claims(R.children[i], D=D + [(d, i)])
-  if R.isOnset():
-    timesig = [d[0] for d in D]
-    onsetclaims = []
-    for i in range(len(timesig)):
-      onsetclaims.append((timesig[i], D[i][1]))
-    c.append(tuple(onsetclaims))
-  return c
+If we want to get a valid precision and recall in scenario (2), we should convert $R$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. In scenario (3) we want to convert $R*$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. This suggests three scenarios for evaluation: (1) evaluate $R$ against $R^*$, (2) evaluate $(R, *)$ against $R*$ and (3) evaluate $R$ against $(R^*, *)$. 
 
-def rank(claims, claims_star):
-  R = 0
-  N = 0
-  for c, c_star in zip(claims, claims_star):
-    for i in range(len(c)):
-      N += 2
-      if i < len(c_star):
-        d, b = c[i]
-        d_star, b_star = c_star[i]
-        if d == d_star:
-          R += 1
-        if b == b_star:
-          R += 1
-  return R, N
-\end{verbatim}
-
-%This ranking function correctly penalises too detailed or too simple analyses as in figure \ref{fig:precision_error} and \ref{fig:recall_error}. However, a phase error can cause an extra level to be added or removed from the tree. This happens in figure \ref{fig:phase_error:b} and \ref{fig:phase_error:c} for example, where a phase error caused an extra level to be added at the top of the tree, relative to the gold-standard in figure \ref{fig:phase_error:a}. 
-% Precision and recall 
-
-% Definition of evaluation
+The evaluation in its final form is:
+\begin{align}
+\label{eq:evaluation}
+&\mathrm{precision} = \textsc{max}(\textsc{score}(R, R^*), \textsc{score}((R, *), R^*), \textsc{score}(R, (R^*, *))),\\
+&\mathrm{recall} = \textsc{max}(\textsc{score}(R^*, R), \textsc{score}((R^*, *), R), \textsc{score}(R^*, (R, *))).
+\end{align}
 
 
 % Training and testsets
