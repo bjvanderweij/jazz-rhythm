@@ -5,25 +5,21 @@ from jazzr.annotation import Annotation
 def additive_noise(std):
   model = {}
   for level in range(1, 10):
-    model[(level,)] = (0.0, std)
+    model[(level, 2)] = (0.0, std)
+    model[(level, 3)] = (0.0, std)
   return model
 
 
 def train(corpus):
-  perdepth = {}
   features = {}
   for annotation, parse in corpus:
     #print annotation.name
     obs = observations(parse, performance=True)
-    levels = getLevels(obs)
-    for (level, ) in sorted(levels):
-      logratios = getLogRatios(obs, level)
-      depth = parse.depth-level
-      perdepth[(depth, )] = perdepth.get((depth, ), []) + logratios
-      #print 'Level {0}. Mu = {1}, sigma = {2}'.format(level, mu(logratios), std(logratios))
+    for f, expression in obs:
+      features[f] = features.get(f, []) + [expression]
   model = {}
-  for depth, phi in perdepth.iteritems():
-    model[depth] = (mu(perdepth[depth]), std(perdepth[depth]))
+  for f, phi in features.iteritems():
+    model[f] = (mu(features[f]), std(features[f]))
   return model
 
 def mu(list):
@@ -75,8 +71,8 @@ def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, lev
   for child, beat, i in zip(S.children, beats, range(0, division)):
     #if beat != None and i != 0:
     if S.onsets[i] != None and beat != None and i != 0:
-      obs.append(features(downbeat, nextDownbeat, onsets[i], i, division, level))
-      if abs(math.log(obs[-1][-1])) > abs(math.log(2)) and verbose:
+      obs.append((features(S), expressionRatio(downbeat, nextDownbeat, onsets[i], i, division)))
+      if obs[-1][1] > abs(math.log(2)) and verbose:
         parentbeats = parent.beats
         temp_onsets = []
         for onset in S.onsets:
@@ -107,7 +103,18 @@ def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, lev
       obs += newobs
   return obs
 
-def features(downbeat, nextDownbeat, onset, position, division, level):
+def expressionRatio(downbeat, nextDownbeat, onset, position, division):
+  if nextDownbeat - onset <= 0 or onset - downbeat <= 0:
+    ratio = 9999.9
+  else:
+    ratio = ((onset - downbeat) / float(position)) /\
+        ((nextDownbeat - onset) / float(division - position))
+  return math.log(ratio)
+
+def features(S):
+  return (S.depth, len(S.children))
+
+def features2(downbeat, nextDownbeat, onset, position, division, level):
   time = position/float(division) * (nextDownbeat - downbeat)
   beatlength = (time - downbeat) / float(position)
   abs_deviation = (onset - time)

@@ -19,7 +19,7 @@ Every node in the subdivision tree represents a metrical duration. Any node can 
 
 The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
 
-An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of the time signature. They simply are subdivisions of the total length of the rhythm. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Score A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
+An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of what level of the tree we consider the bar level. The node labels only indicate the division of the total length of the analysis. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Score A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
 
 \begin{figure}
 \centering
@@ -60,19 +60,48 @@ R &\rightarrow * \notag
 \end{align}
 We will restrict ourselves to duple and triple subdivisions for this study..
 
-The CKY parser only accepts grammars that are given in the so-called Chomsky normal form (CNF). That is, all rules should be of the form $A \rightarrow B, C$ or $A \rightarrow \alpha$, where $A$, $B$ and $C$ are non-terminal symbols and $\alpha$ is a terminal symbol. Converting the grammar above to (CNF) results in the following grammar:
+The CKY parser only accepts grammars that are given in the so-called Chomsky normal form (CNF). That is, all rules should be of the form $A \rightarrow B, C$ or $A \rightarrow \alpha$, where $A$, $B$ and $C$ are non-terminal symbols and $\alpha$ is a terminal symbol. Converting the grammar above to CNF results in the following grammar:
 \begin{align}
 \label{eq:grammar_cnf}
-R &\rightarrow R\: R,\\ \notag
-R &\rightarrow R\: R',\\ \notag
-R' &\rightarrow R\: R,\\ \notag
-R &\rightarrow \bullet,\\ \notag
-R &\rightarrow *. \notag
+R &\rightarrow R\: R\\ \notag
+R &\rightarrow R\: R'\\ \notag
+R' &\rightarrow R\: R\\ \notag
+R &\rightarrow \bullet\\ \notag
+R &\rightarrow * \notag
 \end{align}
 
-Two constraints are needed to prevent the parser from generating invalid rhythmical structures. These constraints are: (1) Any set of two or three metrical durations are not allowed to combine if the first one expands directly to an onset and the others do not recursively expand to an onset. (2) Any metrical durations is not allowed to combine if none of them recursively contains an onset.
+Two constraints are needed to prevent the parser from generating invalid rhythmical structures. These constraints are: (1) Any set of two or three metrical durations are not allowed to combine if the first one expands directly to an onset and the others do not recursively expand to an onset. (2) Metrical durations are not allowed to combine if none of them recursively contains an onset.
 
-The first constraint prevents the parser from generating structures with an onset on the downbeat and a tie on the upbeat. Tying a downbeat to an upbeat would not make sense since a quarter note tied to a quarter note is simply a half note. The second constraint prevents the parser from combining subdivision trees that do not contain onsets.
+\begin{figure}
+\centering
+\subfloat[]{
+\parbox{0.2\textwidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$*$ ] ] ]
+}
+=
+\parbox{0.2\textwidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] ]
+}
+}
+\qquad
+\subfloat[]{
+\parbox{0.2\textwidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .$*$ ] ] [ .$\bullet$ ] ] 
+}
+=
+\parbox{0.2\textwidth}{
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
+}
+}
+\caption{Redundant tree structures}
+\label{fig:constraints}
+\end{figure}
+
+The first constraint prevents the parser from generating structures with an onset on the downbeat and a tie on the upbeat. Tying a downbeat to an upbeat would not make sense since a quarter note tied to a quarter note is simply a half note. The second constraint prevents the parser from combining subdivision trees that do not contain onsets. Figure \ref{fig:constraints} illustrates how these structures are redundant.
 
 % Explanation of the chart parser?
 
@@ -97,7 +126,7 @@ The expression model defines how and to what extend onsets deviate from their me
 
 Finally, the chart parser should only keep track of hypotheses that are reasonably sensible. This is done in two ways: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter, called the \textit{beam}. Second, we are now in a position to define what it means for a hypothesis to be sensible: a sensible hypothesis is a hypothesis that has a high posterior probability. After a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), the hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
 
-Both the rhythm and the expression model will be trained on a corpus of annotated Jazz performances that was constructed for this study. The corpus will be described in detail in section \ref{sec:corpus}.
+Both the rhythm and the expression model will be trained on a corpus of annotated jazz performances that was constructed for this study. The corpus will be described in detail in section \ref{sec:corpus}.
 
 \section{Rhythm model}
 \label{sec:prior}
@@ -108,9 +137,9 @@ The subdivision trees that are used in this study suggest a simple rhythm model:
 
 Note that there is only one non-terminal symbol in our grammar, namely $R$, so the probability of a rule expansion is given by
 \begin{equation}
-P(R \rightarrow S) = P(R) = \frac{\mathrm{count}((C, N, b_d))}{N},
+P(R \rightarrow S) = P(S) = \frac{\mathrm{count}(S)}{N},
 \end{equation}
-where S is a string of symbols and N is the total number of non-terminal symbols. 
+where S is a string of symbols and N is the total number of $R$ symbols in the training set.
 
 
 \section{Expression model}
@@ -135,7 +164,7 @@ O = [o_0, \cdots, o_d] \notag
 \end{align}
 where $d$ is the division of $h$, $H$ is a list of nested hypotheses and $B$ is a list of predicted down- and upbeats that will be constructed using the \textsc{combine} function introduced later in this section. $O$ is a list of actual onsets and may contain $*$ symbols when no onsets are present at some positions. Both $B$ and $O$ only contain onsets on the level of the hypothesis, that is, they contain the down- and upbeat(s) of the hypothesis and their length is always the same as the amount of units the hypothesis divides in. The predicted downbeat of an hypothesis is $B_0$. The predicted upbeats of an hypothesis are $B_i$ where $i > 0$. When a hypothesis governs only a single onset, both $B$ and $O$ may contain $*$ symbols.
 
-A single onset is represented as a hypothesis with zero nested hypotheses: $(\emptyset, [\textrm{On}_i], [\textrm{On}_i])$, where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: $(\emptyset, [*], [*])$. Combining these hypotheses yields $([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i])$. Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
+A single onset is represented as a hypothesis with zero nested hypotheses: $(\emptyset, [\textrm{On}_i], [\textrm{On}_i])$, where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: $(\emptyset, [*], [*])$. Combining these hypotheses yields $([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i])$ (see for example figure \ref{fig:complexonsets:a}). Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
 
 \subsection{Combination}
 \label{sec:combination}
@@ -289,11 +318,11 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h', b_
 \section{Data Preparation}
 \label{sec:corpus}
 
-To train the parser's rhythm model and expression model, a corpus of amateur Jazz performances was prepared. The corpus contains Jazz and Latin standards that were scraped off the the web [Cite Mark GW?]. The performances are generally of good quality and are played in a relatively constant tempo. In its original form, the corpus was a set of multi-track MIDI files containing both tracks played by a human performer and tracks generated by a computer in metronomic time.
+To train the parser's rhythm model and expression model, a corpus of amateur jazz performances was prepared. The corpus contains jazz and latin standards that were scraped off the the web [Cite Mark GW?]. The performances are generally of good quality and are played in a relatively constant tempo. In its original form, the corpus was a set of multi-track MIDI files containing both tracks played by a human performer and tracks generated by a computer in metronomic time.
 
 MIDI files represent music as a list of note-on and note-off events, corresponding to key presses and key releases. Every event has the parameters pitch, velocity and delta-time. Delta-time specifies the time between this events and the last one, pitch is the pitch of the key that was pressed, velocity is the velocity with which the key was pressed or released.
 
-Our parser will be trained and evaluated on monophonic Jazz melodies, played by a human performer. Monophonic tracks that were likely to be played by humans were filtered out automatically. This was done by assuming that tracks played by humans contained a lot of variation in onset velocity and in inter-onset intervals due to imperfect timing. From this subset of performed tracks, tracks containing melodies where selected by hand.
+%Our parser will be trained and evaluated on monophonic jazz melodies, played by a human performer. Monophonic tracks that were likely to be played by humans were filtered out automatically. This was done by assuming that tracks played by humans contained a lot of variation in onset velocity and in inter-onset intervals due to imperfect timing. From this subset of performed tracks, tracks containing melodies where selected by hand.
 
 After the filtering process, 20 tracks were left containing unique performances of 12 different melodies. These MIDI files where converted to note lists of the following format:
 \begin{align*}
@@ -406,11 +435,11 @@ The likelihood of a hypothesis $h$ given a performance $P$, a parameter vector $
 
 We have already mentioned that the expression parameter reflects different phenomena at different levels. A simple feature vector will be used, which contains the level and the division of the hypothesis in which the parameter was observed as well as the relative position of the parameter. Level is defined bottom-up, so level zero is the deepest level of the tree.
 
-The model is trained using a simple maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors are stored. This results in a set of feature vector/parameter pairs $(\phi, p)$. Then, for any expression parameter $p$ and feature vector $\phi$ the expected value $\mu_\phi$ and standard deviation $\sigma_\phi$ for that feature vector is given by
+The model is trained using a simple maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors, the resulting feature vector/parameter pairs $(\phi, p)$ are stored in a set S. Then, for any expression parameter $p$ and feature vector $\phi$ the expected value $\mu_\phi$ and standard deviation $\sigma_\phi$ for that feature vector is given by
 \begin{align*}
 \label{eq:training}
-\mu_\phi &= \frac{1}{N} \sum_{p, \forall (x, p) [x = \phi]}{N} p,\\
-\sigma_\phi &= \frac{1}{N} \sum_{p, \forall (x, p) [x = \phi]}{N} (\mu - p)^2.\\
+\mu_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S))} p,\\
+\sigma_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S)} (\mu - p)^2.\\
 \end{align*}
 Since we use a very simple feature vector, the model does not need to be smoothed.
 
@@ -460,7 +489,4 @@ $\bullet$
 % Best-n
 % Max depth
 %
-
-\section{Overview}
-
 % Chart parsing, beam, prior, likelihood, 

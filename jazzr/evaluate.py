@@ -13,7 +13,7 @@ def load():
     f = open('results/{0}'.format(files[choice]), 'rb')
     return pickle.load(f)
 
-def evaluate(corpus, nfolds=10, n=15, measures=4, noise=False):
+def evaluate(corpus, nfolds=10, n=15, length=20, noise=False):
   folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
@@ -31,7 +31,7 @@ def evaluate(corpus, nfolds=10, n=15, measures=4, noise=False):
       #parser.beam = 0.01
     parser.allowed = allowed
     # Get the first few bars from a piece
-    tests, labels = getTests(testset, measures=measures)
+    tests, labels = getTests(testset, n=length)
     annot = [x[0] for x in testset]
     for test, label, annotation in zip(tests, labels, annot):
       print annotation.name
@@ -50,7 +50,7 @@ def evaluate(corpus, nfolds=10, n=15, measures=4, noise=False):
   type = 'expression'
   if noise:
     type = 'additive_noise'
-  f = open('results/{4}_{0}_measures={1}_n={2}_folds={3}'.format(time, measures, n, nfolds, type), 'wb')
+  f = open('results/{4}_{0}_length={1}_n={2}_folds={3}'.format(time, length, n, nfolds, type), 'wb')
   pickle.dump(results, f)
   return results
 
@@ -97,11 +97,13 @@ def recall(parse, label):
   return recall
   
 
-def getTests(testset, measures=2):
+def getTests(testset, n=20):
   tests = []
   labels = []
-  for test, label in testset:
-    onsets = getNBars(test, measures)
+  for test, parse in testset:
+    #onsets = getNBars(test, measures)
+    label = getNNotes(parse, n)
+    onsets = getOnsets(parse, performance=True)[:len(getOnsets(label))+1]
     tests.append(onsets)
     labels.append(label)
   return tests, labels
@@ -118,6 +120,16 @@ def getNBars(annot, measures):
           break
       onsets.append(annot.perf_onset(i))
   return onsets
+
+def getNNotes(S, n):
+  if not S.isSymbol():
+    return None
+  if abs(len(getOnsets(S.children[0])) - n) < \
+      abs(len(getOnsets(S)) - n):
+    return getNNotes(S.children[0], n)
+  else:
+    return S
+
 
 def symbol_to_list(S, level=0, beat=0, ties=False, division=[1]):
   treelist = []

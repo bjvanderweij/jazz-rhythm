@@ -229,12 +229,11 @@ class StochasticParser(Parser):
     print "Setting beam to {0}".format(beam)
     self.beam = beam
 
-  def observation_likelihood(self, obs, depth):
-    (level, abs_dev, dev, ratio) = obs
-    l = depth-level
+  def observation_likelihood(self, features, expression):
+    (l, d) = features
     if l > 3:
       l = 3
-    mu, sigma = self.expressionModel[(l,)]
+    mu, sigma = self.expressionModel[features]
     #if not (depth-level, ) in self.expressionModel:
     #  highest = sorted(self.expressionModel.keys())[-1]
     #  mu, sigma = self.expressionModel[highest]
@@ -242,7 +241,7 @@ class StochasticParser(Parser):
     #  mu, sigma = self.expressionModel[(depth-level,)]
     #if sigma < 0.01:
     #  sigma = 0.01
-    return self.likelihood(mu, sigma, math.log(ratio))
+    return self.likelihood(mu, sigma, expression)
 
   def likelihood(self, mu, sigma, x):
     if sigma == 0.0:
@@ -278,20 +277,20 @@ class StochasticParser(Parser):
       return 1.0, 1
     if log:
       p = 0.0
-      for o in obs:
-        if self.observation_likelihood(o, S.depth) == 0:
+      for f, exp in obs:
+        if self.observation_likelihood(f, exp) == 0:
         #  print o, name, S.depth-o[0], self.expressionModel[(S.depth-o[0], )]
           p += math.log(1.0)
         else:
-          p += math.log(self.observation_likelihood(o, S.depth))
+          p += math.log(self.observation_likelihood(f, exp))
     else:
       p = 1.0
-      for o in obs:
+      for f, exp in obs:
         #if not (S.depth-o[0], ) in self.expressionModel:
         #  print S.beats
         #  S.view()
         #  exit(0)
-        p *= self.observation_likelihood(o, S.depth)
+        p *= self.observation_likelihood(f, exp)
 
     return p, len(obs)
     
