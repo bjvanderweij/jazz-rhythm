@@ -161,9 +161,9 @@ We have not addressed the first issue yet. That is, we are not sure if the top l
 \label{fig:phase_levels}
 \end{figure}
 
-If we want to get a valid precision and recall in scenario (2), we should convert $R$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. In scenario (3) we want to convert $R*$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. This suggests three scenarios for evaluation: (1) evaluate $R$ against $R^*$, (2) evaluate $(R, *)$ against $R*$ and (3) evaluate $R$ against $(R^*, *)$. 
+If we want to get a valid precision and recall in scenario (2), we should convert $R$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. In scenario (3) we want to convert $R^*$ to the tree in figure \ref{fig:phase_levels:b} by adding a top-level tie. This suggests three scenarios for evaluation: (1) evaluate $R$ against $R^*$, (2) evaluate $(R, *)$ against $R^*$ and (3) evaluate $R$ against $(R^*, *)$. 
 
-The evaluation in its final form is:
+The evaluation function in its final form is:
 \begin{align}
 \label{eq:evaluation}
 &\mathrm{precision} = \textsc{max}(\textsc{score}(R, R^*), \textsc{score}((R, *), R^*), \textsc{score}(R, (R^*, *))),\\

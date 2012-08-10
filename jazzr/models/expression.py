@@ -11,6 +11,7 @@ def additive_noise(std):
 
 def train(corpus):
   perdepth = {}
+  features = {}
   for annotation, parse in corpus:
     #print annotation.name
     obs = observations(parse, performance=True)
