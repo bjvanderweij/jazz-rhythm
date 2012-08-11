@@ -13,7 +13,8 @@ def load():
     f = open('results/{0}'.format(files[choice]), 'rb')
     return pickle.load(f)
 
-def evaluate(corpus, nfolds=10, n=15, length=20, noise=False):
+def evaluate(nfolds=10, n=15, length=20, noise=False, save=True, collection='explicitswing'):
+  corpus = annotations.corpus(collection=collection)
   folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
@@ -40,7 +41,7 @@ def evaluate(corpus, nfolds=10, n=15, length=20, noise=False):
         continue
       parses = parser.parse_onsets(test)
       if len(parses) > 0:
-        results.append((parses[0], label))
+        results.append((parses[0], label, annotation))
         precision, recall = measure(results[-1:])
         print 'Precision {0} recall {1}.'.format(precision, recall)
         precision, recall = measure(results)
@@ -50,8 +51,9 @@ def evaluate(corpus, nfolds=10, n=15, length=20, noise=False):
   type = 'expression'
   if noise:
     type = 'additive_noise'
-  f = open('results/{4}_{0}_length={1}_n={2}_folds={3}'.format(time, length, n, nfolds, type), 'wb')
-  pickle.dump(results, f)
+  if save:
+    f = open('results/{4}_{0}_length={1}_n={2}_folds={3}'.format(time, length, n, nfolds, type), 'wb')
+    pickle.dump(results, f)
   return results
 
 def measure(results):

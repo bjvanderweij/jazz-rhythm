@@ -3,7 +3,7 @@
 
 % Evaluation of the pcfg prior:
 % Show the pcfg model and how it prefers long notes on downbeats and how it penalises syncopation.
-First we will train the rhythm and expression model on the entire jazz corpus like we described in section \ref{sec:training} and analyse the results. Second, we will use 10-fold cross validation to evaluate the performance of the parser on the corpus.
+First we will train the rhythm and expression model on the entire jazz corpus like we described in section \ref{sec:training} and analyse the results. Second, we will use 10-fold cross validation to evaluate the performance of the parser on the corpus. We will compare the expression model presented here to a expression model that treats expression as additive noise. That is, for any feature vector $\mu_\varphi$ is set to zero and $\sigma_\varphi$ is set to a small value.
 
 \section{Rhythm and Expression Model}
 
@@ -18,6 +18,7 @@ The rhythm and expression model, trained on the entire jazz corpus are shown in 
 \begin{tabular}{ll}
 \hline
 \textbf{Rule}& \textbf{Probability}\\
+\hline
 \hline
 $R \rightarrow \bullet\; \bullet$ & 0.061\\
 $R \rightarrow *\; \bullet$ & 0.027\\
@@ -38,8 +39,9 @@ $R \rightarrow *\; *\; \bullet$ & 0.134\\
 \hline
 $\varphi = [\texttt{level}, \texttt{division}]$ & $\mu_\varphi$ & $\sigma_\varphi$\\
 \hline
+\hline
 $[1, 2]$ & $7.926 x 10^{-2}$ & $3.391 x 10^{-2}$\\
-$[1, 3]$ & $-6.323 x 10^{-2}$ & $6.564 x 10^{-1}$\\
+$[1, 3]$ & $-6.323 x 10^{-2}$ & $0.656$\\
 $[2, 2]$ & $-4.68 x 10^{-3}$ & $2.184 x 10^{-2}$\\
 $[3, 2]$ & $5.565 x 10^{-3}$ & $9.422 x 10^{-3}$\\
 $[4, 2]$ & $4.797 x 10^{-3}$ & $9.824 x 10^{-3}$\\
@@ -63,4 +65,46 @@ At level 2, the average logarithmic ratios seem to be fairly close to zero.
 
 \section{Performance on the Corpus}
 
-Since we do not have enough data to keep a separate test set, we will evaluate the corpus as follows: First, we split the corpus into 10 parts, where each part The results of evaluating the parser on the jazz corpus using 10-fold cross validation are shown below
+Since we do not have enough data to keep a separate test set, we will train the models on different trainsets and evaluate them on small parts of the corpus left out of the train set. This process is known as cross validation. For $n$-fold cross validation, the the corpus is divided into $n$ equal parts, a training set is constructed from $n-1$ of these parts and a test set is constructed of one of these parts. This is done $n$ times and the parts sampled randomly from the corpus. When dividing into $n$ random sampled parts, performances are treated as whole units. Since there are twenty different performances in the corpus, using 10-fold cross validation results in train sets of eighteen performances that will be evaluated on test sets of two performances.
+
+It was mentioned in section \ref{sec:evaluation} that our implementation of the parser is not computationally efficient enough to parse whole performances, therefore we will only consider the first few notes of each performance in the test set. 
+
+Our subdivision trees can only represent performances with a length, measured in whatever metrical unit, that is a power of two. If a performance is for example three bars long, the subdivision tree will represent a fourth bar as a tie. To make evaluation easier, the test performances are restricted to have lengths that are a power of two. This is done by selecting, given some preferred length, the leftmost nested subdivision tree that contains a number of onsets closest to the preferred length. We can find the subdivision tree in the labels of our corpus.
+
+We ran two experiments. In the first experiment, the expression model as it was described in section \ref{sec:method} was used. In the second experiment, expression was treated simply as additive noise relative to the idealised onsets. The results of these experiments are shown in table \ref{tab:results_expression} and \ref{tab:results_noise}.
+
+\begin{table}
+\centering
+\caption{10-fold cross validation on the jazz corpus for different functions and different tests sets.}
+\label{tab:results_expression}
+\begin{tabular}{llll}
+\hline
+\textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
+\hline
+\hline
+5 & $0.526$ & $0.478$ & $0.501$\\
+10 & $0.498$ & $0.559$ & $0.527$\\
+15 & $0.567$ & $0.572$ & $0.57$\\
+20 & $0.506$ & $0.533$ & $0.519$\\
+\hline
+
+\end{tabular}
+\end{table}
+
+\begin{table}
+\centering
+\caption{10-fold cross validation on the jazz corpus for different functions and different tests sets. The expression model is set to additive noise with $\mu = 0$ and $\sigma = 0.1$.}
+\label{tab:results_noise}
+\begin{tabular}{llll}
+\hline
+\textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
+\hline
+\hline
+$5$ & $0.786$ & $0.579$ & $0.667$\\
+$10$ & $0.837$ & $0.819$ & $0.828$\\
+$15$ & $0.842$ & $0.853$ & $0.847$\\
+$20$ & $0.709$ & $0.739$ & $0.724$\\
+\hline
+
+\end{tabular}
+\end{table}
