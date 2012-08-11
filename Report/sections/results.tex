@@ -1,5 +1,66 @@
-\section{Results}
+\chapter{Experiments and Results}
 \label{sec:results}
 
 % Evaluation of the pcfg prior:
 % Show the pcfg model and how it prefers long notes on downbeats and how it penalises syncopation.
+First we will train the rhythm and expression model on the entire jazz corpus like we described in section \ref{sec:training} and analyse the results. Second, we will use 10-fold cross validation to evaluate the performance of the parser on the corpus.
+
+\section{Rhythm and Expression Model}
+
+The rhythm and expression model, trained on the entire jazz corpus are shown in table \ref{tab:models}. 
+
+\begin{table}
+\caption{The rhythm and expression model, trained on the entire jazz corpus.}
+\label{tab:models}
+\centering
+\subfloat[The rhythm model.]{
+\label{tab:rhythm}
+\begin{tabular}{ll}
+\hline
+\textbf{Rule}& \textbf{Probability}\\
+\hline
+$R \rightarrow \bullet\; \bullet$ & 0.061\\
+$R \rightarrow *\; \bullet$ & 0.027\\
+$R \rightarrow R\; R$ & 0.392\\
+$R \rightarrow \bullet\; R$ & 0.057\\
+$R \rightarrow R\; \bullet$ & 0.022\\
+$R \rightarrow *\; R$ & 0.069\\
+$R \rightarrow R\; *$ & 0.061\\
+$R \rightarrow \bullet\; \bullet\; \bullet$ & 0.013\\
+$R \rightarrow \bullet\; *\; \bullet$ & 0.164\\
+$R \rightarrow *\; *\; \bullet$ & 0.134\\
+\hline
+\end{tabular}
+}
+\subfloat[The expression model.]{
+\label{tab:expression}
+\begin{tabular}{lll}
+\hline
+$\varphi = [\texttt{level}, \texttt{division}]$ & $\mu_\varphi$ & $\sigma_\varphi$\\
+\hline
+$[1, 2]$ & $7.926 x 10^{-2}$ & $3.391 x 10^{-2}$\\
+$[1, 3]$ & $-6.323 x 10^{-2}$ & $6.564 x 10^{-1}$\\
+$[2, 2]$ & $-4.68 x 10^{-3}$ & $2.184 x 10^{-2}$\\
+$[3, 2]$ & $5.565 x 10^{-3}$ & $9.422 x 10^{-3}$\\
+$[4, 2]$ & $4.797 x 10^{-3}$ & $9.824 x 10^{-3}$\\
+$[5, 2]$ & $-3.391 x 10^{-3}$ & $1.887 x 10^{-2}$\\
+$[6, 2]$ & $-7.539 x 10^{-5}$ & $1.375 x 10^{-3}$\\
+$[7, 2]$ & $-8.029 x 10^{-3}$ & $1.223 x 10^{-3}$\\
+$[8, 2]$ & $0.0$ & $0.0$\\
+$[9, 2]$ & $0.0$ & $0.0$\\
+\hline
+\end{tabular}
+}
+\end{table}
+
+The small $\mu$ and $\sigma$ values at high level are a consequence of the way that the performers of our corpus recorded the melodies. The melodies were probably played along with some metronomic track so that the overall tempo does not change.
+
+The expression model shows a slight stretching of downbeats in duple divided units at the lowest level. The values shown in \ref{tab:expression} are logarithmic ratios. Therefore, the average stretching of downbeats at level one can be found by taking the exponential: $\exp(7.926 x 10^{-2}) \approx 1.082$. 
+
+For triple divisions at the lowest level, the results seem to be more noisy and show that on average, downbeats are played shorter. This could shows, perhaps not surprisingly [Explain, reference], that the swung notes are not consistently played in a 3:2 ratio.
+
+At level 2, the average logarithmic ratios seem to be fairly close to zero.
+
+\section{Performance on the Corpus}
+
+Since we do not have enough data to keep a separate test set, we will evaluate the corpus as follows: First, we split the corpus into 10 parts, where each part The results of evaluating the parser on the jazz corpus using 10-fold cross validation are shown below

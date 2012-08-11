@@ -120,11 +120,11 @@ The posterior probability $P(R|P)$ of a rhythm $R$ given a performance $P$ is pr
 
 Another way to refer to the prior and the likelihood is as respectively a rhythm model and expression model. The rhythm model should capture intuitions about rhythms, for example that long notes tend to fall on downbeats, that duple divisions are more likely than triple divisions, etcetera. The prior used in this study will be described in section \ref{sec:prior}
 
-The expression model defines how and to what extend onsets deviate from their metronomic onsets. In our model, the expression model will have one parameter, which we shall call the expression parameter. The expression parameter is defined as the logarithmic ratio of downbeat length and upbeat length. In metronomic performances, this parameter is zero for every symbol in the subdivision tree. At low levels, the parameter reflects expressive timing of upbeats. A positive value at the half note level for example indicates a stretching of the downbeats at quarter note level. At higher levels, the expression parameter reflects changes in tempo.
+The expression model defines how and to what extent we expect onsets deviate from their idealised onsets. In our system, the expression model will be based around one observation, which we shall call the \textit{expression ratio}. The expression ratio is defined as the logarithmic ratio of downbeat length and upbeat length. In metronomic performances, we expect the ratio to be zero for every symbol in the subdivision tree. At low levels, the ratio reflects local expressive timing. A positive value at the quarter note for example indicates that downbeats are played slightly longer than upbeats (for example as a means of emphasising them). At higher levels, above the bar-level, the expression ratio reflects global changes in tempo.
 
 % So no tempo curves are needed
 
-Finally, the chart parser should only keep track of hypotheses that are reasonably sensible. This is done in two ways: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter, called the \textit{beam}. Second, we are now in a position to define what it means for a hypothesis to be sensible: a sensible hypothesis is a hypothesis that has a high posterior probability. After a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), the hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
+Finally, the chart parser should only keep track of hypotheses that are reasonably sensible. For this purpose, two types of beams are used [REFERENCE?]: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter, called the \textit{beam}. Second, we are now in a position to define what it means for a hypothesis to be sensible: a sensible hypothesis is a hypothesis that has a high posterior probability. After a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), the hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
 
 Both the rhythm and the expression model will be trained on a corpus of annotated jazz performances that was constructed for this study. The corpus will be described in detail in section \ref{sec:corpus}.
 
@@ -133,7 +133,7 @@ Both the rhythm and the expression model will be trained on a corpus of annotate
 
 The prior probability of an analysis $R$ should be an indication of how likely $R$ is a priori. Should we only use a hypothesis likelihood to assess the quality of our hypotheses, the parser would produce overly complicated analyses that try to fit the performance as close as possible. This is illustrated in figure \ref{fig:detailed}. By using an rhythm model in parallel with an expression model, the parser is able to balance how well the analysis `fits' the performance and how likely the analysis by itself is.
 
-The subdivision trees that are used in this study suggest a simple rhythm model: a probabilistic context-free grammar (PCFG). A PCFG is a context-free grammar extended with probabilities for every rewrite rule. The probability of a syntax tree, produced by a PCFG can be derived by taking the product of every rule that was applied to construct the tree. In linguistics, PCFGs often do not assign probabilities to rules expanding to terminal symbols (words) since there are too many of them. In our case however, there are only two terminal symbols so we can assign probabilities to rules expanding to onsets or ties as well.
+The subdivision trees that are used in this study suggest a simple rhythm model: a probabilistic context-free grammar (PCFG). A PCFG is a context-free grammar extended with probabilities for every rewrite rule. The probability of a syntax tree, produced by a PCFG can be derived by taking the product of every rule that was applied to construct the tree. In linguistics, PCFGs do not always assign probabilities to rules expanding to terminal symbols (words) since there are too many of them. In our case however, there are only two terminal symbols so we can assign probabilities to rules expanding to onsets or ties as well.
 
 Note that there is only one non-terminal symbol in our grammar, namely $R$, so the probability of a rule expansion is given by
 \begin{equation}
@@ -166,10 +166,18 @@ where $d$ is the division of $h$, $H$ is a list of nested hypotheses and $B$ is 
 
 A single onset is represented as a hypothesis with zero nested hypotheses: $(\emptyset, [\textrm{On}_i], [\textrm{On}_i])$, where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: $(\emptyset, [*], [*])$. Combining these hypotheses yields $([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i])$ (see for example figure \ref{fig:complexonsets:a}). Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
 
+Estimating the likelihood of a hypothesis is done in a two-step process. The first step is a bottom-up process where the down- and upbeats of every hypothesis is estimated. This process will be described in section \ref{sec:combination}. The second step is a top down process that generates, given some hypothesis, an observation vector containing feature vector/expression ratio pairs. This process is described in section \ref{sec:observations}. The likelihood of these observations given their feature vectors can be determined after the expression model is trained on a corpus. The training procedure is described in section \ref{sec:training}.
+
+For every observation an expression ratio, a feature vector $\varphi$ will be generated. We have already observed in section \ref{sec:rejection} that the expression ratio reflects different concepts as different levels, therefore one feature we will be using is the \texttt{level} at which the expression ratio was observed. We will use another feature reflecting the \texttt{division} of the metrical unit in which the expression ratio was observed. The resulting feature vector is:
+\begin{equation}
+\label{eq:features}
+\varphi = [\texttt{level}, \texttt{division}].
+\end{equation}
+\texttt{level} is defined bottom-up, so level one is the deepest level of the tree.
+
+
 \subsection{Combination}
 \label{sec:combination}
-
-Estimating the likelihood of a hypothesis is done in a two-step process. The first step is a bottom-up process where the down- and upbeats of every hypothesis is estimated. The second step is a top down process that generates a parameter vector given a hypothesis. The likelihood of these observations can be determined after training the model on a corpus.
 
 A hypothesis is said to \textit{govern} a set of onsets if the hypothesis recursively contains these onsets. The \textsc{combine} function cannot estimate down- and upbeats when of a hypothesis that only governs a single onset. Such hypotheses are treated as a \textit{complex onset}. The hypothesis in figure \ref{fig:complexonsets:a} for example is treated as an onset at relative position $0.5$, the hypothesis in figure \ref{fig:complexonsets:b} is treated as an onset with relative position $0.75$.
 
@@ -230,30 +238,26 @@ The goal of the \textsc{combine} function is to get the best possible estimates 
 
 Once the algorithm has iterated thought $H$, the algorithm checks whether there is an onset on the downbeat. If there is not, the \textsc{downbeat} function attempts to estimate the downbeat from the list of onsets. We assume that an interval based on one or more complex positions is less reliable than an interval based on intervals between downbeats. Only if \textit{onsets} contains less than two onsets, \textit{complexOnsets} is added to it. When the combined length of \textit{onsets} and \textit{complexOnsets} is 1, this hypothesis governs only one onset and the list of beats will only contain that onset and one or more ties. If the combined \textit{onsets} and \textit{complexOnsets} contains more than one onset, the \textsc{downbeat} function estimates downbeat from these onsets.
 
-In a practical implementation, every hypothesis should also keep track of the first onset before and after the hypothesis. This can be used later to restrict endlessly adding ties to the hypothesis. [More explanation]
+In a practical implementation, every hypothesis should also keep track of the first onset before and after the hypothesis. This can be used later to restrict endlessly adding ties to the hypothesis.
 
-\subsection{Observing the expression parameter}
+\subsection{Observing the expression ratio}
 \label{sec:observations}
 
-The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. This information is used by the \textsc{observations} function, which estimates how much observed onsets deviate from the onsets implied by the rhythmic structure. The \textsc{observations} function takes a hypothesis $h$ as input and transforms it to a list of observed expression parameters with feature vectors. As mentioned before, we define an the expression parameter to be the logarithmic ratio of the observed upbeat and downbeat length, we will call this parameter the \texttt{log beat ratio}. We can only calculate this ratio given a downbeat, an upbeat and the next downbeat and this information is given by the combination process. 
+The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. This information is used by the \textsc{observations} function to transform a hypothesis $h$ to a list of observed expression ratios with feature vectors. As mentioned before, we define an the expression ratio to be the logarithmic ratio of the observed upbeat and downbeat length.
 
-In a metronomic performance, we expect a down- and upbeats to be of the same length and their logarithmic ratio to be zero. In our model, we will try to learn a mapping between from feature vectors to logarithmic down-/upbeat ratios. At this point, we will use a feature vector contain only one feature: the level at which the ratio is observed. 
-
-% Level = currentdepth - maxdepth
-
-For any hypothesis $h = (H, B, O)$, we can calculate the \texttt{log beat ratio} given that we know the (estimated or actual) onset of the downbeat, $B_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one \texttt{log beat ratio}. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The \texttt{log beat ratio} for a hypothesis with division $d$, downbeat $d_0$, next downbeat $d_1$, upbeat onset $u$ and its relative position $i$ is calculated in the following fashion:
+For any hypothesis $h = (H, B, O)$, we can calculate the expression ratio given that we know the (estimated or actual) onset of the downbeat, $B_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one expression ratio per hypothesis. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The expression ratio for a hypothesis with division $d$, downbeat $d_0$, next downbeat $d_1$, upbeat onset $u$ and its relative position $i$ is calculated in the following fashion:
 \begin{align}
 \label{eq:expression}
-\texttt{log beat ratio}(h) &= \log\left(\frac{(O_i - B_0) / i}{(B_1 - O_i) / (d - i)}\right) & \text{for every $i$ where $i > 0$ and $O_i \neq *$.}
+\mbox{expression ratio} &= \log\left(\frac{(O_i - B_0) / i}{(B_1 - O_i) / (d - i)}\right) & \text{for every $i$ where $i > 0$ and $O_i \neq *$.}
 \end{align}
 
 The \textsc{observations} function is used to derive downbeat and next downbeat estimates for any hypothesis that contains more than one onset and all the sub-hypotheses it recursively contains. The main intuition of this approach is that downbeat intervals provide the most reliable information about the local tempo. 
 
 The \textsc{observations} function is a top-down recursive function. It is initialised with a hypothesis $h$, the downbeat of $h$ and the next downbeat. Since we have not yet observed the next downbeat for the top-level hypothesis $h$, we simply set it to the division of $h$ times the inter-onset interval of the downbeat and the first upbeat of $h$ (given that $h$ governs more than one onset, the combination process already provided estimates for every beat in $B$). So for a hypothesis $h = (H, B, O)$, the algorithm is initialised as follows: $\textsc{observations}(h, B_0, *, \textsc{length}(H) \times (B_1 - B_0))$.
 
-The \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the function is to initialise the estimated length $l$ as the onset of the next downbeat minus the onset of the downbeat. The division $d$ is initialised as the number of nested hypotheses (which is equivalent to the length of $H$, $B$ or $O$). Then, the parameter vector $\mathcal{P}$ is initialised as an empty set. Finally the $*$ symbol is appended to the list of onsets.
+The \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the function is to initialise the estimated length $l$ as the onset of the next downbeat minus the onset of the downbeat. The division $d$ is initialised as the number of nested hypotheses (which is equivalent to the length of $H$, $B$ or $O$). Then, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set. Finally the $*$ symbol is appended to the list of onsets.
 
-Now the algorithm iterates through all every beat in the hypothesis (in this study there are can be no more than three beats in a hypothesis). For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression parameter is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression parameter is only calculated for upbeats that contain actual onsets. 
+Now the algorithm iterates through all every beat in the hypothesis (in this study there are can be no more than three beats in a hypothesis). For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression ratio is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression ratio is only calculated for upbeats that contain actual onsets. 
 
 For every beat position in $h$, the algorithm will calculate the downbeat and next downbeat for the nested hypothesis at that position, these values are stored in $b_{\mathrm{down}}$ and $b_{\mathrm{up}}$. 
 For some beat position $i$, where $0 < i < d$, $b_{\mathrm{down}}$ is estimated by
@@ -280,11 +284,13 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h', b_
 	\State $H, B, O \leftarrow h$
 	\State $d \leftarrow$ \Call{length}{$H$}
 	\State $l \leftarrow$ nextDownbeat - downbeat
-	\State $\mathcal{P} \leftarrow \emptyset$
+	\State $S \leftarrow \emptyset$
 	\State \textbf{append} * \textbf{to} $O$
 	\For {$i \leftarrow 0,d$}
 		\If {$O_i \neq *$ \textbf{and} $i \neq 0$}
-			\State \textbf{append} \Call{log\textunderscore beat\textunderscore ratio}{downbeat, nextDownbeat, $B_i$, $i$, $d$} \textbf{to} $\mathcal{P}$
+			\State $\varphi \leftarrow$ (\Call{depth}{$h$}, $d$)
+			\State $r \leftarrow$ \Call{expression\textunderscore ratio}{downbeat, nextDownbeat, $B_i$, $i$, $d$}
+			\State \textbf{append} ($\varphi$, r) \textbf{to} $S$
 		\EndIf	
 		\State $H', B', O' \leftarrow H_i$
 		\If {$H' \neq \emptyset$}
@@ -296,10 +302,10 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h', b_
 			\If {$O_{i+1} \neq *$}
 				\State $b_{\mathrm{up}} \leftarrow O_{i+1}$
 			\EndIf
-			\State \textbf{append} \Call{observations}{$(H', B', O'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} $\mathcal{P}$
+			\State \textbf{append} \Call{observations}{$(H', B', O'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} $S$
 		\EndIf
 	\EndFor
-	\State \textbf{return} $\mathcal{P}$
+	\State \textbf{return} $S$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
@@ -344,9 +350,9 @@ T = (d, u)
 \end{equation*}
 This representation is identical to the musical representation of time signature. The information in the time signature combined with onsets measured in quarter notes can be used to derive the measure number of every onset in the annotation. To do so, quarter notes ($q$) are first converted to beats ($b$) as follows: $b = qu/4$. A position measured in beats can then be converted to a position measured in bars ($m$) like so: $m = b/d$
 
-Most of the corpus was played in swing, were it is common to play upbeat eighth notes as slightly delayed so that they fall on the third note of a eigth note triple, in terms of subdivision, the third beat of a quarter note divided by three. The example in figure \ref{fig:swing:a} shows a rhythm with some upbeat eighth notes. When performed in swing, the performance is usually closer to figure \ref{fig:swing:b}.
+Most of the corpus was played in swing. Although swing may refer to many intentional deviations from metronomic timing, a very common one is to play notes that are notated as eighth notes as eighth note triplets, the so-called `shuffle'. This is illustrated in figure \ref{fig:swing}. The score usually notates swung notes as in figure \ref{fig:swing:a}, whereas the notes are played as in figure \ref{fig:swing:b} and \ref{fig:swing:c}. Writing swung notes as in \ref{fig:swing:a} is just a notational convention, and often the scores contain instructions to play eighth notes as in figure \ref{fig:swing:b}.
 
-Although we now have metrical onsets, we still do not have the subdivision trees for the corpus. A simple parser with a flat prior and a likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. A subdivision tree for the swing example is shown in figure \ref{fig:swing:c}.
+Although we now have metrical onsets, we still do not have the subdivision trees for the corpus. A simple parser with a flat prior and a likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. A subdivision tree for the swing example is shown in figure \ref{fig:swing:c}. 
 
 
 \begin{figure}
@@ -377,7 +383,7 @@ Although we now have metrical onsets, we still do not have the subdivision trees
 \Tree 
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
 }
-\caption{Annotation of swung notes.}
+\caption{Swung notes.}
 \end{figure}
 
 The result of this process for Thelonious Monk's standard Blue Monk is shown in table \ref{tab:annotation}.
@@ -427,27 +433,25 @@ Score generated from the subdivision tree combined with pitch information. The b
 \section{Training}
 \label{sec:training}
 
-The likelihood of a hypothesis $h$ given a performance $P$, a parameter vector $\mathcal{P}$, an expected parameter value $\mu$ and standard deviation $\sigma$ is given by
+The model is trained using maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors, the resulting feature vector/parameter pairs $(\phi, p)$ are stored in a set S. Second, we train two parameter vectors, $\mu$ and $\sigma$ to contain the expected expression ratio $r$ and standard deviation of $r$ for every feature vector $\phi$ like so:
+\begin{align}
+\label{eq:training}
+\mu_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S))} p, \\ 
+\sigma_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S)} (\mu - p)^2. \notag
+\end{align}
+Since we use a very simple feature vector, these parameters do not need to be smoothed.
+
+Given the parameter vectors $\mu$ and $\sigma$, estimated by \ref{eq:training}, the likelihood of a set of observations $S$ containing feature/expression ratio pairs $(\varphi, r)$, observed in some hypothesis $h$ is given by:
 \begin{equation}
 \label{eq:h_likelihood}
-\mathcal{L}(h|P,\mathcal{P}, \mu, \sigma) \propto \prod_{i=0}^N \exp\left(-\frac{(\mu - \log(\mathcal{P}_i))^2}{2\sigma^2}\right).
+\mathcal{L}(S|\mu, \sigma) \propto \prod_{(\varphi, r) \in S} \exp\left(-\frac{(\mu_\varphi - r)^2}{2\sigma_\varphi^2}\right).
 \end{equation}
-
-We have already mentioned that the expression parameter reflects different phenomena at different levels. A simple feature vector will be used, which contains the level and the division of the hypothesis in which the parameter was observed as well as the relative position of the parameter. Level is defined bottom-up, so level zero is the deepest level of the tree.
-
-The model is trained using a simple maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors, the resulting feature vector/parameter pairs $(\phi, p)$ are stored in a set S. Then, for any expression parameter $p$ and feature vector $\phi$ the expected value $\mu_\phi$ and standard deviation $\sigma_\phi$ for that feature vector is given by
-\begin{align*}
-\label{eq:training}
-\mu_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S))} p,\\
-\sigma_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S)} (\mu - p)^2.\\
-\end{align*}
-Since we use a very simple feature vector, the model does not need to be smoothed.
 
 As mentioned in section \ref{sec:rejection}, a hypothesis is rejected if the per-item likelihood is lower than a certain threshold, the beam parameter. The per-item likelihood is defined as
 
 \begin{equation}
 \label{eq:per_obs_likelihood}
-\mathcal{L}(h|P,\mathcal{P}, \mu, \sigma) \mbox{ per item } \propto \exp\left(-\frac{1}{N}\sum_{i=0}^N \frac{(\mu - \log(\mathcal{P}_i))^2}{2\sigma^2}\right)
+\mathcal{L}(S| \mu, \sigma) \mbox{ per item } \propto \exp\left(-\frac{1}{|S|}\sum_{(\varphi, r) \in S} \frac{(\mu_\varphi - r)^2}{2\sigma_\varphi^2}\right).
 \end{equation}
 
 The beam parameter is set by taking the minimum value of the per-item likelihood of each subdivision tree in the train set. 
