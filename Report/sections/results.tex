@@ -71,7 +71,7 @@ It was mentioned in section \ref{sec:evaluation} that our implementation of the 
 
 Our subdivision trees can only represent performances with a length, measured in whatever metrical unit, that is a power of two. If a performance is for example three bars long, the subdivision tree will represent a fourth bar as a tie. To make evaluation easier, the test performances are restricted to have lengths that are a power of two. This is done by selecting, given some preferred length, the leftmost nested subdivision tree that contains a number of onsets closest to the preferred length. We can find the subdivision tree in the labels of our corpus.
 
-We ran two experiments. In the first experiment, the expression model as it was described in section \ref{sec:method} was used. In the second experiment, expression was treated simply as additive noise relative to the idealised onsets. The results of these experiments are shown in table \ref{tab:results_expression} and \ref{tab:results_noise}.
+We ran two experiments. The expression model as it was described in section \ref{sec:method} was used in the first experiment. In the second experiment, non-zero expression ratios were simply treated as noise with a standard deviation of 0.1. The results of these experiments are shown in table \ref{tab:results_expression} and \ref{tab:results_noise}.
 
 \begin{table}
 \centering
@@ -82,10 +82,10 @@ We ran two experiments. In the first experiment, the expression model as it was 
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
 \hline
 \hline
-5 & $0.526$ & $0.478$ & $0.501$\\
-10 & $0.498$ & $0.559$ & $0.527$\\
-15 & $0.567$ & $0.572$ & $0.57$\\
-20 & $0.506$ & $0.533$ & $0.519$\\
+5 & $0.533$ & $0.472$ & $0.5$\\
+10 & $0.451$ & $0.497$ & $0.472$\\
+15 & $0.516$ & $0.493$ & $0.504$\\
+20 & $0.524$ & $0.54$ & $0.532$\\
 \hline
 
 \end{tabular}
@@ -100,11 +100,13 @@ We ran two experiments. In the first experiment, the expression model as it was 
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
 \hline
 \hline
-$5$ & $0.786$ & $0.579$ & $0.667$\\
-$10$ & $0.837$ & $0.819$ & $0.828$\\
-$15$ & $0.842$ & $0.853$ & $0.847$\\
-$20$ & $0.709$ & $0.739$ & $0.724$\\
+5 & $0.841$ & $0.765$ & $0.802$\\
+10 & $0.866$ & $0.831$ & $0.848$\\
+15 & $0.765$ & $0.75$ & $0.757$\\
+20 & $0.83$ & $0.816$ & $0.823$\\
 \hline
 
 \end{tabular}
 \end{table}
+
+These results clearly show that the expression model performs worse than the model that treats expression simply as noise. Section \ref{sec:discussion} will discuss what may have caused the low results for the expression model.

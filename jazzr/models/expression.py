@@ -22,6 +22,17 @@ def train(corpus):
     model[f] = (mu(features[f]), std(features[f]))
   return model
 
+def outliers(corpus):
+  outliers = {}
+  levelcounts = {}
+  for annotation, parse in corpus:
+    obs = observations(parse, performance=True)
+    for f, expression in obs:
+      if abs(expression) > math.log(2.0):
+        outliers[f] = outliers.get(f, 0) + 1
+      levelcounts[f] = levelcounts.get(f, 0) + 1
+  return outliers, levelcounts
+
 def mu(list):
   return sum(list)/float(len(list))
           
@@ -87,7 +98,7 @@ def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, lev
         if performance:
           parentbeats = parent.perf_beats
         print '_________________________________________________________________________'
-        print 'Ratio: {0}. Level {1}'.format(obs[-1][-1], level)
+        print 'Ratio: {0}. Level {1}'.format(math.exp(obs[-1][-1]), level)
         print 'Beat: {0}, parent beats: {1}, node beats: {2} node onsets: {3}'.format(beat, parentbeats, beats, temp_onsets)
         print 'Index: {0}, division: {1}, downbeat: {2}, nextDownbeat: {3}'.format(i, division, downbeat, nextDownbeat)
         #latex.view_symbols([S, parent], showOnsets=True, showFeatures=True, scale=False)

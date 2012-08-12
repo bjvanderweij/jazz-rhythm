@@ -15,9 +15,22 @@
 % Not including rests leads to loss of information
 % Parser produced interpretation that was very plausible given that tracks were played along an accompaniement some subtleties are lost when listening to the melody only
 
-There are a few things that seem to cause the low scores when our expression model is used. For one, the \texttt{level} feature is not as meaningful as we would want it to be. In section \ref{sec:observations}, level was defined as the depth of the hypothesis at which a expression ratio is observed. This means that level one for example can be the quarter note level as well as the eighth note level in the same performance. 
 
-However, what was probably the biggest contribution to the low scores of the expression model was the high amount of noise for triple divisions at level one. The high value of the $\sigma$ parameter, combined with a prior that assigns a high probability to the rule $R \rightarrow \bullet\; *\; \bullet$, divisions like in figure \ref{fig:discuss1:a} are likely to be classified as the division in figure \ref{fig:discuss1:b}. Because of the high $\sigma$ for triple divisions at level one, the incorrect analysis in \ref{fig:discuss1:b} is not penalised very much and the high prior probability of analysis in figure \ref{fig:discuss1:b} may make the parser prefer it to the analysis in figure \ref{fig:discuss1:a}. The additive noise expression model sets $\sigma$ to be 0.1 for all levels and divisions and penalises the interpretation \ref{fig:discuss1:b} of \ref{fig:discuss1:a} more severely.
+This chapter will discuss he effectiveness of the PCFG prior, the positive aspects of parsing subdivision trees. Finally a number of flaws in the model are discussed.
+
+\section{Subdivision Parsing}
+
+Using subdivision trees as a representation seems to be a successful approach. The results of the parser with a simple 
+
+\section{The Rhythm Model}
+
+This section will give a few examples that illustrate how a PCFG model trained on the jazz corpus captures general intuitions about rhythm.
+
+\section{The Expression Model}
+
+It could not be shown in this study that simple rhythmic expression can help analysing rhythms. However, it may be that our model simply is not adequate for this purpose. In this section the model will be discussed and some issues of the model will be linked to the low evaluation scores.
+
+A high amount of noise level-one triple divisions seems to be the biggest contribution to the low evaluation scores. The high value of the $\sigma$ parameter for level-one triple divisons, combined with a prior that assigns a high probability to the rule $R \rightarrow \bullet\; *\; \bullet$, divisions like in figure \ref{fig:discuss1:a} are likely to be classified as the division in figure \ref{fig:discuss1:b}. Because of the high $\sigma$ for triple divisions at level one, the incorrect analysis in \ref{fig:discuss1:b} is not penalised very much and the high prior probability of analysis in figure \ref{fig:discuss1:b} may make the parser prefer it to the analysis in figure \ref{fig:discuss1:a}. The additive noise expression model sets $\sigma$ to be 0.1 for all levels and divisions and penalises the interpretation \ref{fig:discuss1:b} of \ref{fig:discuss1:a} more severely.
 
 \begin{figure}
 \centering
@@ -39,41 +52,76 @@ However, what was probably the biggest contribution to the low scores of the exp
 \label{fig:discuss1}
 \end{figure}
 
+This interpretation is supported by some of the parses that the parser produced where duple divisions are interpreted as triple divisions. Figure \ref{fig:blue_bossa} shows the parser's interpretation of the first four measures of Kenny Dorham's Blue Bossa. The parser's interpretation is sometimes quite at odds with the gold standard, but given that the incorrectly interpreted divisions are all triple divisions at the lowest level, this parse is not penalised much for it.
 
-This interpretation is supported by some of the parses that the parser produced 
-
-% Show parse where everything was classified as a triple division
-
-Sometimes the parser would produce outputs that may have been more sensible to the listener than the gold-standard analysis. An example of this is shown in figure \ref{fig:comparison}. The gold-standard analysis claims that the first two beats are swung eighth-note upbeats. This is a very odd way for a piece to start. The parser makes the much more sensible suggestion that the second onset is actually a downbeat on the first beat of the second measure. The second onset is only a third of a quarter note away from the downbeat of the second measure so the parser's analysis is not very far off. 
-
-The odd gold-standard is probably caused by the fact that we are considering the melodies in isolation whereas they were originally accompanied by other instruments.
 \begin{figure}
 \centering
-\subfloat[An analysis produced by the parser with an additive noise expression model.]{
+\subfloat[Parser interpretation]{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$\bullet$ ] [ .$\bullet$ ] ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] ] ]
+}
+
+\subfloat[Gold-standard]{
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .{$\frac{1}{16}$} [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{8}$} [ .{$\frac{1}{16}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{16}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .{$\frac{1}{16}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] ] ] ] ]
+}
+\caption{The parser interpretation and gold-standard of the first four measures of Kenny Dorham's Blue Bossa.}
+\label{fig:blue_bossa}
+\end{figure}
+
+The down-/upbeat for divisions higher than two is calculated by averaging the beat lengths before the onset and dividing it by the average beat length after the onset (see equation \ref{eq:expression}). We do not use a feature for different kind of triple divisions but average all triple divisions together during training. One drawback of this approach is that the swing ratio is lost.
+
+The question remains why the expression model is so noisy for triple divisions. It seems that the $\sigma$ parameter of roughly 0.7 cannot be caused only by variation in swing ratios. The exponential of 0.7 is approximately a ratio of 2, which seems unlikely to happen very often when performers are reasonably competent. After analysing the corpus, it was found that out of all 959 expression ratios at a level-one triple division, 81 had an expression ratio of higher than $\log(2)$ or lower than $\log(0.5)$. A few of those may have been caused by annotation errors but it seems that most of these are caused by the way the ratios are observed by the \textsc{observations} function.
+
+The \textsc{observations} function however, partially relies on expected onsets calculated by the combination functions. This process is convoluted and makes it hard to track down what causes the outlier expression ratios.
+
+It should also be noted that the level feature has an imperfection. In section \ref{sec:observations}, the \texttt{level} feature was defined as the depth of the hypothesis at which a expression ratio is observed. However the lowest level of a tree is not always the same level. Level one for example can be the quarter note level at some point in a performance and the eighth note level at another point in the same performance. 
+
+
+\section{The Jazz Corpus}
+
+Sometimes the parser produces interpretations that may have been more sensible to the listener than the gold-standard interpretation of a rhythm. An example of this is shown in figure \ref{fig:brazil}, which shows the rhythm of the first four measures of Chick Corea's Brazil. The gold-standard analysis claims that the first two beats are swung eighth-note upbeats. This is a very odd way for a piece to start. The parser makes the much more sensible suggestion that the second onset is actually a downbeat on the first beat of the second measure. The second onset is only a third of a quarter note away from the downbeat of the second measure so the parser's analysis is not very far off. 
+
+\begin{figure}
+\centering
+\subfloat[Interpretation produced by the parser with the additive noise expression model.]{
 \parbox{\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] ] ]
 }
 }
 
-\subfloat[The corresponding fraction of the gold-standard analysis.]{
+\subfloat[Gold-standard.]{
 \parbox{\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .{$\frac{1}{8}$} [ .{$\frac{1}{16}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{16}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] ] ] [ .$*$ ] ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] ] ]
 }
 }
-\caption{A comparison of two analysis of the first four measures of Chick Corea's Brazil.}
-\label{fig:comparison}
+\caption{A comparison of the parser and gold-standard interpretation of the first four measures of Chick Corea's Brazil.}
+\label{fig:brazil}
 \end{figure}
 
+
+The reason why this performance oddly starts with two upbeats followed by a measure of silence is probably that it originally was accompanied by other instruments, in which case it would not be as unusual to start a melody like this. Since we are considering the melodies in isolation, we occasionally get melodies where it is, even to human listeners, not immediately clear where the downbeats are. The way the parser annotated this rhythm may well be the way that most listeners would interpret it. In any case, this seems to be a drawback of having a monophonic jazz corpus constructed from polyphonic MIDI files.
+
+
+
+
+\section{Rests}
+
+It was assumed early on that we could completely represent the rhythmic structure by looking only at onset times. It the evaluation section we referred to this section when we needed rests in the parse tree to represent a quarter note at the end of the performance. It turns out that, while we can completely specify the rhythmic structure for the most part using just onsets, we need rests to represent a performance that does not end on the last beat of a bar. Consider the gold-standard in in figure \ref{fig:rests:a} and a potential parser interpretation in figure \ref{fig:rests:b}. Figure \ref{fig:rests:b} implies that the last note, which is a quarter note in the gold standard, is a whole note like transcription A adjecent to it. Another interpretation is that the last note is a half note and the others eighth notes. Both of these interpretations are quite unlikely. In the current approach however, figure \ref{fig:rests:b} is not very unlikely as the parser considers only the onset of the last note and has no way of knowing how long the duration of the note is. And even if it would know the duration of the note, then given the current grammar, it would have no way of representing the last note as a quarter note. 
+
+The only solution is to extend our approach to include rests. To do so would not require a great deal of changes. We can use roughly the same approach and add a \textit{rest} unit to the grammar, whose onset can be considered to be the offset of the previous note, tie or rest. In such an approach, rests would simply be another unit that have an onset which can be compared to its expected onset.
+
 \begin{figure}[b!]
-\subfloat[]{
+\centering
+\subfloat[Gold-standard.]{
+\label{fig:rests:a}
 \parbox{0.5\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ]
 }
 }
-\qquad
 \subfloat[]{
 \parbox{0.5\linewidth}{
 \begin{tabular}{| l  >{\centering\arraybackslash}m{2in} |}
@@ -83,16 +131,14 @@ A & \includegraphics[scale=0.3]{img/discuss1}\\
 \end{tabular}
 }
 }
-\end{figure}
 
-\begin{figure}[b!]
-\subfloat[]{
+\subfloat[Parser interpretation.]{
+\label{fig:rests:b}
 \parbox{0.5\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .$\bullet$ ] ] 
 }
 }
-\qquad
 \subfloat[]{
 \parbox{0.5\linewidth}{
 \begin{tabular}{| l  >{\centering\arraybackslash}m{2in} |}
@@ -103,16 +149,14 @@ B & \includegraphics[scale=0.3]{img/discuss3}\\
 \end{tabular}
 }
 }
-\end{figure}
 
-\begin{figure}[b!]
-\parbox{0.5\linewidth}{
-\subfloat[]{
+\parbox{0.4\linewidth}{
+\subfloat[A representation that includes rests.]{
+\label{fig:rests:c}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .Rest ] ] [ .Rest ] ] ]
 }
 }
-\qquad
 \subfloat[]{
 \parbox{0.5\linewidth}{
 \begin{tabular}{| l  >{\centering\arraybackslash}m{2in} |}
@@ -122,5 +166,6 @@ A & \includegraphics[scale=0.3]{img/discuss4}\\
 \end{tabular}
 }
 }
+\caption{An example of why rests are needed to correctly represent the last note.}
+\label{fig:rests}
 \end{figure}
-
