@@ -58,7 +58,7 @@ def evaluate(nfolds=10, n=15, length=20, noise=False, save=True, collection='exp
 
 def measure(results):
   recallScore = 0
-  precisionScore = 0
+  precisionScore = -1
   nRecall = 0
   nPrecision = 0
 

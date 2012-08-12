@@ -1,8 +1,10 @@
 \chapter{Method}
 \label{sec:method}
 
+In this chapter, we will describe our methods. A number of definitions are made first in section \ref{sec:definitions}. Section \ref{sec:parser} will introduce a parser that constructs valid rhythmic structures. Section \ref{sec:rejection} will describe the probabilistic elements of the parser. These are elaborated in section \ref{sec:prior} and \ref{sec:likelihood} where respectively the rhythm and expression model are discussed. Section \ref{sec:corpus} will introduce the jazz corpus. Section \ref{sec:training} will describe how the rhythm and expression model are trained on the corpus. Finally, section \ref{sec:implementation} will describe a few details of our implementation of the parser.
 
 \section{Background}
+\label{sec:definitions}
 
 We assume that we can represent the performance $P$, of a rhythm as series of note onset times. 
 \begin{equation}
@@ -19,7 +21,7 @@ Every node in the subdivision tree represents a metrical duration. Any node can 
 
 The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
 
-An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of what level of the tree we consider the bar level. The node labels only indicate the division of the total length of the analysis. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Score A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
+An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of what level of the tree we consider the bar level. The node labels only indicate the division of the total length of the analysis. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Score A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting it another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
 
 \begin{figure}
 \centering
@@ -48,6 +50,7 @@ C & \includegraphics[scale=0.3]{img/subdivision_score3}\\
 %When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
 
 \section{Parsing Rhythms}
+\label{sec:parser}
 
 The approach presented here generates the most likely rhythmic structure $R$ underlying a performance $P$, where $R$ is a subdivision tree as described in the previous section and $P$ is a list of onsets as shown in equation \ref{eq:performance}. During this process the parser considers all possible hypotheses of small sub spans of $P$ and retains the most likely ones. This is feasible because we assume that over a few notes, only a small number of hypotheses are worth considering. In this section we will first describe how rhythmic analyses that are structurally sound are generated. After that, we will outline a Bayesian model that defines how we determine whether a hypothesis is likely.
 
@@ -143,6 +146,7 @@ where S is a string of symbols and N is the total number of $R$ symbols in the t
 
 
 \section{Expression model}
+\label{sec:likelihood}
 \subsection{Hypothesis representation}
 \label{sec:hypothesis_representation}
 
@@ -456,7 +460,8 @@ As mentioned in section \ref{sec:rejection}, a hypothesis is rejected if the per
 
 The beam parameter is set by taking the minimum value of the per-item likelihood of each subdivision tree in the train set. 
 
-\section{Parser optimisations}
+\section{Implementation}
+\label{sec:implementation}
 
 To make the parser computationally tractable, a few optimisations were needed. It was already mentioned that the parser uses a beam parameter to reject unlikely hypotheses. In addition to that a few extra measures had to be taken.
 
