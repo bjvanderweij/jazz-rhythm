@@ -1,56 +1,17 @@
 \chapter{Method}
 \label{sec:method}
 
-In this chapter, the complete system will be described. A number of definitions are made first in section \ref{sec:definitions}. Section \ref{sec:parser} will introduce a parser that constructs valid rhythmic structures. Section \ref{sec:rejection} will describe the probabilistic elements of the parser. These are elaborated in section \ref{sec:prior} and \ref{sec:likelihood} where respectively the rhythm and expression model are discussed. Section \ref{sec:corpus} will introduce the jazz corpus. Section \ref{sec:training} will describe how the rhythm and expression model are trained on the corpus. Finally, section \ref{sec:implementation} will describe a few details of our implementation of the parser.
+In this chapter, the complete system will be described. Section \ref{sec:parser} will introduce a parser that constructs valid rhythmic structures. Section \ref{sec:rejection} will describe the probabilistic elements of the parser. These are elaborated in section \ref{sec:prior} and \ref{sec:likelihood} where respectively the rhythm and expression model are discussed. Section \ref{sec:corpus} will introduce the jazz corpus. Section \ref{sec:training} will describe how the rhythm and expression model are trained on the corpus. Finally, section \ref{sec:implementation} will describe a few details of our implementation of the parser.
 
-\section{Background}
-\label{sec:definitions}
+\section{Parsing Rhythms}
+\label{sec:parser}
 
 We assume that we can represent the performance $P$, of a rhythm as series of note onset times. 
 \begin{equation}
 \label{eq:performance}
 P = [\mathrm{On}_0, \mathrm{On}_1, \cdots, \mathrm{On}_n]
 \end{equation}
-where $\mathrm{On}_i$ is a note onset. For human listeners, this information is usually enough to correctly identify the rhythmic structure. Other features of the perception, like pitch and note offsets are useful as well, but in many cases, note onsets are sufficient. Note onsets are also the property that rhythms played by any instruments have in common. When a rhythm is performed on a drum for example, pitch and note offsets are practically absent.
-
-We will consider the perceived \textit{rhythm} to be the underlying structure of a performance and the performance a noisy representation of the underlying rhythm. In Western music tradition, a rhythm can be described as a series of subdivision of some metrical unit. The most common subdivisions are duple and triple divisions. Other prime number divisions are allowed as well but are far less common in at least in Western music tradition. When a metrical unit is divided into two or three units, the leftmost unit is, by convention, called the \textit{downbeat}. The other unit(s) are called \textit{upbeat}(s).
-
-A quarter note in a 4/4 time signature for example, is a whole note divided two twice. The first beat of a 4/4 bar is the downbeat at the half note level and every level below. The third beat of the bar is an upbeat at the half note level, since its the second half of a whole note divided by two, but a downbeat at the quarter note level and below. Many authors have used the notion of a metrical grid, introduced by \citet{lerdahl1983generative} in their Generative Theory of Tonal Music, to represent this structure. Another popular representation of rhythmic structure is staff notation. Here we will use a different kind of representation which we will refer to as \textit{subdivision trees}. We will argue that this is a more general representation of rhythm than staff notation or metrical grids. [No timesignatures, irrelevance of tempo curves]
-
-Every node in the subdivision tree represents a metrical duration. Any node can be subdivided into any prime number of subnodes. A node is considered to be non-terminal if it is subdivided and terminal if it is not. There are two types of terminal nodes: an onset, which we will show as $\bullet$ in our graphical representation of trees, and a filler unit, which will be shown as $*$. A filler unit can be either a tied note or a rest. There are no rests in the subdivision trees since we are only looking at onsets. The filler units will be referred to as ties from now on.
-
-The metrical length of a node's child nodes is equal to the length of the node divided by the number of children. We do not need to define the length of the root node, and therefore metrical durations can be expressed relatively as a number of divisions of the root node. We can make a distinction between a \textit{metronomic duration} and a \textit{metrical duration}. Where a metronomic duration is a duration measured in some unit of time and a metrical duration is a duration relative to the root node. 
-
-An example of a well known rhythmic clich\'e and its analysis is shown in figure \ref{fig:subdivision:a} to illustrate the concept of a subdivision tree. The root note is labelled 1/1,  its children are labelled 1/2, etc. These fractions are fractions of the duration of the whole rhythm and are not to be confused with actual whole notes and half notes, which are a consequence of what level of the tree we consider the bar level. The node labels only indicate the division of the total length of the analysis. In order to derive a score from the tree in figure \ref{fig:subdivision:a}, we need to assign some level in the tree to equal a whole bar. Score A in figure \ref{fig:subdivision:b} shows how the first note becomes an eighth note under a 4/4 time signature with the bar duration set to to the root node. Setting the bar duration one level lower results in score B and setting it another level lower results in score C. Hence, a subdivision tree abstracts away time signatures, making it a more general representation than staff notation.
-
-\begin{figure}
-\centering
-\subfloat[]{
-\label{fig:subdivision:a}
-\centering
-\Tree
-[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$\bullet$ ] ] ] 
-}
-
-\subfloat[]{
-\label{fig:subdivision:b}
-\centering
-\begin{tabular}{| l  >{\centering\arraybackslash}m{2in} |}
-\hline 
-A & \includegraphics[scale=0.3]{img/subdivision_score1}\\
-B & \includegraphics[scale=0.3]{img/subdivision_score2}\\
-C & \includegraphics[scale=0.3]{img/subdivision_score3}\\
-\hline
-\end{tabular}
-}
-\caption{An analysis and three different score notations of the same musical clich\'e. }
-\label{fig:subdivision}
-\end{figure}
-
-%When humans perform a rhythm, some information about this underlying structure is encoded in the performance of the rhythm which may be why humans find it usually easy to hear the downbeat. In many music styles, it is common to emphasise the downbeat. It is hypothesised here that this emphasis takes the form of a slight asymmetry in the duration of the downbeat and the duration of the upbeat.
-
-\section{Parsing Rhythms}
-\label{sec:parser}
+A rhythmic structure $R$ is a hierarchical representation of rhythm as it was described in the previous chapter.
 
 The approach presented here generates the most likely rhythmic structure $R$ underlying a performance $P$, where $R$ is a subdivision tree as described in the previous section and $P$ is a list of onsets as shown in equation \ref{eq:performance}. During this process the parser considers all possible hypotheses of small sub spans of $P$ and retains the most likely ones. This is feasible because we assume that over a few notes, only a small number of hypotheses are worth considering. In this section we will first describe how rhythmic analyses that are structurally sound are generated. After that, we will outline a Bayesian model that defines how we determine whether a hypothesis is likely.
 
@@ -104,7 +65,7 @@ Two constraints are needed to prevent the parser from generating invalid rhythmi
 \label{fig:constraints}
 \end{figure}
 
-The first constraint prevents the parser from generating structures with an onset on the downbeat and a tie on the upbeat. Tying a downbeat to an upbeat would not make sense since a quarter note tied to a quarter note is simply a half note. The second constraint prevents the parser from combining subdivision trees that do not contain onsets. Figure \ref{fig:constraints} illustrates how these structures are redundant.
+The first constraint prevents the parser from generating structures with an onset on the downbeat and a tie on the upbeat. An upbeat tied to a downbeat is redundant. If we tie an upbeat quarter note to a downbeat quarter note we get a half note and not two tied quarter notes. The second constraint prevents the parser from combining subdivision trees that do not contain onsets. Figure \ref{fig:constraints} illustrates how these structures are redundant.
 
 % Explanation of the chart parser?
 
@@ -127,7 +88,7 @@ The expression model defines how and to what extent we expect onsets deviate fro
 
 % So no tempo curves are needed
 
-Finally, the chart parser should only keep track of hypotheses that are reasonably sensible. For this purpose, two types of beams are used [REFERENCE?]: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter, called the \textit{beam}. Second, we are now in a position to define what it means for a hypothesis to be sensible: a sensible hypothesis is a hypothesis that has a high posterior probability. After a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), the hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
+Finally, the chart parser should only keep track of hypotheses that are reasonably sensible. For this purpose, two types of beams are used [REFERENCE?]: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter. Second, we are now in a position to define what it means for a hypothesis to be sensible: a sensible hypothesis is a hypothesis that has a high posterior probability. After a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), the hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
 
 Both the rhythm and the expression model will be trained on a corpus of annotated jazz performances that was constructed for this study. The corpus will be described in detail in section \ref{sec:corpus}.
 
