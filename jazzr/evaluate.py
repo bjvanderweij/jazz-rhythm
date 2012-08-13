@@ -224,6 +224,15 @@ def getOnsets(S, performance=False):
       return [S.on]
   return notes
 
+def getPitches(S):
+  notes = []
+  if S.isSymbol():
+    for child in S.children:
+      notes += getPitches(child)
+  elif S.isOnset():
+    return [S.annotation.pitch(S.index)]
+  return notes
+
 def contains(small, big):
   for i in xrange(len(big)-len(small)+1):
     for j in xrange(len(small)):

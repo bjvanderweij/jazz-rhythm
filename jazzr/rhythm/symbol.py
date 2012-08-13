@@ -180,12 +180,12 @@ class Symbol(object):
     """Generate a LaTeX tree using qtree.sty, convert to pdf with pdflatex and view using Evince. Remove the files afterwards."""
     latex.view_symbols([self], scale=scale, showOnsets=showOnsets, showPerfOnsets=showPerfOnsets, showRatios=showRatios, showFeatures=showFeatures, quiet=quiet)
 
-  def score(self, barlevel=0, annotation=None):
+  def score(self, barlevel=0, annotation=None, pitches=None):
     """Transcribe the symbol, save as MusicXML, convert to pdf using MuseScore and view using Evince. Remove the file afterwards."""
-    transcription.view_pdf(self, barlevel=barlevel, annotation=annotation)
+    transcription.view_pdf(self, barlevel=barlevel, annotation=annotation, pitches=pitches)
 
-  def musescore(self, barlevel=0, annotation=None, filename='transcription'):
-    transcription.musescore(self, barlevel=barlevel, annotation=annotation)
+  def musescore(self, barlevel=0, annotation=None, pitches=None, filename='transcription'):
+    transcription.musescore(self, barlevel=barlevel, annotation=annotation, pitches=pitches)
 
   def __str__(self):
     types = ['Onset', 'Tie', 'Symbol']
