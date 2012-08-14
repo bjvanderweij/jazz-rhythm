@@ -54,6 +54,7 @@ Staff music notation is one of the most widespread representation of rhythmic st
 \begin{figure}[b]
 \centering
 \hspace{2in}
+\setlength{\extrarowheight}{-10.5pt}
 \begin{tabular}{llllll|llllll|ll}
 $\bullet$ &  &  &  &  &  & 		$\bullet$ &  &  &  &  &  & $\bullet$ & Level 3\\ 
 $\bullet$ &  & 	$\bullet$ &  & 	$\bullet$ & & 	$\bullet$ & & $\bullet$ &  & $\bullet$ &  & $\bullet$ & Level 2\\
@@ -178,7 +179,11 @@ Similar to \cite{temperley2009unified}, we will use a rhythm model that is sensi
 
 We have claimed that some structure-related expressive deviations may be regular. Emphasising beats can result in a slight stretching of the duration of the beat. Depending on the style of the music, some beats may be emphasised regularly. In general it seems downbeats are often emphasised. If such stretching does indeed happen regularly, it will result in downbeats at levels near the leaf nodes of the tree to be slightly longer than upbeats. A tempo independent way to look at this is as the ratio of downbeat length and upbeat length. The expression model will assume that the down-/upbeat length ratio can be estimated from a number of features.
 
-To train our rhythm and expression model, we need a corpus of monophonic performances of rhythms annotated with subdivision trees. For this purpose we have constructed a corpus of monophonic jazz melodies, performed by amateur musicians. The corpus was annotated with metrical onset times and subdivision trees were generated using a non-probabilistic version of our parser. This was possible because we could assume the onset times were metronomic.\footnote{Technically, the onsets are specified in metrical units and not metronomic units. However, since our parser is tempo-independent this does not matter.}
+To train our rhythm and expression model, we need a corpus of monophonic performances of rhythms annotated with subdivision trees. There are, as far as we know, very few corpora available where expressively performed music is annotated with metrical structure and there are no corpora where this structure is represented as subdivision trees. There is a publicly available corpus of classical piano music performances of very high quality, annotated with tempo and deviation information for every performed note \citep{hashida2008new}. There are similar corpora in existence, notably one containing performances of Chopin by Nikita Magaloff \citep{flossmann2010magaloff}, but most of these are not publicly available due to issues with copyright. 
+
+These corpora cover classical music. We think that we are more likely to find some form of regular expressive deviation in music that is generally performed with some constant tempo. Jazz music seems to be suitable for this. As far as we know, there are no corpora of jazz music annotated with rhythmic structure freely available and therefore we endeavoured to create our own corpus.
+
+The corpus we constructed contains monophonic jazz melodies, performed by amateur musicians. The corpus was annotated with metrical onset times and subdivision trees were generated using a non-probabilistic version of our parser. This was possible because we could assume the onset times were metronomic.\footnote{Technically, the onsets are specified in metrical units and not metronomic units. However, since our parser is tempo-independent this does not matter.}
 
 Finally, the parser is evaluated on the same corpus. We will use cross-validation to avoid testing on the same data we trained on.
 %Representation: subdivision trees

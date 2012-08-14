@@ -11,10 +11,10 @@ class Parser(object):
   shave_and_a_haircut2 = [0, 0.529862, 0.713465, 0.899274, 1.072124, 1.608282, 2.772783, 3.280167, 4.380727] 
   rhumba_clave = [0, 0.491439, 0.975992, 1.618332, 1.945464, 2.597757, 3.118297, 3.574721, 4.226787, 4.560222, 5.284089]
 
-  def __init__(self, model=None, beam=0.5, n=-1, corpus=False, tieThreshold=0.1):
+  def __init__(self, rhythmModel=None, beam=0.5, n=-1, corpus=False, tieThreshold=0.1):
     self.beam = beam
     self.verbose= False
-    self.model = model
+    self.rhythmModel = rhythmModel
     self.n = n
     self.corpus=corpus
     self.tieThreshold = tieThreshold
@@ -78,8 +78,8 @@ class Parser(object):
       for h in hypotheses:
         likelihood, n = self.probability(h)
         #prior *= self.model[pcfg.ruleType(h)]
-        if self.model:
-          prior = pcfg.probability(h, self.model)
+        if self.rhythmModel:
+          prior = pcfg.probability(h, self.rhythmModel)
         if likelihood > 0.0:
           if math.exp(math.log(likelihood) / float(n)) > self.beam:
             h.likelihood = likelihood
@@ -111,7 +111,7 @@ class Parser(object):
             for C in t[k,j]:
               cell += self.close([B,C])
         if self.n > 0 and len(cell) > self.n:
-          if self.model:
+          if self.rhythmModel:
             cell = [item for item in sorted(cell, key=lambda x: x.posterior, reverse=True)][:self.n]
           else:
             sortedcell = sorted(cell, key=lambda x: x.depth)
@@ -211,14 +211,15 @@ class Parser(object):
 
 class StochasticParser(Parser):
 
-  def __init__(self, corpus, n=15, expressionModel=None):
+  def __init__(self, corpus, n=15, expressionModel=None, rhythmModel=None):
     self.allowed = treeconstraints.train(corpus)
     self.expressionModel = expressionModel
     if expressionModel == None:
       self.expressionModel = expression.train(corpus)
-    print self.expressionModel
-    rhythmModel = pcfg.train(corpus)
-    super(StochasticParser, self).__init__(model=rhythmModel, n=n)
+    if rhythmModel == None:
+      rhythmModel = pcfg.train(corpus)
+
+    super(StochasticParser, self).__init__(n=n, rhythmModel=rhythmModel)
     self.setBeam(corpus)
 
   def setBeam(self, corpus):

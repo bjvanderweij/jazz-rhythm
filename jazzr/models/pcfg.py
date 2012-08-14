@@ -3,10 +3,13 @@ from jazzr.tools import commandline
 import os, math, pickle, re, random
 
 
-def flat_prior():
+def flat_prior(p=None):
   model = train(annotations.corpus())
   for key in model:
-    model[key] = 1/float(len(model.keys()))
+    model[key] = p
+    if not p:
+      model[key] = 1/float(len(model.keys()))
+  return model
 
 def train(corpus):
   counts = {}
@@ -58,7 +61,7 @@ def count_rules(S):
         counts[r] = counts.get(r, 0) + count
   return counts
   
-def probability(S, model):
+def probability(S, model, verbose=False):
   p = 1.0
   if S.isSymbol():
     # Time signature consistency
@@ -72,6 +75,7 @@ def probability(S, model):
     # PCFG
     rule = ruleType(S)
     if rule in model:
+      print rule
       p *= model[rule]
     else:
       p = 0

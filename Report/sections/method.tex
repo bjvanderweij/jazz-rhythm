@@ -103,7 +103,13 @@ Note that there is only one non-terminal symbol in our grammar, namely $R$, so t
 \begin{equation}
 P(R \rightarrow S) = P(S) = \frac{\mathrm{count}(S)}{N},
 \end{equation}
-where S is a string of symbols and N is the total number of $R$ symbols in the training set.
+where S is a string of symbols and N is the total number of $R$ symbols in the training set. 
+
+The probability of a subdivision tree $R$ can be described as 
+\begin{equation}
+P(R) = \prod_{R' \rightarrow S \in R} P(R' \rightarrow S).
+\end{equation}
+where $R' \rightarrow S \in R$ refers to every rule expansion of some symbol $R$ to a string of symbols $S$ that is recursively contained in $R$.
 
 
 \section{Expression model}
@@ -129,7 +135,9 @@ O = [o_0, \cdots, o_d] \notag
 \end{align}
 where $d$ is the division of $h$, $H$ is a list of nested hypotheses and $B$ is a list of predicted down- and upbeats that will be constructed using the \textsc{combine} function introduced later in this section. $O$ is a list of actual onsets and may contain $*$ symbols when no onsets are present at some positions. Both $B$ and $O$ only contain onsets on the level of the hypothesis, that is, they contain the down- and upbeat(s) of the hypothesis and their length is always the same as the amount of units the hypothesis divides in. The predicted downbeat of an hypothesis is $B_0$. The predicted upbeats of an hypothesis are $B_i$ where $i > 0$. When a hypothesis governs only a single onset, both $B$ and $O$ may contain $*$ symbols.
 
-A single onset is represented as a hypothesis with zero nested hypotheses: $(\emptyset, [\textrm{On}_i], [\textrm{On}_i])$, where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: $(\emptyset, [*], [*])$. Combining these hypotheses yields $([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i])$ (see for example figure \ref{fig:complexonsets:a}). Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
+At this point it may be useful to point out that we can theoretically specify $B$ and $O$ to be functions of $h$ as their contents can be derived directly from a hypothesis. The hypothesis representation would then be identical to the rhythmic structure representation $R$ except for containing actual onset times at the leaf nodes instead of $\bullet$ symbols. However, given the complexity of the \textsc{combine} function we have chosen to represent the $B$ and $O$ lists explicitly on each node in the subdivision tree.
+
+A single onset is represented as a hypothesis with zero nested hypotheses: \[(\emptyset, [\textrm{On}_i], [\textrm{On}_i]),\] where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: \[(\emptyset, [*], [*]).\] Combining these hypotheses yields \[([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i]).\] See for example figure \ref{fig:complexonsets:a}. Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
 
 Estimating the likelihood of a hypothesis is done in a two-step process. The first step is a bottom-up process where the down- and upbeats of every hypothesis is estimated. This process will be described in section \ref{sec:combination}. The second step is a top down process that generates, given some hypothesis, an observation vector containing feature vector/expression ratio pairs. This process is described in section \ref{sec:observations}. The likelihood of these observations given their feature vectors can be determined after the expression model is trained on a corpus. The training procedure is described in section \ref{sec:training}.
 
@@ -349,9 +357,10 @@ The manual annotation process resulted in lists of metrical onset times. Combine
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
 }
 \caption{Swung notes.}
+\label{fig:swing}
 \end{figure}
 
-The result of this process for Thelonious Monk's standard Blue Monk is shown in table \ref{tab:annotation}.
+The result of this process for Thelonious Monk's standard Blue Monk is shown in table \ref{tab:annotation}. A full list of jazz standards in the corpus is given in appendix \ref{app:corpus}.
 
 \begin{table}
 \caption{A performance of the first two bars of Thelonious Monk's Blue Monk, the corresponding metrical onsets, rhythmic analysis and score generated from the analysis.}
@@ -360,36 +369,32 @@ The result of this process for Thelonious Monk's standard Blue Monk is shown in 
 \hline
 
 \parbox{\linewidth}{
-The performance onsets in milliseconds.
+The performance onsets in milliseconds:
 }\\
 
 $P = [32, 348, 504, 836, 1940, 2240, 2420, 2728]$\\
 
-\hline
 
 \parbox{\linewidth}{
-Metrical onsets in quarter notes. Triple divisions are rounded to two digits.
+Metrical onsets in quarter notes. Triple divisions are rounded to two digits:
 }\\
 
 $ A = [0.0, 0.66, 1.0, 1.66, 4.0, 4.66, 5.0, 5.66]$\\
 
-\hline
 
 \parbox{\linewidth}{
-Rhythmic analysis generated by a simple parser and selected by hand.
+Rhythmic analysis generated by a simple parser and selected by hand:
 }\\
 
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .$*$ ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{8}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .$*$ ] ] ]
 \\
 
-\hline
 
 \parbox{\linewidth}{
-Score generated from the subdivision tree combined with pitch information. The bar duration was set to level 1/2 of the subdivision tree.}\\
+Score generated from the subdivision tree combined with pitch information. The bar duration was set to level 1/2 of the subdivision tree:}\\
 
 \includegraphics[scale=0.4]{img/blue_monk}\\
-
 \hline
 \end{tabular}
 \end{table}
