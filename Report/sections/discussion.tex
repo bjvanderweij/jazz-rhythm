@@ -20,7 +20,9 @@ This chapter will discuss he effectiveness of the PCFG prior, the expression-awa
 
 \section{Subdivision Parsing}
 
-Our results show that subdivision parsing in general has been a successful approach. A completely tempo-independent parser was able to produce F-scores of around 0.8. Figure \ref{fig:a_fine_romance:a} and \ref{fig:a_fine_romance:b} illustrate how the parser interpreted the rhythmic structure of the onset pattern almost completely correct. By combining pitch information with the parser's analysis and setting a bar's duration to correspond to level 1/8 in the tree, we can generate a transcription of the onset pattern. This is illustrated in figure \ref{fig:a_fine_romance:c}.
+Apart from the results for our expression model, which we will discuss in section \ref{sec:discuss_expression}, our results for our pcfg prior were higher than the baseline. In general, this shows that subdivision parsing has been a successful approach. In the future, it would be interesting to see how our parser performs on other corpora and compare its performance directly to other models of rhythmic structure perception.
+
+Figure \ref{fig:a_fine_romance:a} and \ref{fig:a_fine_romance:b} illustrate how the parser interpreted the rhythmic structure of the onset pattern almost completely correct. By combining pitch information with the parser's analysis and setting a bar's duration to correspond to level 1/8 in the tree, we can generate a transcription of the onset pattern. This is illustrated in figure \ref{fig:a_fine_romance:c}.
 
 To generate a score from a subdivision tree we need to set two variables by hand: the time signature and bar duration (in terms of level of the tree). This information cannot be trivially deduced from the subdivision tree. Although the subdivision tree does specify whether beats are duple or triple divided, but it does not differentiate between time signatures like 4/4, 2/2 and 2/4. Which one of these is preferred may depend on how beats are being stressed.
 
@@ -32,7 +34,7 @@ As mentioned earlier, the parser's interpretation in figure \ref{fig:a_fine_roma
 
 Further inspection of the two interpretations reveals that they are interchangeable. Triple divisions introduce an ambiguity in subdivision trees, illustrated in figure \ref{fig:ambiguity}. The parser chose the simplest interpretation since it has the highest prior probability. The difference between the two analyses can be expressed as a difference in time signature. The analysis on the left in figure \ref{fig:ambiguity} implies a 3/2 time signature, the analysis on the right implies a 4/4 time signature where the third beat is divided into three eighth notes.
 
-The gold-standard in figure \ref{fig:a_fine_romance:d} was chosen because we assume the time signature not to change unless the performance gives us clear evidence that it should change. There is a certain consistency of time signature. The rhythm model as it was presented here has does not penalise changes in time signature and adding this could be a potential improvement to the model.
+The gold-standard in figure \ref{fig:a_fine_romance:d} was chosen because there is a certain consistency of time signature: we assume the time signature not to change unless the performance gives us clear evidence that it should change. The rhythm model as it was presented here has does not penalise changes in time signature and adding this could be a potential improvement to the model.
 
 
 \begin{figure}
@@ -57,7 +59,7 @@ The gold-standard in figure \ref{fig:a_fine_romance:d} was chosen because we ass
 \label{fig:a_fine_romance:d}
 \includegraphics[width=\textwidth]{img/a_fine_romance_gs}
 }
-\caption{A interpretation that was completely identical to the gold standard.}
+\caption{A parser interpretation that was almost the same as the gold standard.}
 \label{fig:a_fine_romance}
 \end{figure}
 
@@ -77,7 +79,7 @@ The gold-standard in figure \ref{fig:a_fine_romance:d} was chosen because we ass
 
 %As can be seen in table \ref{tab:rhythm}, given the constraints that we imposed on subdivision, the model has a limited number of parameters. % Picture of phase shifting a rhythm and its probabilities.
 
-The best evaluation of our rhythm model would be to compare its performance to Temperley's hierarchical model, used in \citep{temperley2009unified}. We could for example exchange our prior for Temperley's and compare the parser's  performance on our corpus. We did not implement this comparison at present for two reasons: First, Temperley did not, as far as we know, specify how his hierarchical model generalises to triple divisions. Second, the hierarchical model is defined relative to the levels of a metrical grid. Levels in our model do not correspond trivially to levels in a metrical grid. 
+The best evaluation of our rhythm model would be to compare its performance to Temperley's hierarchical model, used in \citep{temperley2009unified}. We could for example exchange our prior for Temperley's and compare the parser's  performance on our corpus. We did not implement this comparison at present for two reasons: First, Temperley did not specify how his hierarchical model generalises to triple divisions. Second, the hierarchical model is defined relative to the levels of a metrical grid. Levels in our model do not correspond trivially to levels in a metrical grid. 
 
 Although we cannot compare the PCFG prior to the hierarchical model directly, we can make some observations that show that the PCFG prior, even when trained on a jazz corpus, seems to reflect some notions of what \citet{temperley2010modeling} calls common-practice rhythm. 
 
@@ -111,8 +113,11 @@ Figure \ref{fig:temperley} shows an example that \citet{temperley2010modeling} u
 The PCFG prior thus seems to be an adequate model of rhythm and our results show that some properties of rhythm that \citet{temperley2010modeling} identifies as common-practice indeed generalise to some extent to jazz music.
 
 \section{The Expression Model}
+\label{sec:discuss_expression}
 
-It could not be shown in this study that simple rhythmic expression can help analysing rhythms. In this section the model will be discussed and some issues of the model will be linked to the low evaluation scores.
+The expression model performed a little bit under the base line. In this section some explanations for these low evaluation scores will be discussed.
+
+%First of all, our baseline results were higher than expected. We expected the baseline to produce complicated rhythmic structures that try to match expressive deviations in the performance. This did not happen and the reason for this it seems is an optimisation in our implementation that was described in section \ref{sec:implementation}. We only allowed a limited number of single note analyses since we cannot estimate likelihoods over single note analyses. As a result, the baseline 
 
 A high amount of noise level-one triple divisions seems to be the biggest contribution to the low evaluation scores. The high value of the $\sigma$ parameter for level-one triple divisons, combined with a prior that assigns a high probability to the rule $R \rightarrow \bullet\; *\; \bullet$, divisions like in figure \ref{fig:discuss1:a} are likely to be classified as the division in figure \ref{fig:discuss1:b}. Because of the high $\sigma$ for triple divisions at level one, the incorrect analysis in \ref{fig:discuss1:b} is not penalised very much and the high prior probability of analysis in figure \ref{fig:discuss1:b} may make the parser prefer it to the analysis in figure \ref{fig:discuss1:a}. The additive noise expression model sets $\sigma$ to be 0.1 for all levels and divisions and penalises the interpretation \ref{fig:discuss1:b} of \ref{fig:discuss1:a} more severely.
 
@@ -152,6 +157,8 @@ This interpretation is supported by some of the parses that the parser produced 
 \caption{The parser interpretation and gold-standard of the first four measures of Kenny Dorham's Blue Bossa.}
 \label{fig:blue_bossa}
 \end{figure}
+
+It seems thus that the expression model has a consistent bias towards classifying divisions as triple divisions. This may explain why it performed worse than the baseline.
 
 The down-/upbeat for divisions higher than two is calculated by averaging the beat lengths before the onset and dividing it by the average beat length after the onset (see equation \ref{eq:expression}). We do not use a feature for different kind of triple divisions but average all triple divisions together during training. One drawback of this approach is that the swing ratio is lost.
 

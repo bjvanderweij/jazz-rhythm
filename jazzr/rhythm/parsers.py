@@ -18,6 +18,7 @@ class Parser(object):
     self.n = n
     self.corpus=corpus
     self.tieThreshold = tieThreshold
+    self.maxDepth=5
 
   def shave(self, onsets):
     N = self.list_to_onsets(onsets)
@@ -231,9 +232,6 @@ class StochasticParser(Parser):
     self.beam = beam
 
   def observation_likelihood(self, features, expression):
-    (l, d) = features
-    if l > 3:
-      l = 3
     mu, sigma = self.expressionModel[features]
     #if not (depth-level, ) in self.expressionModel:
     #  highest = sorted(self.expressionModel.keys())[-1]
@@ -254,7 +252,10 @@ class StochasticParser(Parser):
 
   def probability(self, S, log=False, performance=False, name=None):
     if not S.hasLength():
-      if not S.tree() in self.allowed:
+      if self.allowed == None:
+        if S.depth > self.maxDepth:
+          return 0.0, 1
+      elif not S.tree() in self.allowed:
         return 0.0, 1
       return 1.0, 1
 

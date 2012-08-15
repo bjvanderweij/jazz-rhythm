@@ -63,18 +63,19 @@ The small $\mu$ and $\sigma$ values at high level are a consequence of the way t
 
 \section{Performance on the Corpus}
 
-Since we do not have enough data to keep a separate test set, we will train the models on different trainsets and evaluate them on small parts of the corpus left out of the train set. This process is known as cross validation. For $n$-fold cross validation, the the corpus is divided into $n$ equal parts, a training set is constructed from $n-1$ of these parts and a test set is constructed of one of these parts. This is done $n$ times and the parts sampled randomly from the corpus. When dividing into $n$ random sampled parts, performances are treated as whole units. Since there are twenty different performances in the corpus, using 10-fold cross validation results in train sets of eighteen performances that will be evaluated on test sets of two performances.
+Since we do not have enough data to keep a separate test set, we will train the models on different training sets and evaluate them on small parts of the corpus left out of the training set. This process is known as cross validation. For $n$-fold cross validation, the the corpus is divided into $n$ equal parts, a training set is constructed from $n-1$ of these parts and a test set is constructed of one of these parts. This is done $n$ times and the parts sampled randomly from the corpus. When dividing into $n$ random sampled parts, performances are treated as whole units. Since there are twenty different performances in the corpus, using 10-fold cross validation results in training sets of eighteen performances that will be evaluated on test sets of two performances.
 
 It was mentioned in section \ref{sec:evaluation} that our implementation of the parser is not computationally efficient enough to parse whole performances, therefore we will only consider the first few notes of each performance in the test set. 
 
 Our subdivision trees can only represent performances with a length, measured in whatever metrical unit, that is a power of two. If a performance is for example three bars long, the subdivision tree will represent a fourth bar as a tie. To make evaluation easier, the test performances are restricted to have lengths that are a power of two. This is done by selecting, given some preferred length, the leftmost nested subdivision tree that contains a number of onsets closest to the preferred length. We can find the subdivision tree in the labels of our corpus.
 
-We ran two experiments. The expression model as it was described in section \ref{sec:method} was used in the first experiment. In the second experiment, non-zero expression ratios were simply treated as noise with a standard deviation of 0.1. The results of these experiments are shown in table \ref{tab:results_expression} and \ref{tab:results_noise}.
+We prepared three experiments which we tested on four different preferred lengths: 5, 10, 15 and 20. In the first experiment we used our PCFG rhythm model in combination with our expression model, the results are shown in table \ref{tab:results1}. In the second experiment, we used our own PCFG rhythm model combined with an expression model that treats non-zero expression ratios as noise with standard deviation of 0.1. The results of this experiment are shown in table \ref{tab:results2}. The final experiment served as a baseline: a rhythm prior that assigns the same probability to every rhythm was used in combination with the expression model that treats expression as noise. The results of the final experiment are shown in table \ref{tab:results3}.
+
 
 \begin{table}
 \centering
-\caption{10-fold cross validation on the jazz corpus for different functions and different tests sets.}
-\label{tab:results_expression}
+\caption{Results for the expression model with the PCFG prior.}
+\label{tab:results1}
 \begin{tabular}{llll}
 \hline
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
@@ -85,14 +86,13 @@ We ran two experiments. The expression model as it was described in section \ref
 15 & $0.516$ & $0.493$ & $0.504$\\
 20 & $0.524$ & $0.54$ & $0.532$\\
 \hline
-
 \end{tabular}
 \end{table}
 
 \begin{table}
 \centering
-\caption{10-fold cross validation on the jazz corpus for different functions and different tests sets. The expression model is set to additive noise with $\mu = 0$ and $\sigma = 0.1$.}
-\label{tab:results_noise}
+\caption{Results for the model that treats expression as additive noise with $\mu = 0$ and $\sigma = 0.1$ and the PCFG prior.}
+\label{tab:results2}
 \begin{tabular}{llll}
 \hline
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
@@ -100,11 +100,24 @@ We ran two experiments. The expression model as it was described in section \ref
 \hline
 5 & $0.841$ & $0.765$ & $0.802$\\
 10 & $0.866$ & $0.831$ & $0.848$\\
-15 & $0.765$ & $0.75$ & $0.757$\\
-20 & $0.83$ & $0.816$ & $0.823$\\
+15 & $0.765$ & $0.750$ & $0.757$\\
+20 & $0.830$ & $0.816$ & $0.823$\\
 \hline
-
 \end{tabular}
 \end{table}
 
-These results clearly show that the expression model performs worse than the model that treats expression simply as noise. Section \ref{sec:discussion} will discuss what may have caused the low results for the expression model.
+\begin{table}
+\centering
+\caption{Baseline results. Expression is treated as additive noise and the prior returns the same probability for every rhythm.}
+\label{tab:results3}
+\begin{tabular}{llll}
+\hline
+\textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
+\hline
+\hline
+5 & 0.604 & 0.653 & 0.627\\
+10 & 0.692 & 0.745 & 0.718\\
+15 & 0.604 & 0.653 & 0.627\\
+20 & 0.513 & 0.584 & 0.546\\
+\end{tabular}
+\end{table}

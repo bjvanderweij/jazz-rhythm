@@ -173,7 +173,7 @@ $\mathlarger{\mathlarger{\mathlarger{\propto}}}$
 \label{fig:ties}
 \end{figure}
 
-The approach presented in \citet{longuet1976perception} is a rule-based system that needs to be initialised with a tactus interval and some tolerance parameter that specifies how much performances are allowed to deviate from metronomic timing. Nowadays, computers are powerful enough to construct probabilistic models based on corpora and to consider a great number of possible structural interpretations of a performance at once. With this in mind, we will briefly introduce our system below before discussing it in detail in the next chapter.
+The approach presented in \citet{longuet1976perception} is a rule-based system that needs to be initialised with a tactus interval and some tolerance parameter which specifies the rate at which the tempo is allowed to fluctuate. Nowadays, computers are powerful enough to construct probabilistic models based on corpora and to consider a great number of possible structural interpretations of a performance at once. With this in mind, we will briefly introduce our system below before discussing it in detail in the next chapter.
 
 We will boil down a performance of a rhythm to a list of onsets. We think onsets provide enough information to correctly identify rhythmic structure. Therefore, we will from now on talk about onsets rather than notes.
 
@@ -191,7 +191,7 @@ So although there is one freely available corpus, this corpus covers classical m
 
 The corpus we constructed contains monophonic jazz melodies, performed by amateur musicians. The corpus was annotated with metrical onset times and subdivision trees were generated using a non-probabilistic version of our parser. This was possible because we could assume the onset times were metronomic.\footnote{Technically, the onsets are specified in metrical units and not metronomic units. However, since our parser is tempo-independent this does not matter.}
 
-We will evaluate the parser on the jazz corpus. To avoid testing on the same data we trained on we will use cross-validation.
+We will evaluate the parser on the jazz corpus. Since we do not have enough data to keep a separate test set, we have to use cross-validation. This means that we are effectively testing on our development set.
 %Representation: subdivision trees
 %Context free grammar, parser
 %Bayesian model: rhythm model, expression model

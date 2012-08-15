@@ -75,7 +75,6 @@ def probability(S, model, verbose=False):
     # PCFG
     rule = ruleType(S)
     if rule in model:
-      print rule
       p *= model[rule]
     else:
       p = 0

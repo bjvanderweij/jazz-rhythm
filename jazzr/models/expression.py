@@ -1,6 +1,7 @@
 import math
 from jazzr.tools import latex
 from jazzr.annotation import Annotation
+from jazzr.models import pcfg
 
 def additive_noise(std):
   model = {}
@@ -114,6 +115,10 @@ def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, lev
       obs += newobs
   return obs
 
+def f_measure(results):
+  p, r = measure(results)
+  return 2*(p*r)/float(p+r)
+
 def expressionRatio(downbeat, nextDownbeat, onset, position, division):
   if nextDownbeat - onset <= 0 or onset - downbeat <= 0:
     ratio = 9999.9
@@ -123,24 +128,11 @@ def expressionRatio(downbeat, nextDownbeat, onset, position, division):
   return math.log(ratio)
 
 def features(S):
-  return (S.depth, len(S.children))
-
-def features2(downbeat, nextDownbeat, onset, position, division, level):
-  time = position/float(division) * (nextDownbeat - downbeat)
-  beatlength = (time - downbeat) / float(position)
-  abs_deviation = (onset - time)
-  if beatlength == 0:
-    deviation = 9999.9
-  else:
-    deviation = abs_deviation/float(beatlength)
-  if nextDownbeat - onset <= 0 or onset - downbeat <= 0:
-    ratio = 9999.9
-  else:
-    ratio = ((onset - downbeat) / float(position)) /\
-        ((nextDownbeat - onset) / float(division - position))
-    if ratio <= 0: print onset, downbeat, nextDownbeat
-  #return (level, abs_deviation, deviation, ratio)
-  return (level, abs_deviation, deviation, ratio)
+  depth = S.depth
+  if depth > 4:
+    depth = 4
+  #rule = pcfg.ruleType(S)
+  return (depth, len(S.children))
 
 def getLevels(obs):
   levels = {}

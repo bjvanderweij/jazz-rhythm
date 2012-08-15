@@ -13,23 +13,27 @@ def load():
     f = open('results/{0}'.format(files[choice]), 'rb')
     return pickle.load(f)
 
-def evaluate(nfolds=10, n=15, length=20, noise=False, save=True, collection='explicitswing'):
+def evaluate(nfolds=10, n=15, length=20, noise=False, flatPrior=None, p=None, save=True, collection='explicitswing', noAllowed=False):
   corpus = annotations.corpus(collection=collection)
   folds = getFolds(corpus, folds=nfolds)
   results = []
   i = 1
   allowed = treeconstraints.train(corpus)
+  if noAllowed:
+    allowed = None
   for trainset, testset in folds:
     print 'Fold {0}'.format(i)
     i += 1
     
     # Train a parser
+    expressionModel = expression.train(trainset)
+    rhythmModel = pcfg.train(trainset) 
     if noise:
-      parser = StochasticParser(trainset, n=n, expressionModel=expression.additive_noise(0.1))
-      #parser.beam = 0.01
-    else:
-      parser = StochasticParser(trainset, n=n, expressionModel=expression.train(trainset))
-      #parser.beam = 0.01
+      expressionModel=expression.additive_noise(0.1)
+    if flatPrior:
+      rhythmModel = pcfg.flat_prior(p=p)
+      #rhythmModel = pcfg.flat_prior(p=1.0)
+    parser = StochasticParser(trainset, n=n, expressionModel=expressionModel, rhythmModel=rhythmModel)
     parser.allowed = allowed
     # Get the first few bars from a piece
     tests, labels = getTests(testset, n=length)
@@ -48,11 +52,19 @@ def evaluate(nfolds=10, n=15, length=20, noise=False, save=True, collection='exp
         print 'Averages: precision {0} recall {1}.'.format(precision, recall)
         
   time = str(datetime.datetime.now())
-  type = 'expression'
+  exp = 'expression'
+  prior = 'pcfg'
   if noise:
-    type = 'additive_noise'
+    exp = 'noise'
+  if flatPrior:
+    prior = 'flat'
+    if p != None:
+      prior = 'flat_p={0}'.format(p)
+  extra = ''
+  if noAllowed:
+    extra = '_maxdepth'
   if save:
-    f = open('results/{4}_{0}_length={1}_n={2}_folds={3}'.format(time, length, n, nfolds, type), 'wb')
+    f = open('results/{0}_expression={4}_prior={5}_length={1}_n={2}_folds={3}{6}'.format(time, length, n, nfolds, exp, prior, extra), 'wb')
     pickle.dump(results, f)
   return results
 
@@ -98,6 +110,9 @@ def recall(parse, label):
     recall = tp/float(tp + fn)
   return recall
   
+def f_measure(results):
+  p, r = measure(results)
+  return 2*(p*r)/float(p+r)
 
 def getTests(testset, n=20):
   tests = []
