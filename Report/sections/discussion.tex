@@ -157,9 +157,9 @@ The down-/upbeat for divisions higher than two is calculated by averaging the be
 
 The question remains why the expression model is so noisy for triple divisions. It seems that the $\sigma$ parameter of roughly 0.7 cannot be caused only by variation in swing ratios. The exponential of 0.7 is approximately a ratio of 2, which seems unlikely to happen very often when performers are reasonably competent. After analysing the corpus, it was found that out of all 959 expression ratios at a level-one triple division, 81 had an expression ratio of higher than $\log(2)$ or lower than $\log(0.5)$. A few of those may have been caused by annotation errors but it seems that most of these are caused by the way the ratios are observed by the \textsc{observations} function.
 
-The \textsc{observations} function however, partially relies on expected onsets calculated by the combination functions. This process is convoluted and makes it hard to track down what causes the outlier expression ratios.
+The \textsc{observations} function however, partially relies on expected onsets calculated by the \textsc{beats} function. This process is convoluted and makes it hard to track down what causes the outlier expression ratios.
 
-It should also be noted that the level feature has an imperfection. In section \ref{sec:observations}, the \texttt{level} feature was defined as the depth of the hypothesis at which a expression ratio is observed. However the lowest level of a tree is not always the same level. Level one for example can be the quarter note level at some point in a performance and the eighth note level at another point in the same performance. 
+It should also be noted that the level feature has an imperfection. In section \ref{sec:likelihood}, the \texttt{level} feature was defined as the depth of the hypothesis at which a expression ratio is observed. However the lowest level of a tree is not always the same level. Level one for example can be the quarter note level at some point in a performance and the eighth note level at another point in the same performance. 
 
 
 \section{The Jazz Corpus}
