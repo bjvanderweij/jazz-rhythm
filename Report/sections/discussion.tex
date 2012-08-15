@@ -77,7 +77,7 @@ The gold-standard in figure \ref{fig:a_fine_romance:d} was chosen because we ass
 
 %As can be seen in table \ref{tab:rhythm}, given the constraints that we imposed on subdivision, the model has a limited number of parameters. % Picture of phase shifting a rhythm and its probabilities.
 
-A more thorough evaluation of our rhythm model would be to compare its performance to Temperley's hierarchical model, used in \citep{temperley2009unified}. We could for example exchange our prior for Temperley's and compare the parser's  performance on our corpus. We did not implement this comparison at present for two reasons: First, Temperley did not, as far as we know, specify how his hierarchical model generalises to triple divisions. Second, the hierarchical model is defined relative to the levels of a metrical grid. Levels in our model do not correspond trivially to levels in a metrical grid. 
+The best evaluation of our rhythm model would be to compare its performance to Temperley's hierarchical model, used in \citep{temperley2009unified}. We could for example exchange our prior for Temperley's and compare the parser's  performance on our corpus. We did not implement this comparison at present for two reasons: First, Temperley did not, as far as we know, specify how his hierarchical model generalises to triple divisions. Second, the hierarchical model is defined relative to the levels of a metrical grid. Levels in our model do not correspond trivially to levels in a metrical grid. 
 
 Although we cannot compare the PCFG prior to the hierarchical model directly, we can make some observations that show that the PCFG prior, even when trained on a jazz corpus, seems to reflect some notions of what \citet{temperley2010modeling} calls common-practice rhythm. 
 
@@ -112,7 +112,7 @@ The PCFG prior thus seems to be an adequate model of rhythm and our results show
 
 \section{The Expression Model}
 
-It could not be shown in this study that simple rhythmic expression can help analysing rhythms. However, it may be that our model simply is not adequate for this purpose. In this section the model will be discussed and some issues of the model will be linked to the low evaluation scores.
+It could not be shown in this study that simple rhythmic expression can help analysing rhythms. In this section the model will be discussed and some issues of the model will be linked to the low evaluation scores.
 
 A high amount of noise level-one triple divisions seems to be the biggest contribution to the low evaluation scores. The high value of the $\sigma$ parameter for level-one triple divisons, combined with a prior that assigns a high probability to the rule $R \rightarrow \bullet\; *\; \bullet$, divisions like in figure \ref{fig:discuss1:a} are likely to be classified as the division in figure \ref{fig:discuss1:b}. Because of the high $\sigma$ for triple divisions at level one, the incorrect analysis in \ref{fig:discuss1:b} is not penalised very much and the high prior probability of analysis in figure \ref{fig:discuss1:b} may make the parser prefer it to the analysis in figure \ref{fig:discuss1:a}. The additive noise expression model sets $\sigma$ to be 0.1 for all levels and divisions and penalises the interpretation \ref{fig:discuss1:b} of \ref{fig:discuss1:a} more severely.
 
@@ -164,7 +164,9 @@ It should also be noted that the level feature has an imperfection. In section \
 
 \section{The Jazz Corpus}
 
-Sometimes the parser produces interpretations that may have been more sensible to the listener than the gold-standard interpretation of a rhythm. An example of this is shown in figure \ref{fig:brazil}, which shows the rhythm of the first four measures of Chick Corea's Brazil. The gold-standard analysis claims that the first two beats are swung eighth-note upbeats. This is a very odd way for a piece to start. The parser makes the much more sensible suggestion that the second onset is actually a downbeat on the first beat of the second measure. The second onset is only a third of a quarter note away from the downbeat of the second measure so the parser's analysis is not very far off. 
+We have pointed out earlier that our jazz corpus contains melodies that were accompanied by metronomic tracks, resulting in very low deviation in expression ratios at higher levels. Extracting melodies from polyphonic tracks produced some other quirks.
+
+Occasionally, the parser produces interpretations that may have been more sensible to the listener than the gold-standard interpretation of a rhythm. An example of this is shown in figure \ref{fig:brazil}, which shows the rhythm of the first four measures of Chick Corea's Brazil. The gold-standard analysis claims that the first two beats are swung eighth-note upbeats. This is a very odd way for a piece to start. The parser makes the much more sensible suggestion that the second onset is actually a downbeat on the first beat of the second measure. The second onset is only a third of a quarter note away from the downbeat of the second measure so the parser's analysis is not very far off. 
 
 \begin{figure}
 \centering
@@ -185,7 +187,7 @@ Sometimes the parser produces interpretations that may have been more sensible t
 \label{fig:brazil}
 \end{figure}
 
-The reason why this performance oddly starts with two upbeats followed by a measure of silence is probably that it originally was accompanied by other instruments, in which case it would not be as unusual to start a melody like this. Since we are considering the melodies in isolation, we occasionally get melodies where it is, even to human listeners, not immediately clear where the downbeats are. The way the parser annotated this rhythm may well be the way that most listeners would interpret it. In any case, this seems to be a drawback of having a monophonic jazz corpus constructed from polyphonic MIDI files.
+The reason why this performance oddly starts with two upbeats followed by a measure of silence is probably that it originally was accompanied by other instruments, in which case it would not be as unusual to start a melody like this. Since we are considering the melodies in isolation, we occasionally get melodies where it is, even to human listeners, not immediately clear where the downbeats are. The way the parser annotated this rhythm may well be the way that most listeners would interpret it. In any case, the unconventional beginning of this melody seems to be a drawback of having a monophonic jazz corpus constructed from polyphonic MIDI files.
 
 \section{Rests}
 

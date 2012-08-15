@@ -118,7 +118,6 @@ There are two issues with the evaluation as it has been presented above. First, 
 
 The latter issue is remedied by keeping a list of parser decisions that have been accounted for. If the first onset in figure \ref{fig:phase_error:a} claims a downbeat at the half note level and a downbeat at the quarter note level, both of these claims are added to a list of claims. The second onset claims an upbeat at the quarter note level and a downbeat at the half note level. Since the downbeat at the half note level is already the list of claims it will be counted again.
 
-[Attention, references first paragraph]
 To reiterate the first paragraph of this section more concretely, we define the evaluation function \textsc{score}($R, R'$) which counts the number of claims that are shared by $R$ and $R'$ and divides that by the total number of claims in $R$. The precision is defined as the number of claims in $R$ that appear in the claims of $R^*$ as well, divided by the total number of claims in $R$, so:
 \begin{equation}
 \label{eq:precision}
