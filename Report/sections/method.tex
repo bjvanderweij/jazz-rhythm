@@ -117,6 +117,10 @@ where $R' \rightarrow S \in R$ refers to every rule expansion of some symbol $R$
 \section{The Expression model}
 \label{sec:likelihood}
 
+
+\subsection{Hypothesis representation}
+\label{sec:hypothesis_representation}
+
 \begin{figure}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
@@ -124,47 +128,111 @@ where $R' \rightarrow S \in R$ refers to every rule expansion of some symbol $R$
 \label{fig:smalltree}
 \end{figure}
 
-A subdivision tree represents a rhythmic structure, but it does not keep track of the onsets associated with the structure. In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. Therefore we will introduce a distinction between a subdivision tree or, rhythmic analysis $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$.
+A subdivision tree represents a rhythmic structure, but it does not keep track of the onsets associated with the structure. In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. Therefore we will introduce a distinction between a rhythmic analysis $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$. 
 
-A subdivision tree is essentially a syntax tree which, as any syntax tree, can be represented as a nested list. The tree in figure \ref{fig:smalltree} for example, can also be written as $((\bullet, \bullet), *)$. Hypotheses have a similar structure but instead of onset symbols $\bullet$, contain actual onset times at the leaf nodes. We refer to the child nodes of an hypothesis as $h_i$ where $i$ is the beat position of the node so that $h_0$ is the downbeat and $h_i$ where $i>0$ are the upbeats. A hypothesis is set to \textit{govern} an onset if it recursively contains that onset. The number of child nodes of a hypothesis corresponds to its subdivision. We will call the child nodes of a hypothesis its beats. Since our subdivision approach combines measures and groups of measures into metrical units, a beat can govern multiple measures.
+A subdivision tree is essentially a syntax tree, which, as any syntax tree, can be represented as a nested list. The tree in figure \ref{fig:smalltree} for example, can also be written as $((\bullet, \bullet), *)$. Hypotheses have a similar structure but also keep track of onsets on on the down- and upbeats. The 3-tuple below completely specifies a hypothesis.
+\begin{align}
+h = (H, B, O)\\ \notag
+H = [h_0, \cdots, h_d]\\ \notag
+B = [b_0, \cdots, b_d]\\ \notag
+O = [o_0, \cdots, o_d] \notag
+\end{align}
+where $d$ is the division of $h$, $H$ is a list of nested hypotheses and $B$ is a list of predicted down- and upbeats that will be constructed using the \textsc{combine} function introduced later in this section. $O$ is a list of actual onsets and may contain $*$ symbols when no onsets are present at some positions. Both $B$ and $O$ only contain onsets on the level of the hypothesis, that is, they contain the down- and upbeat(s) of the hypothesis and their length is always the same as the amount of units the hypothesis divides in. The predicted downbeat of an hypothesis is $B_0$. The predicted upbeats of an hypothesis are $B_i$ where $i > 0$. When a hypothesis governs only a single onset, both $B$ and $O$ may contain $*$ symbols.
 
-We will define three functions over hypotheses: \textsc{division}($h$), \textsc{onsets}($h$) and \textsc{beats}($h$). The \textsc{division}($h$) function counts the number of child nodes of hypothesis $h$, which can be two or three in our implementation. The \textsc{onsets}($h$) function returns a list with length \textsc{division}($h$) and which contains the onset time or a tie symbol for each beat in the hypothesis. The list of onsets is constructed by taking the downbeat of every child node. The downbeat of a hypothesis can be defined recursively:
+At this point it may be useful to point out that we can theoretically specify $B$ and $O$ to be functions of $h$ as their contents can be derived directly from a hypothesis. The hypothesis representation would then be identical to the rhythmic structure representation $R$ except for containing actual onset times at the leaf nodes instead of $\bullet$ symbols. However, given the complexity of the \textsc{combine} function we have chosen to represent the $B$ and $O$ lists explicitly on each node in the subdivision tree.
 
-\begin{equation}
-\textsc{downbeat}(h) = 
-\begin{cases}
-   \textsc{downbeat}(h_0) & \mbox{if $h$ has child nodes}\\
-   h & \mbox{otherwise}\\
-  \end{cases}
-\end{equation}
+A single onset is represented as a hypothesis with zero nested hypotheses: \[(\emptyset, [\textrm{On}_i], [\textrm{On}_i]),\] where $\textrm{On}_i$ is an absolute onset time at position $i$ in some performance $P$. Similarly, a single tie is represented as: \[(\emptyset, [*], [*]).\] Combining these hypotheses yields \[([(\emptyset, [*], *), (\emptyset, [\textrm{On}_i], \textrm{On}_i)], [*, On_i], [*, On_i]).\] See for example figure \ref{fig:complexonsets:a}. Both the list of predicted beats $B$ and the list of onsets $O$ contain the $*$ symbol here. When this hypothesis combines with other onsets, the \textsc{combine} function will fill in the estimated onsets of $*$ in the list of beats $B$, but not in the list of onsets $O$. When the \textsc{observations} function is introduced in section \ref{sec:observations} it will become clear why the list of onsets $O$ is needed.
 
-Finally, \textsc{beats}($h$) is a function that returns a list expected onsets of every beat in $h$. This list only contains tie symbols if the hypothesis governs a single onset, in which case, no predictions about other onset times can be made. Predicting onset times is a rather complicated process and we will leave it to appendix \ref{app:predicting} to describe our implementation of this function.
+Estimating the likelihood of a hypothesis is done in a two-step process. The first step is a bottom-up process where the down- and upbeats of every hypothesis is estimated. This process will be described in section \ref{sec:combination}. The second step is a top down process that generates, given some hypothesis, an observation vector containing feature vector/expression ratio pairs. This process is described in section \ref{sec:observations}. The likelihood of these observations given their feature vectors can be determined after the expression model is trained on a corpus. The training procedure is described in section \ref{sec:training}.
 
-If $h$ represents an onset or tie, \textsc{division}($h$) will return 0, \textsc{beats}($h$) and \textsc{onsets}($h$)
-will return either the onset time or the $*$ symbol.
-
-A top down process will now determine the observed expression ratios and feature vectors that we mentioned earlier. This will be done by a function called \textsc{observations}, which given some hypothesis, returns a vector of observations containing feature vector/expression ratio pairs. The likelihood of these observations given their feature vectors can be determined after we learn to map feature vectors to an expected expression ratio. This will be done by training our model on the jazz corpus as described in section \ref{sec:training}.
-
-The feature vector will contain two features. We have already observed in section \ref{sec:rejection} that the expression ratio reflects different concepts as different levels, therefore one feature will be the \texttt{level} at which the expression ratio was observed. We will use another feature reflecting the \texttt{division} of the metrical unit in which the expression ratio was observed. The resulting feature vector is:
+For every observation an expression ratio, a feature vector $\varphi$ will be generated. We have already observed in section \ref{sec:rejection} that the expression ratio reflects different concepts as different levels, therefore one feature we will be using is the \texttt{level} at which the expression ratio was observed. We will use another feature reflecting the \texttt{division} of the metrical unit in which the expression ratio was observed. The resulting feature vector is:
 \begin{equation}
 \label{eq:features}
 \varphi = [\texttt{level}, \texttt{division}].
 \end{equation}
-\texttt{level} is defined bottom-up, so level one is the deepest level of the tree. Level is not to be confused with depth, the highest level of a tree equals the root node which has the shallowest depth.
+\texttt{level} is defined bottom-up, so level one is the deepest level of the tree.
 
-For any hypothesis $h$, we can calculate the expression ratio given that we know the (estimated or actual) onset of the downbeat, $h_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one expression ratio per hypothesis. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The expression ratio for a hypothesis with division $d = \textsc{division}(h)$, onsets $O = \textsc{onsets}(h)$, predicted beats $B = \textsc{beats}(h)$, next downbeat $B_d$, beat onset $O_i$ is calculated in the following fashion:
+
+\subsection{Combination}
+\label{sec:combination}
+
+A hypothesis is said to \textit{govern} a set of onsets if the hypothesis recursively contains these onsets. The \textsc{combine} function cannot estimate down- and upbeats when of a hypothesis that only governs a single onset. Such hypotheses are treated as a \textit{complex onset}. The hypothesis in figure \ref{fig:complexonsets:a} for example is treated as an onset at relative position $0.5$, the hypothesis in figure \ref{fig:complexonsets:b} is treated as an onset with relative position $0.75$.
+
+\begin{figure}
+\centering
+\subfloat[complex onset: $0.5$]{
+\label{fig:complexonsets:a}
+\parbox{4cm}{\centering
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
+}
+}
+\subfloat[complex onset: $0.75$]{
+\label{fig:complexonsets:b}
+\parbox{4cm}{\centering
+\Tree
+[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] ] 
+}
+}
+\caption{Complex onsets (single-onset analyses).}
+\label{fig:complexonsets}
+\end{figure}
+
+The goal of the \textsc{combine} function is to get the best possible estimates of where the up and downbeats of a hypothesis are. The algorithm works roughly as follows. The input is a list $H$ containing two or three hypotheses. These will be the child nodes of the hypothesis that the combine function is building. The algorithm iterates through the list of hypotheses. If a hypothesis is an onset, the position of the onset and the absolute onset are added to \textit{onsets}. The position is a number between 0 and 2 or 0 and 3, depending on the number of hypotheses in $H$. If a hypothesis is a complex onset, its complex position, determined by the function \textsc{complexPostion}, and absolute onset are added to \textit{complexOnsets}. If a hypothesis suggests a downbeat, this downbeat and its position are added to \textit{onsets}.
+
+\begin{algorithm}[h!]
+\caption{Combine hypotheses}
+\label{alg:combination}
+\begin{algorithmic}
+\Function{combine}{$H$}
+	\State $d \leftarrow$ \Call{length}{$H$}
+	\State onsets $\leftarrow \emptyset$
+	\State complexOnsets $\leftarrow \emptyset$
+	\For{$i \leftarrow 0,d$}
+		\State $(H', B', O') \leftarrow H_i$
+		\If{$H' = \emptyset$ \textbf{and} $B \neq [*]$}
+			\State \textbf{append} ($i, H'_i$) \textbf{to} onsets
+		\Else
+			\If{$B'_0 \neq *$}
+				\State \textbf{append} $(i, B'_0)$ \textbf{to} onsets
+			\If{$O'_0 \neq *$}
+				\State \textbf{append} $(i, O'_0)$ \textbf{to} $O$
+			\EndIf
+			\Else
+				\State $p$, complexOnset $\leftarrow$ \Call{complexPosition}{$H'_i$}
+				\State \textbf{append} ($i + p$, complexOnset) \textbf{to} complexOnsets
+			\EndIf
+		\EndIf
+	\EndFor
+	\If{\Call{length}{onsets} $\leq 1$}
+		\State \textbf{append} complexOnsets \textbf{to} onsets
+	\EndIf
+	\State $B \leftarrow$ \Call{fill}{onsets, $d$}
+	\State \textbf{return} $(H, B, O)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Once the algorithm has iterated thought $H$, the algorithm checks whether there is an onset on the downbeat. If there is not, the \textsc{downbeat} function attempts to estimate the downbeat from the list of onsets. We assume that an interval based on one or more complex positions is less reliable than an interval based on intervals between downbeats. Only if \textit{onsets} contains less than two onsets, \textit{complexOnsets} is added to it. When the combined length of \textit{onsets} and \textit{complexOnsets} is 1, this hypothesis governs only one onset and the list of beats will only contain that onset and one or more ties. If the combined \textit{onsets} and \textit{complexOnsets} contains more than one onset, the \textsc{downbeat} function estimates downbeat from these onsets.
+
+In a practical implementation, every hypothesis should also keep track of the first onset before and after the hypothesis. This can be used later to restrict endlessly adding ties to the hypothesis.
+
+\subsection{Observing the expression ratio}
+\label{sec:observations}
+
+The combination process combines hypotheses makes sure that every hypothesis governing more than one note contains an estimated downbeat. This information is used by the \textsc{observations} function to transform a hypothesis $h$ to a list of observed expression ratios with feature vectors. As mentioned before, we define an the expression ratio to be the logarithmic ratio of the observed upbeat and downbeat length.
+
+For any hypothesis $h = (H, B, O)$, we can calculate the expression ratio given that we know the (estimated or actual) onset of the downbeat, $h_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one expression ratio per hypothesis. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The expression ratio for a hypothesis with division $d = \textsc{division}(h)$, onsets $O = \textsc{onsets}(h)$, predicted beats $B = \textsc{beats}(h)$, next downbeat $B_d$, beat onset $O_i$ is calculated in the following fashion:
 \begin{align}
 \label{eq:expression}
 \mbox{expression ratio} &= \log\left(\frac{(O_i - B_0) / i}{(B_d - O_i) / (d - i)}\right) & \text{for every $i$ where $i > 0$ and $O_i \neq *$.}
 \end{align}
 
-The \textsc{observations} function is used to derive downbeat and next downbeat estimates for any hypothesis that contains more than one onset and all the hypothesis recursively contained by $h$. This process has been designed with one intuition in mind: that downbeat intervals provide the most reliable information about where onsets are to be expected. 
+The \textsc{observations} function is used to derive downbeat and next downbeat estimates for any hypothesis that contains more than one onset and all the sub-hypotheses it recursively contains. The main intuition of this approach is that downbeat intervals provide the most reliable information about the local tempo. 
 
-The \textsc{observations} function is a top-down recursive function. It is initialised with a hypothesis $h$, the downbeat of $h$ and the onset of next downbeat. Since we have not yet observed the next downbeat for the root-node hypothesis, we can only calculate the expected onset of the next downbeat. So for a hypothesis $h$, the algorithm is initialised as follows: 
-\[\textsc{observations}(h, B_0, *, \textsc{division}(h) \times (B_1 - B_0)),\]
-where $B = \textsc{beats}(h)$, the second argument $B_0$, is the downbeat, the third argument $*$, is onset of the next downbeat (which we do not know) and the last argument is the expected onset of the next downbeat.
+The \textsc{observations} function is a top-down recursive function. It is initialised with a hypothesis $h$, the downbeat of $h$ and the next downbeat. Since we have not yet observed the next downbeat for the top-level hypothesis $h$, we simply set it to the division of $h$ times the inter-onset interval of the downbeat and the first upbeat of $h$ (given that $h$ governs more than one onset, the combination process already provided estimates for every beat in $B$). So for a hypothesis $h = (H, B, O)$, the algorithm is initialised as follows: $\textsc{observations}(h, B_0, *, \textsc{length}(H) \times (B_1 - B_0))$.
 
-The full \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the algorithm is to initialise the subdivision of the hypothesis $d$, the list of beats $B$ and list of onsets $O$. The estimated duration $l$ of the hypothesis can now be calculated as the onset of the next downbeat minus the onset of the downbeat. Finally, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set and the $*$ symbol is appended to the list of onsets.
+The \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the function is to initialise the estimated length $l$ as the onset of the next downbeat minus the onset of the downbeat. The division $d$ is initialised as the number of nested hypotheses (which is equivalent to the length of $H$, $B$ or $O$). Then, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set. Finally the $*$ symbol is appended to the list of onsets.
 
 Now the algorithm iterates through all every beat in the hypothesis (in this study there are can be no more than three beats in a hypothesis). For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression ratio is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression ratio is only calculated for upbeats that contain actual onsets. 
 
@@ -182,17 +250,16 @@ b_{\mathrm{up}} = b_{\mathrm{down}} + l/d.
 \end{equation}
 This estimate should be equivalent to the onset at position $i+1$. If there is an onset at position $i+1$, this onset is preferred to the actual onset.
 
-Finally, the recursive step of the algorithm calls \textsc{observations}($h_i, b_{\mathrm{down}}, b_{\mathrm{up}}$) for every nested hypothesis $h_i$ of $h$ where $0 \leq i < d$ and $\textsc{division}(h) > 0$.
+Finally, the recursive step of the algorithm calls \textsc{observations}($h', b_{\mathrm{down}}, b_{\mathrm{up}}$) for every nested hypothesis $h'$ of $h$. The algorithm stops and returns an empty set when $h$ contains no nested hypothesis, which means it represents an onset or tie.
 
 
 \begin{algorithm}[h!]
 \caption{Generate observations}
 \label{alg:observations}
 \begin{algorithmic}
-\Function{observations}{$h$, downbeat, nextDownbeat, expected}
-	\State $B \leftarrow$ \Call{beats}{$h$}
-	\State $O \leftarrow$ \Call{onsets}{$h$}
-	\State $d \leftarrow$ \Call{division}{$h$}
+\Function{observations}{$h$, downbeat, nextDownbeat}
+	\State $H, B, O \leftarrow h$
+	\State $d \leftarrow$ \Call{length}{$H$}
 	\State $l \leftarrow$ nextDownbeat - downbeat
 	\State $S \leftarrow \emptyset$
 	\State \textbf{append} * \textbf{to} $O$
@@ -202,18 +269,17 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h_i, b
 			\State $r \leftarrow$ \Call{expression\textunderscore ratio}{downbeat, nextDownbeat, $B_i$, $i$, $d$}
 			\State \textbf{append} ($\varphi$, r) \textbf{to} $S$
 		\EndIf	
-		\State $B' \leftarrow$ \Call{beats}{$h_i$}
-		\State $O' \leftarrow$ \Call{onsets}{$h_i$}
-		\If {\Call{division}{$h'$} $\neq 0$}
+		\State $H', B', O' \leftarrow H_i$
+		\If {$H' \neq \emptyset$}
 			\State $b_{\mathrm{down}} \leftarrow \mathrm{downbeat} + l * i/d$
 			\If {$B_i \neq *$}
 				\State $b_{\mathrm{down}} \leftarrow B_i$
 			\EndIf
 			\State $b_{\mathrm{up}} \leftarrow b_{\mathrm{down}} + l/d$
-			\If{$O_{i+1} \neq *$}
+			\If {$O_{i+1} \neq *$}
 				\State $b_{\mathrm{up}} \leftarrow O_{i+1}$
 			\EndIf
-			\State \textbf{append} \Call{observations}{$h_i, b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} $S$
+			\State \textbf{append} \Call{observations}{$(H', B', O'), b_{\mathrm{down}}, b_{\mathrm{up}}$} \textbf{to} $S$
 		\EndIf
 	\EndFor
 	\State \textbf{return} $S$
@@ -231,6 +297,7 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h_i, b
 
 
 %Introducing triple divisions introduces ambiguities between triple divisions or more complicated constructions of duple divisions (that are quite unlikely).
+
 
 \section{Data Preparation}
 \label{sec:corpus}
