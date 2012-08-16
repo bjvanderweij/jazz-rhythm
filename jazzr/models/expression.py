@@ -115,10 +115,6 @@ def observations(S, downbeat=None, est_nextDownbeat=None, nextDownbeat=None, lev
       obs += newobs
   return obs
 
-def f_measure(results):
-  p, r = measure(results)
-  return 2*(p*r)/float(p+r)
-
 def expressionRatio(downbeat, nextDownbeat, onset, position, division):
   if nextDownbeat - onset <= 0 or onset - downbeat <= 0:
     ratio = 9999.9
