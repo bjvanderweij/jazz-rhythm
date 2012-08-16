@@ -6,12 +6,12 @@ In this chapter, the complete framework will be described. Section \ref{sec:pars
 \section{Parsing Rhythms}
 \label{sec:parser}
 
-We assume that we can represent the performance $P$, of a rhythm as series of note onset times. 
+We represent the performance $P$ of a rhythm as series of note onset times. 
 \begin{equation}
 \label{eq:performance}
 P = [\mathrm{On}_0, \mathrm{On}_1, \cdots, \mathrm{On}_n]
 \end{equation}
-A rhythmic structure $R$ is a hierarchical representation of rhythm, corresponding to subdivision trees described in the previous chapter.
+A subdivision tree $R$ is a hierarchical representation of rhythmic structure.
 
 The approach presented here generates the most likely rhythmic structure $R$ underlying a performance $P$. During this process the parser considers all possible hypotheses of sub spans of $P$ and retains the most likely hypotheses, while rejecting the unlikely ones. We think this is computationally feasible because we assume that over a few notes, only a small number of hypotheses are worth considering. In this section we will first describe how structurally sound rhythmic analyses are generated. After that, we will outline a Bayesian model that defines how we determine whether a hypothesis is likely.
 
@@ -22,7 +22,7 @@ R &\rightarrow R\: R\: R\\ \notag
 R &\rightarrow \bullet\\ \notag
 R &\rightarrow * \notag
 \end{align}
-We will restrict ourselves to duple and triple subdivisions for this study..
+Every rhythmic structure, denoted by the $R$ symbol corresponds to some metrical duration. A rule expansion for some $R$ in the grammar above corresponds to subdividing the metrical duration of $R$ into the number of symbols the rule expands into. For this study, we will restrict ourselves to duple and triple subdivisions.
 
 The CKY parser only accepts grammars that are given in the so-called Chomsky normal form (CNF). That is, all rules should be of the form $A \rightarrow B, C$ or $A \rightarrow \alpha$, where $A$, $B$ and $C$ are non-terminal symbols and $\alpha$ is a terminal symbol. Converting the grammar above to CNF results in the following grammar:
 \begin{align}
@@ -34,7 +34,7 @@ R &\rightarrow \bullet\\ \notag
 R &\rightarrow * \notag
 \end{align}
 
-Two constraints are needed to prevent the parser from generating invalid rhythmical structures. These constraints are: (1) Any set of two or three metrical durations are not allowed to combine if the first one expands directly to an onset and the others do not recursively expand to an onset; (2) Metrical durations are not allowed to combine if none of them recursively contains an onset.
+Two constraints are necessary to prevent the parser from generating invalid rhythmical structures. These constraints are: (1) Any set of two or three metrical durations are not allowed to combine if the first one expands directly to an onset and the others do not recursively expand to an onset; (2) Metrical durations are not allowed to combine if none of them recursively contains an onset.
 
 \begin{figure}
 \centering
@@ -44,7 +44,7 @@ Two constraints are needed to prevent the parser from generating invalid rhythmi
 \Tree
 [ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$*$ ] ] ]
 }
-=
+$\mathlarger{\mathlarger{\mathlarger{\equiv}}}$
 \parbox{0.2\textwidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] ]
@@ -57,7 +57,7 @@ Two constraints are needed to prevent the parser from generating invalid rhythmi
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .$*$ ] ] [ .$\bullet$ ] ] 
 }
-=
+$\mathlarger{\mathlarger{\mathlarger{\equiv}}}$
 \parbox{0.2\textwidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
@@ -69,39 +69,37 @@ Two constraints are needed to prevent the parser from generating invalid rhythmi
 
 The first constraint prevents the parser from generating structures with an onset on the downbeat and a tie on the upbeat. An upbeat tied to a downbeat is redundant: If we tie an upbeat quarter note to a downbeat quarter note we get a half note and not two tied quarter notes. The second constraint prevents the parser from combining subdivision trees that do not contain onsets. Figure \ref{fig:constraints:a} illustrates the first constraint and figure \ref{fig:constraints:b} illustrates the second.
 
+Because we do not know how many $*$ symbols are present in the input, we had to modify the parser to also consider inputs with $*$ symbols added in places where it would satisfy the two constraints above. See appendix \ref{app:parser} for details.
 % Explanation of the chart parser?
 
-This completely defines the parser. At this point however, the parser simply generates all possible interpretations of an onset list of a certain length. The next sections will describe how a probabilistic model is used to reject unlikely interpretations and retain the likely ones.
+At this point, the parser would generates all possible interpretations of an onset list of a certain length, which is an infinite amount. The next sections will describe how a probabilistic model is used to reject unlikely interpretations and retain the likely ones.
 
 \section{Hypothesis Generation and Rejection}
 \label{sec:rejection}
 
-Subdivision trees generated by the parser can be seen as hypotheses about the rhythmic structure (some sub-span of) the performance. We will assume that the likelihood of an hypotheses given a set of performed onsets is determined by two factors: One is how well the analysis matches the observed onset times and another is likely the rhythm itself is. In other words, we want to find the \textit{posterior} probability $P(A|N)$, where $A$ is a rhythm, and $N$ is a list of note onsets. We can formulate this as a generative model where
+Subdivision trees generated by the parser can be seen as hypotheses about the rhythmic structure of (some sub-span of) the performance. In our Bayesian model, the likelihood of a hypotheses given a set of performed onsets is determined by two factors: how likely is it that the rhythmic structure generated the observed performance and how likely is the rhythmic structure itself. In other words, we want to find the \textit{posterior} probability $P(R|P)$, where $P$ is a performance, and $R$ is the rhythmic structure. We can formulate this as a generative model where
 \begin{equation}
 \label{eq:model}
 P(R|P) \propto P(P|R)P(R).
 \end{equation}
-
 The posterior probability $P(R|P)$ of a rhythm $R$ given a performance $P$ is proportional to $P(P|R)$, the probability that $R$ generated performance $P$ times $P(R)$, the probability of $R$ itself. $P(P|R)$ is called the \textit{likelihood} of $R$ given $P$ and $P(R)$ is called the \textit{prior} probability of $R$.
 
 Another way to refer to the prior and the likelihood is respectively as a rhythm model and an expression model. The rhythm model should reflect intuitions about rhythms, for example that long notes tend to fall on downbeats, that duple divisions are more likely than triple divisions, etcetera. The prior used in this study will be described in section \ref{sec:prior}
 
-The expression model defines how and to what extent we expect onsets to deviate from their idealised onsets. In our system, the expression model will be based on one observation, which we shall call the \textit{expression ratio}. The expression ratio is defined as the logarithmic ratio of downbeat length and upbeat length. In metronomic performances, we expect downbeats and upbeats to be of equal length and their ratio to one. In human performances however, it will reflect the stretching of beats. At low levels, the ratio reflects local expressive timing. A positive value at the quarter note level for example indicates that downbeats are played slightly longer than upbeats (for example as a means of emphasising them). At higher levels, above the bar-level, the expression ratio reflects global changes in tempo.
+The expression model defines how and to what extent we expect onsets to deviate from their expected onsets. In our system, the expression model will be based on one observation, which we shall call the \textit{expression ratio}. The expression ratio is defined as the logarithmic ratio of downbeat length and upbeat length. In metronomic performances, we expect downbeats and upbeats to be of equal length and their ratio to one. In human performances however, the expression ratio will be a measure of expressive timing. At low levels, the expression ratio reflects local expressive timing. A slightly stretched downbeat at the quarter note level for example, will produce an expression ratio slightly above zero. At higher levels the expression ratio reflects global changes in tempo. For example, slowing down gradually will result in expression ratios slightly below zero on higher levels.
 
 % So no tempo curves are needed
 
-Finally, the chart parser should only keep track of a limited number of hypotheses. This technique is called `beam search'. We will use this technique in two ways: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter. Second, after a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept.
+Finally, the chart parser should only keep track of a limited number of sensible hypotheses. We will restrict hypothesis maintained by the parser in two ways: First, the per-item likelihood of the hypothesis (see section \ref{sec:training}) should be higher than a certain threshold parameter. Second, after a cell has been filled with hypotheses by the parser (see appendix \ref{app:parser} for more details), hypotheses are ranked by their posterior probability and only the top-$n$ hypotheses are kept. This both of these techniques implement a technique called `beam search'. 
 
 Both the rhythm and the expression model will be trained on the corpus of annotated jazz performances that was constructed for this study and which will be described in detail in section \ref{sec:corpus}.
 
-\section{The Rhythm model}
+\section{The Rhythm Model}
 \label{sec:prior}
-
-The prior probability of an analysis $R$ should be an indication of how likely $R$ is a priori. Should we only use a hypothesis likelihood to assess the quality of our hypotheses, the parser would produce overly complicated analyses that try to fit the performance as close as possible. By using an rhythm model in parallel with an expression model, the parser will balance how well the analysis `fits' the performance and how likely the hypothesised rhythmic structure is by itself.
 
 Our rhythm model will be a probabilistic context-free grammar (PCFG). A PCFG is a context-free grammar extended with probabilities for every rewrite rule. The probability of a syntax tree, produced by a PCFG can be derived by taking the product of every rule that was applied to construct the tree. In linguistics, PCFGs do not always assign probabilities to rules expanding to terminal symbols (words) since there are too many of them. In our case however, there are only two terminal symbols so we can assign probabilities to rules expanding to onsets or ties as well.
 
-Note that there is only one non-terminal symbol in our grammar, namely $R$, so the probability of a rule expansion is given by
+Note that there is only one non-terminal symbol in our grammar, namely $R$, so the probability of a rule expansion is given by:
 \begin{equation}
 P(R \rightarrow S) = P(S) = \frac{\mathrm{count}(S)}{N},
 \end{equation}
@@ -111,25 +109,29 @@ The probability of a subdivision tree $R$ can be described as
 \begin{equation}
 P(R) = \prod_{R' \rightarrow S \in R} P(R' \rightarrow S).
 \end{equation}
-where $R' \rightarrow S \in R$ refers to every rule expansion of some symbol $R$ to a string of symbols $S$ that is recursively contained in $R$.
+where $R' \rightarrow S \in R$ refers to every rule expansion of some symbol $R'$ to a string of symbols $S$ that is recursively contained in $R$.
 
 
-\section{The Expression model}
+\section{The Expression Model}
 \label{sec:likelihood}
+
+This section will describe an expression model that represents expressive deviation as logarithmic ratios of downbeat and upbeat length. Section \ref{sec:training} will describe how this model is trained. Using different training methods, one model will be made `expression-aware' and the other will treat expression as noise.
+
 
 \begin{figure}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
-\caption{A rhythmic analysis, which can be represented as the nested list $((\bullet, \bullet), *)$.}
+\caption{A simple subdivision tree.}
 \label{fig:smalltree}
 \end{figure}
 
-A subdivision tree represents a rhythmic structure, but it does not keep track of the onsets associated with the structure. In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. Therefore we will introduce a distinction between a subdivision tree or, rhythmic analysis $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$.
+Before turning to how we observe expression ratios, we will describe how hypotheses are represented. Subsequently, we will introduce the features used to predict expression ratios and finally we will introduce the \textsc{observations} function, which returns a set of features and expression ratios for any hypothesis.
 
-A subdivision tree is essentially a syntax tree which, as any syntax tree, can be represented as a nested list. The tree in figure \ref{fig:smalltree} for example, can also be written as $((\bullet, \bullet), *)$. Hypotheses have a similar structure but instead of onset symbols $\bullet$, contain actual onset times at the leaf nodes. We refer to the child nodes of an hypothesis as $h_i$ where $i$ is the beat position of the node so that $h_0$ is the downbeat and $h_i$ where $i>0$ are the upbeats. A hypothesis is said to \textit{govern} an onset if it recursively contains that onset. The number of child nodes of a hypothesis corresponds to its subdivision. We will call the child nodes of a hypothesis its beats. Since our subdivision approach combines measures and groups of measures into metrical units, a beat can govern multiple measures.
+In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. A subdivision tree represents rhythmic structure, but it does not keep track of the onsets associated with the structure. Therefore we will introduce a distinction between a subdivision tree or, rhythmic structure $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$.
 
-We will define three functions over hypotheses: \textsc{division}($h$), \textsc{onsets}($h$) and \textsc{beats}($h$). The \textsc{division}($h$) function counts the number of child nodes of hypothesis $h$, which can be two or three in our implementation. The \textsc{onsets}($h$) function returns a list with length \textsc{division}($h$) and which contains the onset time or a tie symbol for each beat in the hypothesis. The list of onsets is constructed by taking the downbeat of every child node. The downbeat of a hypothesis can be defined recursively:
+A subdivision tree is a hierarchical structure that can be represented as a nested list. The tree in figure \ref{fig:smalltree} for example, can also be written as $((\bullet, \bullet), *)$. Hypotheses have a similar structure but instead of onset symbols $\bullet$, contain actual onset times at the leaf nodes. We refer to the child nodes of an hypothesis as $h_i$ where $i$ is the beat position of the node so that $h_0$ is the downbeat and $h_i$, where $i>0$, are the upbeats. A hypothesis is said to \textit{govern} an onset if it recursively contains that onset. The number of child nodes of a hypothesis corresponds to its subdivision. We will call the child nodes of a hypothesis its beats. Since subdivision trees can combine measures and groups of measures into metrical units, a beat can govern multiple measures.
 
+We will define three functions over hypotheses: \textsc{division}($h$), \textsc{onsets}($h$) and \textsc{beats}($h$). The \textsc{division}($h$) function counts the number of child nodes, or beats, of hypothesis $h$, which can be two or three in our implementation. The \textsc{onsets}($h$) function returns a list with length \textsc{division}($h$) which contains the onset time or a tie symbol for each beat in the hypothesis. The list of onsets is constructed by taking the downbeat of every child node. The downbeat of a hypothesis can be defined recursively:
 \begin{equation}
 \textsc{downbeat}(h) = 
 \begin{cases}
@@ -137,13 +139,14 @@ We will define three functions over hypotheses: \textsc{division}($h$), \textsc{
    h & \mbox{otherwise}\\
   \end{cases}
 \end{equation}
+The \textsc{onsets} function may return lists containing $*$ symbols if some beats of a hypothesis contain ties. For the tree in figure \ref{fig:smalltree} for example, the \textsc{onsets} function returns the onset of the downbeat and a tie.
 
-Finally, \textsc{beats}($h$) is a function that returns a list expected onsets of every beat in $h$. This list only contains tie symbols if the hypothesis governs a single onset, in which case, no predictions about other onset times can be made. Predicting onset times is a bottom-up process which we will leave to appendix \ref{app:predicting} to explain.
+Finally, \textsc{beats}($h$) is a function that returns a list of expected onsets of every beat in $h$ for all hypotheses that govern more than one onset. If $h$ governs a single onset, the \textsc{beats} and \textsc{onsets} functions are equivalent. Predicting onset times is a bottom-up process which we will leave to appendix \ref{app:predicting} to explain.
 
-If $h$ represents an onset or tie, \textsc{division}($h$) will return 0, \textsc{beats}($h$) and \textsc{onsets}($h$)
-will return either the onset time or the $*$ symbol.
+If $h$ is an onset or tie, \textsc{division}($h$) will return zero and \textsc{beats}($h$) and \textsc{onsets}($h$)
+will return $h$.
 
-A top down process will now determine the observed expression ratios and feature vectors that we mentioned earlier. This will be done by a function called \textsc{observations}, which given some hypothesis, returns a vector of observations containing feature vector/expression ratio pairs. The likelihood of these observations given their feature vectors can be determined after we learn to map feature vectors to an expected expression ratio. This will be done by training our model on the jazz corpus as described in section \ref{sec:training}.
+A top-down process will now determine the observed expression ratios and feature vectors that we mentioned earlier. This will be done by a function called \textsc{observations}, which, given some hypothesis, returns a vector of observations containing feature vector/expression ratio pairs. The likelihood of these observations given their feature vectors can be determined after we learn to map feature vectors to an expected expression ratio. This will be done by training our model on the jazz corpus as described in section \ref{sec:training}.
 
 The feature vector will contain two features. We have already observed in section \ref{sec:rejection} that the expression ratio reflects different concepts as different levels, therefore one feature will be the \texttt{level} at which the expression ratio was observed. We will use another feature reflecting the \texttt{division} of the metrical unit in which the expression ratio was observed. The resulting feature vector is:
 \begin{equation}
@@ -166,7 +169,7 @@ where $B = \textsc{beats}(h)$, the second argument $B_0$, is the downbeat, the t
 
 The full \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the algorithm is to initialise the subdivision of the hypothesis $d$, the list of beats $B$ and list of onsets $O$. The estimated duration $l$ of the hypothesis can now be calculated as the onset of the next downbeat minus the onset of the downbeat. Finally, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set and the $*$ symbol is appended to the list of onsets.
 
-Now the algorithm iterates through all every beat in the hypothesis (in this study there are can be no more than three beats in a hypothesis). For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression ratio is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression ratio is only calculated for upbeats that contain actual onsets. 
+Now the algorithm iterates through every beat in the hypothesis. For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression ratio is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression ratio is only calculated for upbeats that contain actual onsets. 
 
 For every beat position in $h$, the algorithm will calculate the downbeat and next downbeat for the nested hypothesis at that position, these values are stored in $b_{\mathrm{down}}$ and $b_{\mathrm{up}}$. 
 For some beat position $i$, where $0 < i < d$, $b_{\mathrm{down}}$ is estimated by
@@ -298,7 +301,7 @@ The manual annotation process resulted in lists of metrical onset times. Combine
 \label{fig:swing}
 \end{figure}
 
-The result of this process for Thelonious Monk's standard Blue Monk is shown in figure \ref{tab:annotation}. A full list of jazz standards in the corpus is given in appendix \ref{app:corpus}.
+The result of this process for Thelonious Monk's standard Blue Monk is shown in figure \ref{tab:annotation}. Combining pitch information with our subdivision trees allows us to generate scores. Note that our subdivision trees do not represent harmonic information, so even though this transcription should be in the key B-flat, the score does not contain a key signature. A full list of jazz standards in the corpus is given in appendix \ref{app:corpus}.
 
 \begin{figure}[h!]
 \begin{tabular}{|l|}
@@ -340,7 +343,7 @@ Score generated from the subdivision tree combined with pitch information. The b
 \section{Training}
 \label{sec:training}
 
-The model is trained using maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors, the resulting feature vector/parameter pairs $(\phi, p)$ are stored in a set S. Second, we train two parameter vectors, $\mu$ and $\sigma$ to contain the expected expression ratio $r$ and standard deviation of $r$ for every feature vector $\phi$ like so:
+The expression-aware model is trained using maximum likelihood estimation. First, for all items in the train set, the observed parameters are and their corresponding feature vectors, the resulting feature vector/parameter pairs $(\phi, p)$ are stored in a set S. Second, we train two parameter vectors, $\mu$ and $\sigma$ to contain the expected expression ratio $r$ and standard deviation of $r$ for every feature vector $\phi$ like so:
 \begin{align}
 \label{eq:training}
 \mu_\phi &= \frac{1}{|S|} \sum_{(p | (p, \phi) \in S))} p, \\ 
@@ -362,6 +365,8 @@ As mentioned in section \ref{sec:rejection}, a hypothesis is rejected if the per
 \end{equation}
 
 The beam parameter is set by taking the minimum value of the per-item likelihood of each subdivision tree in the train set. 
+
+Our alternative expression model treats expressive deviation as noise. Deviations from idealised onsets cause expression ratios to be non-zero. The alternative expression model assumes that expression ratios are normally distributed with a mean of zero. 
 
 \section{Implementation}
 \label{sec:implementation}

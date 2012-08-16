@@ -67,7 +67,7 @@ It was mentioned in section \ref{sec:evaluation} that our implementation of the 
 
 Our subdivision trees can only represent performances with a length, measured in whatever metrical unit, that is a power of two. If a performance is for example three bars long, the subdivision tree will represent a fourth bar as a tie. To make evaluation easier, the test performances are restricted to have lengths that are a power of two. This is done by selecting, given some preferred length, the leftmost nested subdivision tree that contains a number of onsets closest to the preferred length. We can find the subdivision tree in the labels of our corpus.
 
-We prepared three experiments which we tested on four different preferred lengths: 5, 10, 15 and 20. In the first experiment we used our PCFG rhythm model in combination with our expression model, the results are shown in table \ref{tab:results1}. In the second experiment, we used our own PCFG rhythm model combined with an expression model that treats non-zero expression ratios as noise with standard deviation of 0.1. The results of this experiment are shown in table \ref{tab:results2}. The final experiment served as a baseline: a rhythm prior that assigns the same probability to every rhythm was used in combination with the expression model that treats expression as noise. The results of the final experiment are shown in table \ref{tab:results3}.
+We prepared three experiments which we tested on four different preferred lengths: 5, 10, 15 and 20. In the first experiment we used our PCFG rhythm model in combination with our expression model, the results are shown in table \ref{tab:results1}. In the second experiment, we used our own PCFG rhythm model combined with the alternative expression model that treats non-zero expression ratios as noise with a standard deviation of 0.1. The results of this experiment are shown in table \ref{tab:results2}. The final experiment served as a baseline: a rhythm prior that assigns the same probability to every rhythm was used in combination with the expression model that treats expression as noise. The results of the final experiment are shown in table \ref{tab:results3}.
 
 
 \begin{table}
@@ -79,10 +79,14 @@ We prepared three experiments which we tested on four different preferred length
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
 \hline
 \hline
-5 & $0.533$ & $0.472$ & $0.500$\\
-10 & $0.451$ & $0.497$ & $0.472$\\
-15 & $0.516$ & $0.493$ & $0.504$\\
-20 & $0.524$ & $0.540$ & $0.532$\\
+%5 & $0.533$ & $0.472$ & $0.500$\\
+%10 & $0.451$ & $0.497$ & $0.472$\\
+%15 & $0.516$ & $0.493$ & $0.504$\\
+%20 & $0.524$ & $0.540$ & $0.532$\\
+5 & 0.486 & 0.464 & 0.475\\
+10 & 0.484 & 0.530 & 0.506\\
+15 & 0.517 & 0.568 & 0.541\\
+20 & 0.498 & 0.525 & 0.511\\
 \hline
 \end{tabular}
 \end{table}
@@ -96,10 +100,14 @@ We prepared three experiments which we tested on four different preferred length
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
 \hline
 \hline
-5 & $0.841$ & $0.765$ & $0.802$\\
-10 & $0.866$ & $0.831$ & $0.848$\\
-15 & $0.765$ & $0.750$ & $0.757$\\
-20 & $0.830$ & $0.816$ & $0.823$\\
+%5 & $0.841$ & $0.765$ & $0.802$\\
+%10 & $0.866$ & $0.831$ & $0.848$\\
+%15 & $0.765$ & $0.750$ & $0.757$\\
+%20 & $0.830$ & $0.816$ & $0.823$\\
+5 & 0.842 & 0.789 & 0.815\\
+10 & 0.718 & 0.692 & 0.705\\
+15 & 0.850 & 0.831 & 0.840\\
+20 & 0.682 & 0.696 & 0.689\\
 \hline
 \end{tabular}
 \end{table}
@@ -113,9 +121,14 @@ We prepared three experiments which we tested on four different preferred length
 \textbf{Preferred length} & \textbf{Precision} & \textbf{Recall} & \textbf{F-score}\\
 \hline
 \hline
-5 & 0.604 & 0.653 & 0.627\\
-10 & 0.692 & 0.745 & 0.718\\
-15 & 0.604 & 0.653 & 0.627\\
-20 & 0.513 & 0.584 & 0.546\\
+%5 & 0.604 & 0.653 & 0.627\\
+%10 & 0.692 & 0.745 & 0.718\\
+%15 & 0.604 & 0.653 & 0.627\\
+%20 & 0.513 & 0.584 & 0.546\\
+5 & 0.378 & 0.518 & 0.437\\
+10 & 0.410 & 0.55 & 0.470\\
+15 & 0.396 & 0.472 & 0.431\\
+20 & 0.389 & 0.471 & 0.426\\
+\hline
 \end{tabular}
 \end{table}

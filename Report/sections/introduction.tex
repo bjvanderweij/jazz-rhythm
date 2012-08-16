@@ -77,7 +77,7 @@ Temperley compares six different models intended to be sensitive to these regula
 
 Rhythmic structure in itself does not define the absolute timing of notes. The common way to relate a rhythmic structure to a performance is by assigning some real duration to a metrical unit. The amount of real time we assign to a metrical duration is usually called the \textit{tempo}. Given a tempo, a rhythmic structure can be converted to a set of \textit{idealised} onset times, also called \textit{metronomic} onset times. Onset times are the time at which a performer started playing a note, measured from the beginning of the performance.
 
-When humans perform a rhythm, they deviate from the idealised onset times in several ways. Unless a metronome is used, the tempo will usually fluctuate as the performance progresses. Much of this fluctuation is intentional and is referred to as \textit{musical expression}. Apart from global tempo changes humans deviate from idealised onsets locally as well, even when a metronome is used. 
+When humans perform a rhythm, they deviate from the idealised onset times in several ways. Unless a metronome is used, the tempo will usually fluctuate as the performance progresses. Much of this fluctuation is intentional and is referred to as \textit{musical expression}. Apart from global tempo changes, humans deviate from idealised onsets locally as well, even when a metronome is used. 
 
 In general, it is thought that, depending on the competence of the performer, some proportion of this local deviation, is noise but a large proportion of it seems to be systematic. A study by \citet{palmer1989mapping} suggested that global tempo changes are mostly guided by conscious intention. Local deviations in timing and loudness seemed to be partly unconscious and represented in the performers mind in abstracted form. Pianists were for example aware that they articulated certain beats but could not reliably tell whether they did so by playing them louder or by altering their timing. These findings suggest that it is to some extent not even possible for a human to perform rhythm without expression.
 
@@ -103,7 +103,7 @@ Another potential criticism of the models above is that they all include one or 
 
 In the next section, we will introduce a model that is completely tempo independent and has the potential to become sensitive to rhythmic structure-dependent local expression.
 
-\section{An Expression-Aware Subdivision-Based Rhythmic Parser}
+\section{A Subdivision-Based Rhythmic Parser}
 \label{sec:introducing}
 
 % Therefore we present our expression model the way it is presented
@@ -173,7 +173,7 @@ $\mathlarger{\mathlarger{\mathlarger{\propto}}}$
 \label{fig:ties}
 \end{figure}
 
-The approach presented in \citet{longuet1976perception} is a rule-based system that needs to be initialised with a tactus interval and some tolerance parameter which specifies the rate at which the tempo is allowed to fluctuate. Nowadays, computers are powerful enough to construct probabilistic models based on corpora and to consider a great number of possible structural interpretations of a performance at once. With this in mind, we will briefly introduce our system below before discussing it in detail in the next chapter.
+\citet{longuet1976perception} proposed a rule-based system that needs to be initialised with a tactus interval and some tolerance parameter which specifies the rate at which the beat duration, and indirectly tempo, is allowed to fluctuate. Nowadays, computers are powerful enough to construct probabilistic models based on corpora and to consider a great number of possible structural interpretations of a performance at once. With this in mind, we will briefly introduce our system below before discussing it in detail in the next chapter.
 
 We will boil down a performance of a rhythm to a list of onsets. We think onsets provide enough information to correctly identify rhythmic structure. Therefore, we will from now on talk about onsets rather than notes.
 
@@ -183,15 +183,15 @@ Our parser will be guided by a Bayesian model which allows us to define a the pr
 
 Similar to \cite{temperley2009unified}, we will use a rhythm model that is sensitive to common-practice notions about rhythm. However, instead of his hierarchical model, which is based on metrical grids, we will use a probabilistic context-free grammar (see section \ref{sec:prior}). This model follows naturally from our representation of rhythmic structure. In chapter \ref{sec:discussion}, we will evaluate how the PCFG prior compares to the hierarchical model.
 
-We have claimed that some expressive deviations may have some structure-related regularities. Emphasising beats can result in a slight stretching of the duration of the beat. Depending on the style of the music, some beats may be emphasised consistently. It is often said that downbeats are emphasised in many music styles. If this does indeed lead to stretching them, it will result in downbeats at levels near the leaf nodes of the tree to be slightly longer than upbeats. A tempo independent way to look at this is as the ratio of downbeat length and upbeat length. Our expression model will assume that the down-/upbeat length ratio can be estimated from a small feature set.
+We have claimed that some expressive deviations may have some structure-related regularities. Emphasising beats can result in a slight stretching of the duration of the beat. Depending on the style of the music, some beats may be emphasised consistently. It is often said that downbeats are emphasised in many music styles. If this does indeed lead to stretching them, it will result in downbeats at levels near the leaf nodes of the tree to be slightly longer than upbeats. A tempo independent way to look at this is as the ratio of downbeat length and upbeat length. Our expression model will assume that the down-/upbeat length ratio can be estimated from a small feature set. We will also present an alternative expression model that simply expects down-/upbeat ratios to be one-to-one and any deviation from this ratio is treated as noise.
 
-To train our rhythm and expression model, we need a corpus of monophonic performances annotated with subdivision trees. There are, as far as we know, very few corpora available where expressively performed music is annotated with metrical structure and there are no corpora where this structure is represented as subdivision trees. There is a publicly available corpus of classical piano music performances of very high quality, annotated with tempo and deviation information for every performed note \citep{hashida2008new}. There are similar corpora in existence, notably one containing performances of Chopin by Nikita Magaloff \citep{flossmann2010magaloff}, but these are not publicly available due to issues with copyright. 
+To train our rhythm and expression model, we need a corpus of monophonic performances annotated with subdivision trees. There are, as far as we know, very few corpora available where expressively performed music is annotated with metrical structure and there are no corpora where this structure is represented as subdivision trees. There is a publicly available corpus of classical piano music performances of very high quality, annotated with tempo and deviation information for every performed note \citep{hashida2008new}. There are similar corpora in existence, notably one relatively large corpus containing annotated performances of Chopin's works by Nikita Magaloff \citep{flossmann2010magaloff}, but these are not publicly available due to issues with copyright. 
 
 So although there is one freely available corpus, this corpus covers classical music. We think that we are more likely to find some form of regular expressive deviation in music that is generally performed at a relatively constant tempo. Jazz music seems to fit this requirement. As far as we know, there are no freely available corpora of jazz music annotated with rhythmic structure and therefore we endeavoured to create our own corpus.
 
 The corpus we constructed contains monophonic jazz melodies, performed by amateur musicians. The corpus was annotated with metrical onset times and subdivision trees were generated using a non-probabilistic version of our parser. This was possible because we could assume the onset times were metronomic.\footnote{Technically, the onsets are specified in metrical units and not metronomic units. However, since our parser is tempo-independent this does not matter.}
 
-We will evaluate the parser on the jazz corpus. Since we do not have enough data to keep a separate test set, we have to use cross-validation. This means that we are effectively testing on our development set.
+We will evaluate the parser on the jazz corpus. Since we do not have enough data to keep a separate test set, we have to use cross-validation. An implication is that we are effectively testing on our development set.
 %Representation: subdivision trees
 %Context free grammar, parser
 %Bayesian model: rhythm model, expression model
