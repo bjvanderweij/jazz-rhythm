@@ -3,7 +3,7 @@
 
 % Evaluation of the pcfg prior:
 % Show the pcfg model and how it prefers long notes on downbeats and how it penalises syncopation.
-First we will train the rhythm and expression model on the entire jazz corpus like we described in section \ref{sec:training} and analyse the results. Second, we will use 10-fold cross validation to evaluate the performance of the parser on the corpus. We will compare the expression model presented here to a expression model that treats expression as additive noise. That is, for any feature vector $\mu_\varphi$ is set to zero and $\sigma_\varphi$ is set to a small value.
+First, we will train the rhythm and expression model on the entire jazz corpus as we described in section \ref{sec:training} and analyse the results. Second, we will use 10-fold cross validation to evaluate the performance of the parser on the corpus. We will compare the expression model presented here to an expression model that treats expression as additive noise. That is, for any feature vector $\mu_\varphi$ is set to zero and $\sigma_\varphi$ is set to a small value.
 
 \section{Rhythm and Expression Model}
 
@@ -57,19 +57,13 @@ $[9, 2]$ & $0.0$ & $0.0$\\
 
 The expression model shows a slight stretching of downbeats in duple divided units at the lowest level. The values shown in \ref{tab:expression} are logarithmic ratios. Therefore, the average stretching of downbeats at level one can be found by taking the exponential: $\exp(7.926 x 10^{-2}) \approx 1.082$. 
 
-The small $\mu$ and $\sigma$ values at higher levels are a consequence of the way that the performers of our corpus recorded the melodies. As we have said earlier, the expression ratio reflects tempo changes at higher levels. The melodies in the jazz corpus were played along with some metronomic track so that the overall tempo does not change. This results in units that have almost equal length child-units at high levels.
+The small $\mu$ and $\sigma$ values at higher levels are a consequence of the way that the performers of our corpus recorded the melodies. As we have said earlier, the expression ratio reflects tempo changes at higher levels. The melodies in the jazz corpus were often played along with a metronomic accompaniment track so that the global tempo does not change. This results in near-zero expression ratios at high levels.
 
 \section{Performance on the Corpus}
 
-Since we do not have enough data to keep a separate test set, we will train the models on different training sets and evaluate them on small parts of the corpus left out of the training set. This process is known as cross validation. For $n$-fold cross validation, the the corpus is divided into $n$ equal parts, a training set is constructed from $n-1$ of these parts and a test set is constructed of one of these parts. This is done $n$ times and the parts sampled randomly from the corpus. When dividing into $n$ random sampled parts, performances are treated as whole units. Since there are twenty different performances in the corpus, using 10-fold cross validation results in training sets of eighteen performances that will be evaluated on test sets of two performances.
+We prepared three experiments which we tested on four different preferred lengths: 5, 10, 15 and 20 (see chapter \ref{sec:evaluation}). In the first experiment we used our PCFG rhythm model in combination with our expression model, the results are shown in table \ref{tab:results1}. In the second experiment, we used our own PCFG rhythm model combined with the alternative expression model that treats non-zero expression ratios as noise with a standard deviation of 0.1. The results of this experiment are shown in table \ref{tab:results2}. The final experiment served as a baseline: a rhythm prior that assigns the same probability to every rhythm was used in combination with the expression model that treats expression as noise. The results of the final experiment are shown in table \ref{tab:results3}.
 
-It was mentioned in section \ref{sec:evaluation} that our implementation of the parser is not computationally efficient enough to parse whole performances, therefore we will only consider the first few notes of each performance in the test set. 
-
-Our subdivision trees can only represent performances with a length, measured in whatever metrical unit, that is a power of two. If a performance is for example three bars long, the subdivision tree will represent a fourth bar as a tie. To make evaluation easier, the test performances are restricted to have lengths that are a power of two. This is done by selecting, given some preferred length, the leftmost nested subdivision tree that contains a number of onsets closest to the preferred length. We can find the subdivision tree in the labels of our corpus.
-
-We prepared three experiments which we tested on four different preferred lengths: 5, 10, 15 and 20. In the first experiment we used our PCFG rhythm model in combination with our expression model, the results are shown in table \ref{tab:results1}. In the second experiment, we used our own PCFG rhythm model combined with the alternative expression model that treats non-zero expression ratios as noise with a standard deviation of 0.1. The results of this experiment are shown in table \ref{tab:results2}. The final experiment served as a baseline: a rhythm prior that assigns the same probability to every rhythm was used in combination with the expression model that treats expression as noise. The results of the final experiment are shown in table \ref{tab:results3}.
-
-
+\pagebreak
 \begin{table}
 \centering
 \caption{Results for the expression model with the PCFG prior.}

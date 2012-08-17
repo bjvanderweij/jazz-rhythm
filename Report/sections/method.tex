@@ -72,7 +72,7 @@ The first constraint prevents the parser from generating structures with an onse
 Because we do not know how many $*$ symbols are present in the input, we had to modify the parser to also consider inputs with $*$ symbols added in places where it would satisfy the two constraints above. See appendix \ref{app:parser} for details.
 % Explanation of the chart parser?
 
-At this point, the parser would generates all possible interpretations of an onset list of a certain length, which is an infinite amount. The next sections will describe how a probabilistic model is used to reject unlikely interpretations and retain the likely ones.
+At this point, the parser generates all possible interpretations of an onset list of a certain length, which is an infinite amount. The next sections will describe how a probabilistic model is used to reject unlikely interpretations and retain the likely ones.
 
 \section{Hypothesis Generation and Rejection}
 \label{sec:rejection}
@@ -119,9 +119,23 @@ This section will describe an expression model that represents expressive deviat
 
 
 \begin{figure}
+\centering
+\subfloat[]{
+\parbox{0.3\linewidth}{
+\centering
+\label{fig:smalltree:a}
 \Tree
 [ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$\bullet$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
-\caption{A simple subdivision tree.}
+}
+}
+\subfloat[]{
+\parbox{0.3\linewidth}{
+\label{fig:smalltree:b}
+\Tree
+[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ]
+}
+}
+\caption{Two simple subdivision trees.}
 \label{fig:smalltree}
 \end{figure}
 
@@ -129,7 +143,7 @@ Before turning to how we observe expression ratios, we will describe how hypothe
 
 In order to be able to say anything about the likelihood of an analysis, we need to have information about the onsets it contains. A subdivision tree represents rhythmic structure, but it does not keep track of the onsets associated with the structure. Therefore we will introduce a distinction between a subdivision tree or, rhythmic structure $R$, produced by the grammar in (\ref{eq:grammar_cnf}) and a \textit{hypothesis} $h$.
 
-A subdivision tree is a hierarchical structure that can be represented as a nested list. The tree in figure \ref{fig:smalltree} for example, can also be written as $((\bullet, \bullet), *)$. Hypotheses have a similar structure but instead of onset symbols $\bullet$, contain actual onset times at the leaf nodes. We refer to the child nodes of an hypothesis as $h_i$ where $i$ is the beat position of the node so that $h_0$ is the downbeat and $h_i$, where $i>0$, are the upbeats. A hypothesis is said to \textit{govern} an onset if it recursively contains that onset. The number of child nodes of a hypothesis corresponds to its subdivision. We will call the child nodes of a hypothesis its beats. Since subdivision trees can combine measures and groups of measures into metrical units, a beat can govern multiple measures.
+A subdivision tree is a hierarchical structure that can be represented as a nested list. The tree in figure \ref{fig:smalltree:a} for example, can also be written as $((\bullet, \bullet), *)$ and the tree in figure \ref{fig:smalltree:b} as $((*, \bullet), *)$. Hypotheses have a similar structure but instead of onset symbols $\bullet$, contain actual onset times at the leaf nodes. We refer to the child nodes of an hypothesis as $h_i$ where $i$ is the beat position of the node so that $h_0$ is the downbeat and $h_i$, where $i>0$, are the upbeats. A hypothesis is said to \textit{govern} an onset if it recursively contains that onset. The number of child nodes of a hypothesis corresponds to its subdivision. We will call the child nodes of a hypothesis its beats. Since subdivision trees can combine measures and groups of measures into metrical units, a beat can govern multiple measures.
 
 We will define three functions over hypotheses: \textsc{division}($h$), \textsc{onsets}($h$) and \textsc{beats}($h$). The \textsc{division}($h$) function counts the number of child nodes, or beats, of hypothesis $h$, which can be two or three in our implementation. The \textsc{onsets}($h$) function returns a list with length \textsc{division}($h$) which contains the onset time or a tie symbol for each beat in the hypothesis. The list of onsets is constructed by taking the downbeat of every child node. The downbeat of a hypothesis can be defined recursively:
 \begin{equation}
@@ -139,11 +153,10 @@ We will define three functions over hypotheses: \textsc{division}($h$), \textsc{
    h & \mbox{otherwise}\\
   \end{cases}
 \end{equation}
-The \textsc{onsets} function may return lists containing $*$ symbols if some beats of a hypothesis contain ties. For the tree in figure \ref{fig:smalltree} for example, the \textsc{onsets} function returns the onset of the downbeat and a tie.
 
-Finally, \textsc{beats}($h$) is a function that returns a list of expected onsets of every beat in $h$ for all hypotheses that govern more than one onset. If $h$ governs a single onset, the \textsc{beats} and \textsc{onsets} functions are equivalent. Predicting onset times is a bottom-up process which we will leave to appendix \ref{app:predicting} to explain.
+Finally, \textsc{beats}($h$) is a function that returns a list of expected onsets of every beat in $h$ for all hypotheses that govern more than one onset. Predicting onset times is a bottom-up process which we will leave to appendix \ref{app:predicting} to explain. If $h$ governs a single onset, the \textsc{beats} and \textsc{onsets} functions are equivalent. For the tree in figure \ref{fig:smalltree:b} for example, both the \textsc{beats} and the \textsc{onsets} function return $[*, *]$. 
 
-If $h$ is an onset or tie, \textsc{division}($h$) will return zero and \textsc{beats}($h$) and \textsc{onsets}($h$)
+If $h$ is represents an onset or tie, \textsc{division}($h$) will return zero and \textsc{beats}($h$) and \textsc{onsets}($h$)
 will return $h$.
 
 A top-down process will now determine the observed expression ratios and feature vectors that we mentioned earlier. This will be done by a function called \textsc{observations}, which, given some hypothesis, returns a vector of observations containing feature vector/expression ratio pairs. The likelihood of these observations given their feature vectors can be determined after we learn to map feature vectors to an expected expression ratio. This will be done by training our model on the jazz corpus as described in section \ref{sec:training}.
@@ -153,9 +166,9 @@ The feature vector will contain two features. We have already observed in sectio
 \label{eq:features}
 \varphi = [\texttt{level}, \texttt{division}].
 \end{equation}
-\texttt{level} is defined bottom-up, so level one is the deepest level of the tree. Level is not to be confused with depth, the highest level of a tree equals the root node which has the shallowest depth.
+The \texttt{level} feature is defined bottom-up: level one is the deepest level of the tree. The \texttt{level} feature is not to be confused with depth: the highest level of a tree equals the root node, which has the shallowest depth.
 
-For any hypothesis $h$, we can calculate the expression ratio given that we know the (estimated or actual) onset of the downbeat, $h_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one expression ratio per hypothesis. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The expression ratio for a hypothesis with division $d = \textsc{division}(h)$, onsets $O = \textsc{onsets}(h)$, predicted beats $B = \textsc{beats}(h)$, next downbeat $B_d$, beat onset $O_i$ is calculated in the following fashion:
+For any hypothesis $h$ governing more than one onset, we can calculate the expression ratio given that we know the (estimated or actual) onset of the downbeat, $h_0$ and the (estimated or actual) next downbeat. Since a hypothesis can be divided into more than two units, there may be more than one expression ratio defined per hypothesis. We define the \textit{relative position} of a beat to be zero for the downbeat, one for the first upbeat and two for the second upbeat. The expression ratio for a hypothesis with division $d = \textsc{division}(h)$, onsets $O = \textsc{onsets}(h)$, predicted beats $B = \textsc{beats}(h)$, next downbeat $B_d$ and upbeat onset $O_i$ is calculated in the following fashion:
 \begin{align}
 \label{eq:expression}
 \mbox{expression ratio} &= \log\left(\frac{(O_i - B_0) / i}{(B_d - O_i) / (d - i)}\right) & \text{for every $i$ where $i > 0$ and $O_i \neq *$.}
@@ -165,25 +178,27 @@ The \textsc{observations} function is used to derive downbeat and next downbeat 
 
 The \textsc{observations} function is a top-down recursive function. It is initialised with a hypothesis $h$, the downbeat of $h$ and the onset of next downbeat. Since we have not yet observed the next downbeat for the root-node hypothesis, we can only calculate the expected onset of the next downbeat. So for a hypothesis $h$, the algorithm is initialised as follows: 
 \[\textsc{observations}(h, B_0, *, \textsc{division}(h) \times (B_1 - B_0)),\]
-where $B = \textsc{beats}(h)$, the second argument $B_0$, is the downbeat, the third argument $*$, is onset of the next downbeat (which we do not know) and the last argument is the expected onset of the next downbeat.
+where $B = \textsc{beats}(h)$, the second argument $B_0$, is the downbeat and the last argument is the expected onset of the next downbeat.
 
-The full \textsc{observations} function is given in algorithm \ref{alg:observations}. The first step of the algorithm is to initialise the subdivision of the hypothesis $d$, the list of beats $B$ and list of onsets $O$. The estimated duration $l$ of the hypothesis can now be calculated as the onset of the next downbeat minus the onset of the downbeat. Finally, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set and the $*$ symbol is appended to the list of onsets.
+The full \textsc{observations} function is given in algorithm \ref{alg:observations}. The rest of this section will consist of a step-by-step description of this algorithm.
+
+The algorithm starts with the initialisation of the subdivision of the hypothesis $d$, the list of beats $B$ and list of onsets $O$. The estimated duration $l$ of the hypothesis can now be calculated as the onset of the next downbeat minus the onset of the downbeat. Finally, the set of feature vector/expression ratio pairs $S$ is initialised as an empty set and the $*$ symbol is appended to the list of onsets.
 
 Now the algorithm iterates through every beat in the hypothesis. For every beat position $i$ where $i > 0$ and $O_i \neq *$ the expression ratio is calculated as in equation \ref{eq:expression}. The requirements $i > 0$ and $O_i \neq *$ ensure that the expression ratio is only calculated for upbeats that contain actual onsets. 
 
-For every beat position in $h$, the algorithm will calculate the downbeat and next downbeat for the nested hypothesis at that position, these values are stored in $b_{\mathrm{down}}$ and $b_{\mathrm{up}}$. 
+For every beat position in $h$, the algorithm will calculate the downbeat and next downbeat onset for the nested hypothesis at that position, these values are stored in $b_{\mathrm{down}}$ and $b_{\mathrm{up}}$. 
 For some beat position $i$, where $0 < i < d$, $b_{\mathrm{down}}$ is estimated by
 \begin{equation}
 \label{eq:beatonset}
 b_{\mathrm{down}} = \mathrm{downbeat} + l * i/d.
 \end{equation}
-If an onset has been estimated by the combination process, which indicated by $B_i \neq *$, this onset is used instead. Since the combination process will always have estimated onsets for $h$s governing more than one onset, equation \ref{eq:beatonset} is only used when $h$ governs a single onset.
+If an onset has been estimated by the \textsc{beats} function, which indicated by $B_i \neq *$, this onset is used instead. Since the combination process will always have estimated onsets for $h$s governing more than one onset, equation \ref{eq:beatonset} is only used when $h$ governs a single onset.
 
 Given $b_{\mathrm{down}}$ the position of the next downbeat, $b_{\mathrm{up}}$ is estimated by:
 \begin{equation}
 b_{\mathrm{up}} = b_{\mathrm{down}} + l/d.
 \end{equation}
-This estimate should be equivalent to the onset at position $i+1$. If there is an onset at position $i+1$, this onset is preferred to the actual onset.
+This estimate should be equivalent to the onset at position $i+1$. If there is an onset at position $i+1$, this onset is preferred to the estimated onset.
 
 Finally, the recursive step of the algorithm calls \textsc{observations}($h_i, b_{\mathrm{down}}, b_{\mathrm{up}}$) for every nested hypothesis $h_i$ of $h$ where $0 \leq i < d$ and $\textsc{division}(h) > 0$.
 
@@ -240,16 +255,16 @@ Finally, the recursive step of the algorithm calls \textsc{observations}($h_i, b
 
 To train the parser's rhythm model and expression model, a corpus of amateur jazz performances was prepared. The corpus contains jazz and latin standards that were scraped off the the web by \citet{Wild:10}. The performances are generally of good quality and are played in a relatively constant tempo. In its original form, the corpus was a set of multi-track MIDI files containing both tracks played by a human performer and tracks generated by a computer in metronomic time.
 
-MIDI files represent music as a list of note-on and note-off events, corresponding to key presses and key releases. Every event has the parameters pitch, velocity and delta-time. Delta-time specifies the time between this events and the last one, pitch is the pitch of the key that was pressed, velocity is the velocity with which the key was pressed or released.
+MIDI files represent music as a list of note-on and note-off events, corresponding to key presses and key releases. Every event has the parameters pitch, on-velocity, off-velocity and delta-time. Delta-time specifies the time between the current event and the last one, pitch is the pitch of the key-press the current event corresponds, on-velocity is the velocity with which the key corresponding to the current event was pressed and off-velocity the velocity with which it was released.
 
-%Our parser will be trained and evaluated on monophonic jazz melodies, played by a human performer. Monophonic tracks that were likely to be played by humans were filtered out automatically. This was done by assuming that tracks played by humans contained a lot of variation in onset velocity and in inter-onset intervals due to imperfect timing. From this subset of performed tracks, tracks containing melodies where selected by hand.
+Our parser will be trained and evaluated on monophonic jazz melodies, played by human performers. Monophonic tracks that were not likely to be played by humans were filtered out automatically. This was done by assuming that tracks played by humans contain a lot of variation in onset velocity and in inter-onset intervals caused by expression and motor noise. From this subset of performed tracks, tracks containing melodies were selected by hand.
 
-After the filtering process, 20 tracks were left containing unique performances of 12 different melodies. These MIDI files where converted to note lists of the following format:
+After the filtering process, 20 candidate-tracks were left containing unique performances of 12 different melodies. These MIDI files where converted to note lists of the following format:
 \begin{align*}
 N &= [n_0, n_1, \cdots, n_N],\\
 n_i &= (\mathrm{On}_i, \mathrm{Pitch}_i, \mathrm{Velocity}_i),
 \end{align*}
-where $N$ is a note list containing notes $n_0$ to $n_N$, $\mathrm{On}_i$, $\mathrm{Pitch}_i$ and $\mathrm{Velocity}_i$ is the onset time in micro seconds, pitch and velocity of the $i^{\mathrm{th}}$ note. A very simple annotation format was chosen: a list of metrical onsets, measured in quarter notes, with pointers to the corresponding notes in $N$. There are three types of annotations: an onset, a grace note and a rest. Although this study will ignore grace notes and rests, they are included for completeness and potential future use of the corpus.
+where $N$ is a note list containing notes $n_0$ to $n_N$, $\mathrm{On}_i$, $\mathrm{Pitch}_i$ and $\mathrm{Velocity}_i$ is the onset time in micro seconds, pitch and velocity of the $i^{\mathrm{th}}$ note. The following annotation format was chosen: a list of metrical onsets, measured in quarter notes, with pointers to the corresponding notes in $N$. There are three types of annotations: an onset, a grace note and a rest. Although this study will ignore grace notes and rests, they are included for completeness and potential future use of the corpus.
 
 An annotation $A$, corresponding to note list $N$ has the following format:
 \begin{align*}
@@ -258,46 +273,35 @@ a_j &= (\mathrm{Position}_j, \mathrm{Pointer}_j, \mathrm{Type}_j),
 \end{align*}
 where $\mathrm{Position}_j$ is a metrical position, measured in quarter notes, $\mathrm{Pointer}_j$ is a pointer that points to the index of the corresponding note in the note list and $\mathrm{Type}_j$ indicates whether this annotation is an onset, a grace note or a rest. Since rests are not included in the note list, their pointer is irrelevant and points to zero. 
 
-Some extra information is added to the annotation when it is stored. The annotation $A$ is stored in a 3-tuple $(T, t, A)$, where $t$ is the tempo in beats per minute and $T$ is the time signature. The time signature contains the number of beats per measure, or measure division $d$ and the number by which we have to divide 1 to get the units of those beats $u$, where $u$ can be any positive real number (although $u$ is almost always a power of 2). 
+Some extra information is added to the annotation when it is stored. The annotation $A$ is stored in a 3-tuple $(T, t, A)$, where $t$ is the tempo in beats per minute and $T$ is the time signature. The time signature contains the number of beats per measure, or measure division $d$ and a number $u$ by which we have to divide 1 to get the units of those beats, where $u$ can be any positive real number (although $u$ is almost always a power of 2). 
 \begin{equation*}
 T = (d, u)
 \end{equation*}
-This representation is identical to the musical representation of time signature. The information in the time signature combined with onsets measured in quarter notes can be used to derive the measure number of every onset in the annotation. To do so, quarter notes ($q$) are first converted to beats ($b$) as follows: $b = qu/4$. A position measured in beats can then be converted to a position measured in bars ($m$) like so: $m = b/d$
+This representation is identical to the musical representation of time signature. The information in the time signature combined with onsets measured in quarter notes can be used to derive the measure number of every onset in the annotation. To do so, the onset in quarter notes, $q$, is first converted to an onset in beats, $b$, as follows: $b = q\times u/4$. A position measured in beats can then be converted to a position measured in measures, $m$, like so: $m = b/d$
 
-Many performances in the corpus where played in `swing'. Although swing may refer to many intentional deviations from metronomic timing, a very common one is to play notes that are notated as eighth notes as eighth note triplets, the so-called `shuffle'. This is illustrated in figure \ref{fig:swing}. The score usually notates swung notes as in figure \ref{fig:swing:a}, whereas the notes are played as in figure \ref{fig:swing:b} and \ref{fig:swing:c}. Writing swung notes as in \ref{fig:swing:a} is just a notational convention, and often the scores contain instructions to play eighth notes as in figure \ref{fig:swing:b}.
+Many performances in the corpus were played in `swing'. Although swing may refer to many intentional expressive deviations, a very common one is to play notes that are notated as eighth notes as eighth note triplets, the so-called `shuffle'. This is illustrated in figure \ref{fig:swing}. The score usually notates swung notes as in figure \ref{fig:swing:a}, whereas the notes are played as in figure \ref{fig:swing:b}. Writing swung notes as in \ref{fig:swing:a} is just a notational convention, and often the scores contain instructions to play eighth notes as in figure \ref{fig:swing:b}.
 
-The manual annotation process resulted in lists of metrical onset times. Combined with the time signature and tempo information, the metrical onset times can be converted to any metrical unit and to metronomic onset times. Deriving te subdivision trees from this information was done semi-automatically. A simple parser with a flat prior and a likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand. A subdivision tree for the swing example is shown in figure \ref{fig:swing:c}. 
+The manual annotation process resulted in lists of metrical onset times. Combined with the time signature and tempo information, the metrical onset times can be converted to any metrical unit and to metronomic onset times. Deriving te subdivision trees from this information was done semi-automatically. A simple parser with a flat prior and a likelihood function that only allowed metronomic timing was used to generate parses for every item in the corpus. From these results correct parses where selected by hand.
 
 
 \begin{figure}
 \centering
-\subfloat[Rhythm notation]{
+\subfloat[Conventional notation.]{
 \label{fig:swing:a}
+\parbox{0.4\linewidth}{
 \centering
-\begin{tabular}{|c|}
-\hline
-\includegraphics[scale=0.3]{img/aint_misbehavin}\\
-\hline
-\end{tabular}
+\includegraphics[scale=0.3]{img/aint_misbehavin}
 }
-\\
-\subfloat[Annotation]{
+}
+\subfloat[Intended rhythm.]{
 \label{fig:swing:b}
+\parbox{0.4\linewidth}{
 \centering
-\begin{tabular}{|c|}
-\hline
-\includegraphics[scale=0.3]{img/aint_misbehavin_swung}\\
-\hline
-\end{tabular}
+\includegraphics[scale=0.29]{img/aint_misbehavin_swung}
 }
-\\
-\subfloat[Parsetree]{
-\label{fig:swing:c}
-\centering
-\Tree 
-[ .{$\frac{1}{1}$} [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ]
 }
-\caption{Swung notes.}
+
+\caption{Notation of swung notes.}
 \label{fig:swing}
 \end{figure}
 
@@ -371,33 +375,26 @@ Our alternative expression model treats expressive deviation as noise. Deviation
 \section{Implementation}
 \label{sec:implementation}
 
-To make the parser computationally tractable, a few optimisations were needed. It was already mentioned that the parser uses a beam parameter to reject unlikely hypotheses. In addition to that a few extra measures had to be taken.
+To make the parser computationally tractable, a few optimisations were necessary. It was already mentioned that the parser uses a beam parameter to reject unlikely hypotheses. In addition to that a few extra measures had to be taken.
 
-First of all, the \textsc{observations} function returns no parameters for hypotheses containing a single onset (complex onsets). Their probability is always one and theoretically ties could be added endlessly. To restrict this the parser maintains a small list of allowed single note analyses. This list is compiled by taking all single-note analyses found in the labelled corpus.
+First of all, the \textsc{observations} function returns no parameters for hypotheses containing a single onset (complex onsets). Their likelihood is therefore always one and theoretically ties could be added endlessly. Since single-note analyses deeper than a few levels rarely occur, single note hypotheses were allowed to have a maximum depth of five levels.
 
-Second of all, the corpus contains only 4/4 time signatures, therefore triple divisions are allowed only at note level. All allowed triple divisions are shown in figure \ref{fig:triples}. 
-
-\begin{figure}
-$\bullet$
-\Tree
-[ .{$\frac{1}{1}$} [ .$*$ ] [ .$\bullet$ ] ] 
-\Tree
-[ .{$\frac{1}{1}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] 
-\Tree
-[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .$*$ ] [ .$\bullet$ ] ] ] 
-\Tree
-[ .{$\frac{1}{1}$} [ .$*$ ] [ .{$\frac{1}{2}$} [ .{$\frac{1}{4}$} [ .$*$ ] [ .$\bullet$ ] ] [ .$*$ ] ] ] 
-\caption{Some of the allowed single-note analyses.}
-\label{fig:singlenotes}
-\end{figure}
+Second of all, since the corpus contains only 4/4 time signatures, triple divisions are restricted to note level. And of those triple divisions, only the triple divisions shown in figure \ref{fig:triples} are allowed.
 
 \begin{figure}
+\centering
+\parbox{0.2\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .$*$ ] [ .$*$ ] [ .$\bullet$ ] ] 
+}
+\parbox{0.2\linewidth}{
 \Tree
 [ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$*$ ] [ .$\bullet$ ] ]
+}
+\parbox{0.2\linewidth}{
 \Tree 
 [ .{$\frac{1}{1}$} [ .$\bullet$ ] [ .$\bullet$ ] [ .$\bullet$ ] ]
+}
 \caption{Allowed triple divisions.}
 \label{fig:triples}
 \end{figure}

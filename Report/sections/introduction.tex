@@ -3,46 +3,46 @@
 
 The work in this thesis is concerned with the analysis of the rhythmic structure in performances of music. We will study rhythmic structure in isolation of other structures that may be present in the music like melody or harmony.
 
-This chapter will introduce concepts used throughout this thesis and discuss related studies. First, rhythmic structure is introduced. Then in section \ref{sec:performances}, structure will be related to performance and finally in section \ref{sec:introducing} the approach presented in this thesis will be introduced.
+This chapter will introduce concepts used throughout this thesis and discuss related studies. First, rhythmic structure is introduced. Then in section \ref{sec:performances}, structure will be related to performance and finally, in section \ref{sec:introducing}, the approach presented in this thesis will be introduced.
 
 The rest of this thesis is structured as follows: In chapter \ref{sec:method}, our approach will be described in detail. Chapter \ref{sec:method} will also introduce the annotated jazz corpus that was produced for this thesis. In chapter \ref{sec:evaluation}, we will describe how we intend to evaluate our system. Then in chapter \ref{sec:results} the system will be evaluated on the jazz corpus. Chapter \ref{sec:discussion} will discuss to what extent the system was successful based on the results and improvements will be suggested. Finally, chapter \ref{sec:conclusion} will present the conclusions of this thesis.
 
 \section{Rhythmic Structure}
 \label{sec:structure}
 
-In most Western music traditions, a rhythm is constructed of notes and rests with some metrical duration. A note tells the performer to play some pitch for the duration of the note, a rest indicates a silence for the duration of the rest. A metrical duration can be subdivided into a prime number of beats. The first of these beats is called the \textit{downbeat}, the rest are called \textit{upbeats}.
+In most Western music traditions, a rhythm is constructed of notes and rests with some metrical duration. A note tells the performer to play some pitch for the duration of the note, while a rest indicates a silence for the duration of the rest. A metrical duration can be subdivided into a prime number of beats. The first of these beats is called the \textit{downbeat}, the rest are called \textit{upbeats}.
 
 In the so-called staff notation, metrical units have been given names and durations are specified as subdivisions of the duration of what is called a whole note: half notes or rests, quarter notes or rests, eighth notes or rests, etcetera. Their notation is shown in figure \ref{fig:notation}. Apart from these duple divisions, triple, quintuple and any other prime number divisions are allowed as well. These divisions are called tuplets. Duple and triple divisions are by far the most common in Western music.
 
 \begin{figure}
 \centering
 \begin{tabular}{lllll}
-\parbox{0.15\linewidth}{
+\parbox{0.1\linewidth}{
 \centering
-\includegraphics[scale=0.5]{img/whole_note}
+\includegraphics[scale=0.3]{img/whole_note}
 }
 &
-\parbox{0.15\linewidth}{
+\parbox{0.1\linewidth}{
 \centering
-\includegraphics[scale=0.5]{img/half_note}
+\includegraphics[scale=0.3]{img/half_note}
 }
 &
-\parbox{0.15\linewidth}{
+\parbox{0.1\linewidth}{
 \centering
-\includegraphics[scale=0.5]{img/quarter_note}
+\includegraphics[scale=0.3]{img/quarter_note}
 }
 &
-\parbox{0.15\linewidth}{
+\parbox{0.1\linewidth}{
 \centering
-\includegraphics[scale=0.5]{img/eighth_note}
+\includegraphics[scale=0.3]{img/eighth_note}
 }
 &
-\parbox{0.15\linewidth}{
+\parbox{0.1\linewidth}{
 \centering
-\includegraphics[scale=0.5]{img/meter}
+\includegraphics[scale=0.3]{img/meter}
 }
 \\
-A whole note. & A half note. & A quarter note. & An eighth note & A 4/4 time signature\\
+Whole note. & Half note. & Quarter note. & Eighth note & 4/4 time signature\\
 
 \end{tabular}
 \caption{Some music notation conventions.}
@@ -51,9 +51,9 @@ A whole note. & A half note. & A quarter note. & An eighth note & A 4/4 time sig
 
 Metrical durations are grouped together in units called bars or measures. A \textit{time signature} specifies how a bar is subdivided into metrical units. The time signature consists of two numbers written above each other. A 4/4 time signature is shown on the far right in figure \ref{fig:notation}. The top number specifies the number of beats per measure, the bottom number specifies the units of those beats. The time signature is sometimes called meter.
 
-Staff music notation is one of the most widespread representations of rhythmic structure. In the field of rhythm analysis, another structure is popular, called a \textit{metrical grid}, originally introduced by \citet{lerdahl1983generative} in their Generative Theory of Tonal Music. A metrical grid is a representation that contains several levels. The lowest level corresponds to the smallest subdivision and the highest level corresponds to a bar. Going down one level corresponds to a subdivision. A metrical grid representing a 3/4 time signature is shown in figure \ref{fig:grid}. Bars are separated using a vertical line, $\bullet$ symbols indicate the downbeats of each level. Level three for example contains one downbeat per bar. Level three is subdivided into three level-two downbeats, the second and third of which is a level-three upbeat. Every level-two unit is subdivided into two level-one downbeats, the second of which is a level-two upbeat. The time signature specifies that a bar is divided into three quarter notes, so level two corresponds to quarter notes in this case.
+Staff music notation is one of the most widespread representations of rhythmic structure. In the field of rhythm analysis, another structure is popular, called a \textit{metrical grid}, originally introduced by \citet{lerdahl1983generative} in their Generative Theory of Tonal Music. A metrical grid is a representation that contains several levels. The lowest level corresponds to the smallest subdivision and the highest level corresponds to a bar. Going down one level corresponds to a subdivision. A metrical grid representing a 3/4 time signature is shown in figure \ref{fig:grid}. Bars are separated using a vertical line, $\bullet$ symbols indicate the downbeats of each level. Level three, for example, contains one downbeat per bar. Level three is subdivided into three level-two downbeats, the second and third of which is a level-three upbeat. Every level-two unit is subdivided into two level-one downbeats, the second of which is a level-two upbeat. The time signature specifies that a bar is divided into three quarter notes, so level two corresponds to quarter notes in this case.
 
-\begin{figure}[b]
+\begin{figure}[t]
 \centering
 \hspace{2in}
 \setlength{\extrarowheight}{-10.5pt}
@@ -81,7 +81,7 @@ When humans perform a rhythm, they deviate from the idealised onset times in sev
 
 In general, it is thought that, depending on the competence of the performer, some proportion of this local deviation, is noise but a large proportion of it seems to be systematic. A study by \citet{palmer1989mapping} suggested that global tempo changes are mostly guided by conscious intention. Local deviations in timing and loudness seemed to be partly unconscious and represented in the performers mind in abstracted form. Pianists were for example aware that they articulated certain beats but could not reliably tell whether they did so by playing them louder or by altering their timing. These findings suggest that it is to some extent not even possible for a human to perform rhythm without expression.
 
-It seems thus that whereas global tempo changes may be guided by conscious intentions of phrasing, local expression may be partially unconscious and unavoidable. Another study has shown that there is some regularity in local expression that is linked to rhythmic structure \citep{bengtsson1983analysis}. For example in Vietnamese waltzes, which have almost exclusively a 3/4 or 6/8 meter, it is observed that there is a consistent lengthening of the first upbeat at quarter note level.
+It seems that while global tempo changes may be guided by conscious intentions of phrasing, local expression may be partially unconscious and unavoidable. Another study has shown that there is some regularity in local expression that is linked to rhythmic structure \citep{bengtsson1983analysis}. For example in Vietnamese waltzes, which have almost exclusively a 3/4 or 6/8 meter, it is observed that there is a consistent lengthening of the first upbeat at quarter note level.
 
 Although a performance deviates from the idealised onsets given by the structure and tempo, human listeners are often able to perceive the rhythmic structure in a performance and multiple listeners tend to be quite consistent in their structural interpretations of a performance. In fact, the studies mentioned earlier suggest that deviations from idealised onsets are crucial to perception of structure in rhythm.
 
@@ -179,7 +179,7 @@ We will boil down a performance of a rhythm to a list of onsets. We think onsets
 
 Subdivision trees representing valid rhythmic structures can be described in a context-free grammar (CFG). An algorithm that determines the hierarchical structure of an input given some CFG is called a parser. We will present a CFG and a parser that constructs hierarchical structures like in figure \ref{fig:subdivision:a} from performances. Our parser will be some variant of a class of efficient parsing algorithms called chart-parsers.
 
-Our parser will be guided by a Bayesian model which allows us to define a the probability of a rhythm given a performance as the probability of the rhythm itself, described by a \textit{rhythm model} times the probability that this rhythm generated the observed performance, described by an \textit{expression model}.
+Our parser will be guided by a Bayesian model which allows us to define the probability of a rhythm given a performance as the probability of the rhythm itself, described by a \textit{rhythm model} times the probability that this rhythm generated the observed performance, described by an \textit{expression model}.
 
 Similar to \cite{temperley2009unified}, we will use a rhythm model that is sensitive to common-practice notions about rhythm. However, instead of his hierarchical model, which is based on metrical grids, we will use a probabilistic context-free grammar (see section \ref{sec:prior}). This model follows naturally from our representation of rhythmic structure. In chapter \ref{sec:discussion}, we will evaluate how the PCFG prior compares to the hierarchical model.
 
