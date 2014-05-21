@@ -18,10 +18,10 @@ class MidiOutStreamBase:
     """
 
     def __init__(self):
-        
-        # the time is rather global, so it needs to be stored 
-        # here. Otherwise there would be no really simple way to 
-        # calculate it. The alternative would be to have each event 
+
+        # the time is rather global, so it needs to be stored
+        # here. Otherwise there would be no really simple way to
+        # calculate it. The alternative would be to have each event
         # handler do it. That sucks even worse!
         self._absolute_time = 0
         self._relative_time = 0
@@ -31,7 +31,7 @@ class MidiOutStreamBase:
 
     def update_time(self, new_time=0, relative=1):
         """
-        Updates the time, if relative is true, new_time is relative, 
+        Updates the time, if relative is true, new_time is relative,
         else it's absolute.
         """
         if relative:
@@ -50,16 +50,16 @@ class MidiOutStreamBase:
         return self._absolute_time
 
     # track handling event handlers
-    
+
     def set_current_track(self, new_track):
         "Sets the current track number"
         self._current_track = new_track
-    
+
     def get_current_track(self):
         "Returns the current track number"
         return self._current_track
-    
-    
+
+
     #####################
     ## Midi events
 
@@ -86,7 +86,7 @@ class MidiOutStreamBase:
 
     #########################
     # header does not really belong here. But anyhoo!!!
-    
+
     def header(self, format, nTracks, division):
 
         """
@@ -118,7 +118,7 @@ class MidiOutStreamBase:
 
 
     def meta_event(self, meta_type, data, time):
-        
+
         """The default event handler for meta_events"""
         pass
 
@@ -131,5 +131,3 @@ if __name__ == '__main__':
     midiOut.update_time(0,0)
     midiOut.note_on(0, 63, 127)
     midiOut.note_off(0, 63, 127)
-
-    

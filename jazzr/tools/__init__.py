@@ -9,16 +9,16 @@ class Fraction(object):
     """
     Stores a rational fraction as a numerator and denominator.
     Fractions can be output as strings and also read in from strings
-    (use Fraction(string=<string>), or just Fraction(<string>)). 
-    
+    (use Fraction(string=<string>), or just Fraction(<string>)).
+
     The format used is "i", where i
     is an integer if the fraction is an exact integer, or "i n/d", where
     i is the integer part, n the numerator and d the denominator.
-    
+
     """
     def __init__(self, numerator=0, denominator=1, string=None):
         self._denominator = 1
-        
+
         self.numerator = numerator
         self.denominator = denominator
         if isinstance(numerator, str):
@@ -68,7 +68,7 @@ class Fraction(object):
             if neg:
                 # There was a - at the beginning, so negate the whole thing
                 self.numerator = -self.numerator
-    
+
     def _get_denominator(self):
         return self._denominator
     def _set_denominator(self, val):
@@ -77,19 +77,19 @@ class Fraction(object):
                 "to zero"
         self._denominator = val
     denominator = property(_get_denominator, _set_denominator)
-        
+
     def simplify(self):
         # Find the highest common factor of the num and denom
         hcf = euclid(self.numerator, self.denominator)
         if hcf != 0:
             self.numerator /= hcf
             self.denominator /= hcf
-    
+
     def simplified(self):
         """
-        Returns a simplified version of this fraction without modifying 
+        Returns a simplified version of this fraction without modifying
         the instance.
-        
+
         """
         # Find the highest common factor of the num and denom
         hcf = euclid(self.numerator, self.denominator)
@@ -100,12 +100,12 @@ class Fraction(object):
             numerator = self.numerator / hcf
             denominator = self.denominator / hcf
         return Fraction(numerator, denominator)
-    
+
     def reciprocal(self):
         if self.numerator == 0:
             raise ZeroDivisionError, "tried to take reciprocal of 0"
         return Fraction(self.denominator, self.numerator)
-    
+
     def __str__(self):
         if self.denominator == 1:
             return "%d" % self.numerator
@@ -115,9 +115,9 @@ class Fraction(object):
             return "%d %d/%d" % (self.numerator/self.denominator, \
                                  self.numerator % self.denominator, \
                                  self.denominator)
-                                 
+
     __repr__ = __str__
-    
+
     def to_latex(self):
         if self.denominator == 1:
             return "%d" % self.numerator
@@ -125,9 +125,9 @@ class Fraction(object):
             return "%d \\frac{%d}{%d}" % (self.numerator/self.denominator, \
                                  self.numerator % self.denominator, \
                                  self.denominator)
-    
+
     ####### Operator overloading #######
-    
+
     def __add__(self, other):
         if type(other) == int or type(other) == long:
             result = Fraction(self.numerator + other*self.denominator, self.denominator)
@@ -141,23 +141,23 @@ class Fraction(object):
             raise TypeError, "unsupported operand type for - with Fraction: %s" % type(other)
         result.simplify()
         return result
-    
+
     # For backwards compatibility...
     plus = __add__
-    
+
     def __radd__(self, other):
         # Addition works the same both ways
         return self + other
-    
+
     def __neg__(self):
         return Fraction(-self.numerator, self.denominator)
-        
+
     def __sub__(self, other):
         return self + (-other)
-    
+
     def __rsub__(self, other):
         return (-self) + other
-        
+
     def __mul__(self, other):
         if type(other) == int or type(other) == long:
             result = Fraction(self.numerator*other, self.denominator)
@@ -169,11 +169,11 @@ class Fraction(object):
             raise TypeError, "unsupported operand type for * with Fraction: %s" % type(other)
         result.simplify()
         return result
-    
+
     def __rmul__(self, other):
         # Multiplication works the same both ways
         return self * other
-        
+
     def __div__(self, other):
         if type(other) == int or type(other) == long:
             result = Fraction(self.numerator, self.denominator*other)
@@ -185,31 +185,31 @@ class Fraction(object):
             raise TypeError, "unsupported operand type for / with Fraction: %s" % type(other)
         result.simplify()
         return result
-    
+
     def __rdiv__(self, other):
         return self.reciprocal() * other
-        
+
     def __float__(self):
         return float(self.numerator) / self.denominator
-        
+
     def __int__(self):
         return self.numerator / self.denominator
-        
+
     def __long__(self):
         return long(self.numerator) / long(self.denominator)
-        
+
     #####################################
-    
+
     def __cmp__(self, other):
         if other is None:
             return 1
-        
+
         if type(other) == int:
             other = Fraction(other)
-            
+
         if type(other) == float:
             return cmp(float(self), other)
-        
+
         if other.__class__ != self.__class__:
             raise TypeError, "Fraction.__cmp__(self,other) requires other to "\
                 "be of type Fraction or int. Type was %s." % other.__class__
@@ -224,10 +224,9 @@ class Fraction(object):
             return 1
         else:
             return -1
-        
+
     def __hash__(self):
         return self.numerator + self.denominator
-        
+
     class ValueError(Exception):
         pass
-

@@ -1,11 +1,11 @@
 def train(corpus):
-  pass
+    pass
 
 def probability(S, model):
-  pass
+    pass
 
 def loglikelihood(S, model):
-  pass
+    pass
 
 def features(S):
-  pass
+    pass

@@ -3,9 +3,9 @@ class EventDispatcherBase:
 
     def __init__(self, outstream):
         """
-        The event dispatcher generates events on the outstream. This 
-        is the base implementation. It is more like an interface for 
-        how the EventDispatcher. It has the methods that are used by 
+        The event dispatcher generates events on the outstream. This
+        is the base implementation. It is more like an interface for
+        how the EventDispatcher. It has the methods that are used by
         the Midi Parser.
         """
         # internal values, don't mess with 'em directly
@@ -30,9 +30,9 @@ class EventDispatcherBase:
 
     def start_of_track(self, current_track):
         "Triggers the start of track event"
-        
-        # I do this twice so that users can overwrite the 
-        # start_of_track event handler without worrying whether the 
+
+        # I do this twice so that users can overwrite the
+        # start_of_track event handler without worrying whether the
         # track number is updated correctly.
         self.outstream.set_current_track(current_track)
         self.outstream.start_of_track(current_track)
@@ -47,8 +47,8 @@ class EventDispatcherBase:
     def continuous_controllers(self, channel, controller, value):
         "Dispatches channel messages"
         self.outstream.continuous_controller(channel, controller, value)
-    
-    
+
+
     def system_commons(self, common_type, common_data):
         "Dispatches system common messages"
         self.outstream.system_common(common_type, common_data)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     from MidiToText import MidiToText
     from constants import NOTE_ON
-    
+
     outstream = MidiToText()
     dispatcher = EventDispatcherBase(outstream)
     dispatcher.channel_messages(NOTE_ON, 0x00, '\x40\x40')

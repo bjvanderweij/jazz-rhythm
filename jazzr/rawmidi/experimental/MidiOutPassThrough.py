@@ -5,7 +5,7 @@ class MidiOutPassThrough(MidiOutStream):
 
     """
 
-    This class i mainly used for testing the event dispatcher. The 
+    This class i mainly used for testing the event dispatcher. The
     methods just returns the passed parameters as a tupple.
 
     """
@@ -26,7 +26,7 @@ class MidiOutPassThrough(MidiOutStream):
     def aftertouch(self, channel, note, velocity, time=None):
         return channel, note, velocity, time
 
-        
+
     def continuous_controller(self, channel, controller, value, time=None):
         return channel, controller, value, time
 
@@ -41,7 +41,7 @@ class MidiOutPassThrough(MidiOutStream):
 
     #####################
     ## defined continuous controller events
-    
+
 #    def cc_
 
     #####################
@@ -66,7 +66,7 @@ class MidiOutPassThrough(MidiOutStream):
 
     #########################
     # header does not really belong here. But anyhoo!!!
-    
+
     def header(self, format, nTracks, division):
         return format, nTracks, division
 
@@ -178,5 +178,3 @@ if __name__ == '__main__':
     midiOut = MidiOutStream()
     midiOut.note_on(0, 63, 127, 0)
     midiOut.note_off(0, 63, 127, 384)
-
-    
